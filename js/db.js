@@ -55,14 +55,85 @@ window.DB = (function(){
     }
   }
 
-  async function signInWithGoogle(){
+  // ------------------------------------------------------ entrar con Google
+  //
+  // El botón lo dibuja Google Identity Services dentro de esta misma página, en
+  // vez de usar signInWithOAuth, que mandaba al callback del proyecto. Ese
+  // rodeo era el que hacía que Google anunciara "Ir a <referencia>.supabase.co":
+  // enseña el dominio de quien pide el token, y quien lo pedía era Supabase.
+  // Ahora el token se pide desde el origen de la app y solo después se cambia
+  // por una sesión, así que en pantalla sale la app. Para que además ponga
+  // "SuperStat" en vez del dominio hay que verificar la marca en Google.
+
+  // El nonce viaja dos veces y no de la misma forma: a Google se le da su
+  // resumen SHA-256 en hexadecimal, y a Supabase el original, que es quien
+  // comprueba que uno corresponde al otro. Mandar el mismo a los dos falla.
+  function randomNonce(){
+    const b = new Uint8Array(32);
+    crypto.getRandomValues(b);
+    return Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function sha256Hex(text){
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf), x => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  // El script de Google se carga con async, así que puede no estar listo cuando
+  // se pinta la pantalla de entrada por primera vez.
+  function whenGoogleReady(ms){
+    const limite = Date.now() + (ms || 8000);
+    return new Promise((ok, fallo) => {
+      (function mirar(){
+        if(window.google && window.google.accounts && window.google.accounts.id) return ok();
+        if(Date.now() > limite) return fallo(new Error('google-no-carga'));
+        setTimeout(mirar, 50);
+      })();
+    });
+  }
+
+  // Dibuja el botón dentro de `el`. `onError` recoge lo que falle *después*, ya
+  // con el usuario dentro del flujo de Google; lo que falle antes (falta el ID
+  // de cliente, no carga el script) sale por el rechazo de la promesa, porque
+  // entonces no hay botón que enseñar.
+  async function renderGoogleButton(el, onError){
     const c = init();
     if(!c) throw new Error('Supabase no está configurado.');
-    const { error } = await c.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin + window.location.pathname }
+    if(!config().GOOGLE_CLIENT_ID) throw new Error('falta-client-id');
+    // crypto.subtle solo existe en contexto seguro: https o localhost.
+    if(!window.crypto || !crypto.subtle) throw new Error('sin-contexto-seguro');
+    await whenGoogleReady();
+
+    const nonce = randomNonce();
+    const hashed = await sha256Hex(nonce);
+
+    window.google.accounts.id.initialize({
+      client_id: config().GOOGLE_CLIENT_ID,
+      nonce: hashed,
+      callback: async (respuesta) => {
+        try{
+          const { error } = await c.auth.signInWithIdToken({
+            provider: 'google',
+            token: respuesta.credential,
+            nonce: nonce
+          });
+          if(error) throw error;
+          // La sesión entra por onAuthChange, igual que con el correo.
+        }catch(e){ if(onError) onError(e); }
+      }
     });
-    if(error) throw error;
+
+    el.innerHTML = '';
+    window.google.accounts.id.renderButton(el, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'signin_with',
+      shape: 'rectangular',
+      locale: 'es',
+      // Google solo acepta anchos entre 200 y 400.
+      width: Math.max(200, Math.min(400, el.clientWidth || 320))
+    });
   }
 
   async function signInWithPassword(email, password){
@@ -135,7 +206,7 @@ window.DB = (function(){
 
   return {
     TABLES, init, isConfigured, currentUser, onAuthChange, cleanAuthUrl,
-    signInWithGoogle, signInWithPassword, signUpWithPassword, signOut,
+    renderGoogleButton, signInWithPassword, signUpWithPassword, signOut,
     pull, push
   };
 })();

@@ -2,6 +2,7 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const DIR = require('os').tmpdir();
 const STUB = fs.readFileSync(__dirname + '/supabase-stub.js', 'utf8');
+const GSTUB = fs.readFileSync(__dirname + '/google-stub.js', 'utf8');
 const BASE = 'http://localhost:5173/index.html';
 
 let fallos = 0, pasadas = 0;
@@ -15,14 +16,17 @@ function check(nombre, ok, detalle){
 async function nuevaPagina(browser, serverState){
   const ctx = await browser.newContext({ viewport:{ width:390, height:844 } });
   await ctx.addInitScript({ content:
-    (serverState ? 'window.__SERVER__ = ' + JSON.stringify(serverState) + ';' : '') + '\n' + STUB
+    (serverState ? 'window.__SERVER__ = ' + JSON.stringify(serverState) + ';' : '') + '\n' + STUB + '\n' + GSTUB
   });
   const page = await ctx.newPage();
   page.on('pageerror', e => { fallos++; console.log('  FALLA error en página: ' + e.message); });
   // el CDN no es alcanzable desde aquí: se sirve el doble en su lugar
   await page.route('**/supabase-js*/**', r => r.fulfill({ contentType:'application/javascript', body:'' }));
+  // Google Identity Services tampoco es alcanzable: el doble ya está puesto por
+  // addInitScript, así que su script se sirve vacío.
+  await page.route('**/gsi/client*', r => r.fulfill({ contentType:'application/javascript', body:'' }));
   await page.route('**/js/config.js', r => r.fulfill({ contentType:'application/javascript',
-    body:"window.SUPERSTAT_CONFIG={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon-test'};" }));
+    body:"window.SUPERSTAT_CONFIG={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon-test',GOOGLE_CLIENT_ID:'cliente-de-prueba.apps.googleusercontent.com'};" }));
   return { ctx, page };
 }
 
@@ -262,8 +266,12 @@ async function altaEquipo(page, nombre, jugadores){
                                           clock:0, users:{}, session:null, pushes:0 });
   await g.page.goto(BASE);
   await g.page.waitForSelector('#google-btn');
+  check('el botón lo dibuja Google con nuestro ID de cliente',
+        await g.page.evaluate(() => window.__GOOGLE__.clientId) === 'cliente-de-prueba.apps.googleusercontent.com');
   await g.page.click('#google-btn');
   await g.page.waitForSelector('#create-team-btn', { timeout:10000 });
+  // Si entra es que el nonce resumido fue a Google y el original a Supabase: el
+  // doble rechaza el login si los dos reciben el mismo.
   check('entra con Google', await g.page.$('#create-team-btn') !== null);
   check('la cabecera muestra el nombre de la cuenta de Google',
         (await g.page.textContent('header .title')).includes('David'));
@@ -285,6 +293,7 @@ async function altaEquipo(page, nombre, jugadores){
   const sc = await browser.newContext();
   const scp = await sc.newPage();
   await scp.route('**/supabase-js*/**', r => r.fulfill({ contentType:'application/javascript', body:'' }));
+  await scp.route('**/gsi/client*', r => r.fulfill({ contentType:'application/javascript', body:'' }));
   await scp.route('**/js/config.js', r => r.fulfill({ contentType:'application/javascript',
     body:"window.SUPERSTAT_CONFIG={SUPABASE_URL:'',SUPABASE_ANON_KEY:''};" }));
   await scp.goto(BASE);

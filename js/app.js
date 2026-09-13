@@ -316,10 +316,7 @@
           </p>
         </div>
 
-        <button class="google-btn" id="google-btn">
-          <span class="g-mark" aria-hidden="true">G</span>
-          Entrar con Google
-        </button>
+        <div class="google-slot" id="google-slot"></div>
         <div class="auth-divider"><span>o con tu correo</span></div>
 
         <h2 style="font-size:19px;margin-bottom:16px;">${isLogin ? 'Entrar' : 'Crear cuenta'}</h2>
@@ -356,17 +353,26 @@
     return 'No se ha podido completar: ' + (e && e.message ? e.message : 'error desconocido');
   }
 
-  async function handleGoogleSignIn(){
-    state.authError = '';
-    state.authBusy = true;
-    render();
-    try{
-      await DB.signInWithGoogle();   // redirige fuera; al volver lo recoge boot()
-    }catch(e){
-      state.authBusy = false;
+  // El botón de Google lo dibuja él mismo dentro de #google-slot, así que no hay
+  // click propio que enlazar: se monta después de cada render de la entrada.
+  // Si no se puede dibujar, se dice ahí mismo en vez de dejar un hueco mudo.
+  function mountGoogleButton(){
+    const slot = document.getElementById('google-slot');
+    if(!slot) return;
+    DB.renderGoogleButton(slot, (e) => {
       state.authError = authErrorText(e);
       render();
-    }
+    }).catch((e) => {
+      slot.innerHTML = `<div class="hint-text">${esc(googleUnavailableText(e))}</div>`;
+    });
+  }
+
+  function googleUnavailableText(e){
+    const m = (e && e.message) || '';
+    if(m === 'falta-client-id')     return 'Para entrar con Google falta el ID de cliente en js/config.js.';
+    if(m === 'sin-contexto-seguro') return 'Entrar con Google necesita https (o localhost).';
+    if(m === 'google-no-carga')     return 'No se ha podido cargar el botón de Google. Comprueba la conexión.';
+    return 'Ahora mismo no se puede entrar con Google.';
   }
 
   async function handleAuthSubmit(){
@@ -995,7 +1001,7 @@
     const bind = (id, ev, fn) => { const el = document.getElementById(id); if(el) el.addEventListener(ev, fn); };
 
     bind('auth-submit','click', handleAuthSubmit);
-    bind('google-btn','click', handleGoogleSignIn);
+    mountGoogleButton();
     bind('auth-toggle','click', () => {
       state.authMode = state.authMode === 'login' ? 'register' : 'login';
       state.authError = '';

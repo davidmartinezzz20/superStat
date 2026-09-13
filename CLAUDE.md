@@ -26,8 +26,9 @@ anon del proyecto de Supabase; si están vacías, la app lo dice en pantalla y n
 deja entrar. La puesta a punto completa —incluido el login con Google— está en
 `docs/supabase.md`.
 
-Ya no vale abrir `index.html` a pelo con `file://`: el login con Google
-redirige y necesita un origen http(s).
+Ya no vale abrir `index.html` a pelo con `file://`: el botón de Google solo
+funciona desde un origen declarado en Google Cloud, y el nonce se calcula con
+`crypto.subtle`, que solo existe en contexto seguro (https o localhost).
 
 ## Estructura
 
@@ -35,7 +36,8 @@ redirige y necesita un origen http(s).
 - `css/styles.css` — todos los estilos (tema oscuro tipo pabellón, tarjetas,
   la portería dibujada con postes/red/soportes, el modal de selección de
   jugador, etc.).
-- `js/config.js` — URL y clave anon de Supabase. Se publica a propósito.
+- `js/config.js` — URL y clave anon de Supabase, y el ID de cliente de Google.
+  Las tres se publican a propósito.
 - `js/db.js` — todo lo que habla con Supabase: sesión, login y las dos
   operaciones de sincronización (`pull` y `push`). No sabe de pantallas.
 - `js/store.js` — espejo local, cola de sincronización y fusión. Es la única
@@ -134,9 +136,15 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   `Store`. Si necesitas un dato nuevo, expón un método en `store.js`.
 - `render()` relee los datos del store en las pantallas de lista, así que basta
   con cambiar el store para que la pantalla se entere.
-- Dependencias externas: solo las Google Fonts y `supabase-js`, cargadas por CDN
-  en `index.html` con la versión fijada. No añadir más sin motivo fuerte, y
-  seguir sin build ni framework.
+- Dependencias externas: las Google Fonts, `supabase-js` y Google Identity
+  Services, cargadas por CDN en `index.html`. `supabase-js` va con la versión
+  fijada; GIS es la excepción, porque Google sirve una sola URL y no publica
+  versiones. No añadir más sin motivo fuerte, y seguir sin build ni framework.
+- Entrar con Google no usa `signInWithOAuth`: el botón lo dibuja GIS en la propia
+  página y el id_token se cambia por sesión con `signInWithIdToken`. Se hizo así
+  porque el rodeo por el callback de Supabase hacía que Google anunciara
+  "Ir a <referencia>.supabase.co". Cuidado con el nonce: a Google se le da el
+  resumen SHA-256 y a Supabase el original; mandar el mismo a los dos falla.
 - `esc()` debe usarse siempre que se inserte texto de usuario (nombre de
   jugador, rival, etc.) en una plantilla HTML, para evitar inyección.
 
