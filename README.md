@@ -65,9 +65,12 @@ Los pasos completos —el ID de cliente de Google por plataforma, firmar el AAB 
 lo que pide cada tienda— están en **[`docs/movil.md`](docs/movil.md)**, y lo que
 hay que rellenar en la ficha de Google Play —textos, gráficos, los formularios
 de seguridad de los datos y de clasificación, y la cuenta para el revisor— en
-**[`docs/play.md`](docs/play.md)**. iOS solo se puede compilar desde macOS;
-mientras tanto, en iPhone la app se instala desde Safari con *Añadir a pantalla
-de inicio*.
+**[`docs/play.md`](docs/play.md)**. Y el recorrido entero hasta tener la app
+publicada, en orden de ejecución, en
+**[`docs/publicar-android.md`](docs/publicar-android.md)**.
+
+iOS solo se puede compilar desde macOS; mientras tanto, en iPhone la app se
+instala desde Safari con *Añadir a pantalla de inicio*.
 
 ## Puesta a punto
 
@@ -131,5 +134,6 @@ tools/make-screenshots.js  genera las capturas desde la app de verdad
 docs/supabase.md       puesta a punto paso a paso
 docs/movil.md          compilar y publicar en Google Play y la App Store
 docs/play.md           textos y formularios de la ficha de Google Play
+docs/publicar-android.md  el recorrido completo hasta publicar en Play
 test/                  pruebas con Playwright
 ```

@@ -70,6 +70,13 @@ los datos son las políticas RLS del paso 1.
    **Usuarios de prueba**. Añade el tuyo. Si la vais a usar varias personas,
    publica la app o añádelos a todos ahí.
 
+> **Antes de publicar en una tienda hay que pasarla a *Producción***, o quien se
+> baje la app no podrá entrar con Google: la lista de usuarios de prueba no
+> incluye ni a los usuarios ni al revisor de Google. La app solo pide `email` y
+> `profile`, que no son permisos sensibles, así que publicarla no dispara
+> ninguna revisión y el cambio es inmediato. Está en el bloque 5.2 de
+> [`publicar-android.md`](publicar-android.md).
+
 ### 3.2 El ID de cliente
 
 1. **APIs y servicios → Credenciales → Crear credenciales → ID de cliente de OAuth**.

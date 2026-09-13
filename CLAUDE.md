@@ -90,6 +90,9 @@ no para usar la app.
 - `docs/movil.md` — compilar y publicar en Google Play y la App Store.
 - `docs/play.md` — la ficha de Play: textos, respuestas de los formularios y la
   cuenta para el revisor.
+- `docs/publicar-android.md` — el recorrido completo para publicar en Google
+  Play, en orden de ejecución. No repite lo de los otros tres documentos: dice
+  en qué orden se hacen las cosas y cuáles dependen de otra anterior.
 
 ## Modelo de datos
 

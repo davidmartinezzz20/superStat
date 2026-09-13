@@ -2,7 +2,8 @@
 
 Todo lo que pide Play Console que no es el binario: los textos, los gráficos,
 las respuestas de los formularios y la cuenta para el revisor. Compilar y firmar
-el AAB está en [`movil.md`](movil.md).
+el AAB está en [`movil.md`](movil.md), y el recorrido completo en orden de
+ejecución, en [`publicar-android.md`](publicar-android.md).
 
 Lo que ya está hecho y sale del repo:
 
