@@ -76,8 +76,20 @@ no para usar la app.
   dibujo de la marca.
 - `tools/build-www.js` — arma `www/` con lo que se empaqueta dentro de la app.
   **Si añades un archivo a la web, hay que añadirlo a su lista**, o no entrará.
+- `privacidad.html` — política de privacidad. Página suelta, sin CSS ni scripts
+  del resto: Google Play exige una URL pública que se abra sin instalar nada ni
+  entrar con una cuenta. **No entra en `tools/build-www.js` a propósito**: lo
+  que pide Play es el enlace en la ficha, no una pantalla más dentro de la app.
+- `play/` — icono, gráfico de cabecera y capturas de la ficha de Google Play.
+  No son producto: no entran en ningún binario y solo hacen falta al publicar.
+- `tools/make-play-assets.js` — genera el icono y la cabecera de la ficha.
+- `tools/make-screenshots.js` — genera las capturas: abre la app de verdad con
+  los dobles de `test/` detrás, juega un partido inventado con semilla fija y
+  fotografía ocho pantallas.
 - `docs/supabase.md` — puesta a punto de Supabase y de Google.
 - `docs/movil.md` — compilar y publicar en Google Play y la App Store.
+- `docs/play.md` — la ficha de Play: textos, respuestas de los formularios y la
+  cuenta para el revisor.
 
 ## Modelo de datos
 

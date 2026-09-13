@@ -46,14 +46,16 @@ partir de `capacitor.config.json` y de los plugins instalados, así que se
 rehacen igual en cualquier máquina. Lo que **sí** hay que guardar fuera del
 repo es el almacén de claves de Android, y de eso se habla más abajo.
 
-### Cambia el identificador de la app antes de publicar
+### El identificador de la app, antes de publicar
 
-En `capacitor.config.json` está puesto `com.superstat.balonmano`. Ese
-identificador es **para siempre**: una vez publicada, no se puede cambiar sin
-crear una app nueva y perder las descargas y las valoraciones. Si tienes un
-dominio, usa el tuyo del revés (`es.tudominio.superstat`).
+En `capacitor.config.json` está puesto `com.superstat.sports`. Es a propósito
+que no diga "balonmano": el identificador es **para siempre** —una vez
+publicada, cambiarlo obliga a crear una app nueva y se pierden las descargas y
+las valoraciones—, y la idea es que la app pueda cubrir otros deportes sin
+quedarse con un nombre que la contradiga.
 
-Si lo cambias, borra `android/` e `ios/` y vuelve a hacer `npx cap add`.
+Si aun así lo cambias, borra `android/` e `ios/` y vuelve a hacer `npx cap add`:
+el identificador se copia dentro del proyecto nativo al generarlo.
 
 ---
 
@@ -152,9 +154,14 @@ cd android && ./gradlew assembleDebug
    Bundle*, con ese almacén.
 3. Sube el `.aab` a Play Console.
 
-La primera publicación tarda: Google revisa las apps nuevas y suele pedir
-además una cuenta de prueba para poder entrar (dales un correo y una contraseña
-creados en la propia app).
+La primera publicación tarda: Google revisa las apps nuevas y, con una app que
+pide cuenta desde la primera pantalla, necesita unas credenciales para poder
+entrar.
+
+El binario es solo la mitad. Todo lo demás que hay que rellenar —los textos de
+la ficha, el icono y las capturas, los formularios de seguridad de los datos y
+de clasificación por edades, y esa cuenta para el revisor— está resuelto en
+**[`play.md`](play.md)**, con los gráficos ya generados en `play/`.
 
 ---
 
