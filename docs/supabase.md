@@ -77,7 +77,7 @@ los datos son las políticas RLS del paso 1.
 3. **Orígenes autorizados de JavaScript** — los sitios desde los que se abre la
    app. Esto es lo que de verdad tiene que estar bien, porque el botón de Google
    se dibuja en la propia página y es ella quien pide el token:
-   - `https://TU-APP.vercel.app`
+   - `https://super-stat.vercel.app`
    - `http://localhost:5173` (para probar en tu ordenador)
 
    Van sin barra final y sin ruta: el origen, nada más.
@@ -104,12 +104,12 @@ los datos son las políticas RLS del paso 1.
    no hace falta para este flujo —el token lo da Google en el navegador—, pero
    tampoco molesta dejarlo puesto.
 2. Supabase → **Authentication → URL Configuration**:
-   - **Site URL**: `https://TU-APP.vercel.app`
+   - **Site URL**: `https://super-stat.vercel.app`
    - **Redirect URLs**: añade una línea por cada sitio desde el que se entra.
      Los previews de Vercel cambian de URL en cada rama, así que va con comodín:
 
      ```
-     https://TU-APP.vercel.app/**
+     https://super-stat.vercel.app/**
      https://super-stat-git-*.vercel.app/**
      http://localhost:5173/**
      ```

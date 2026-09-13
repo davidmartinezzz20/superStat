@@ -62,9 +62,12 @@ npm run android         # abre Android Studio  (npm run ios para Xcode)
 ```
 
 Los pasos completos —el ID de cliente de Google por plataforma, firmar el AAB y
-lo que pide cada tienda— están en **[`docs/movil.md`](docs/movil.md)**. iOS solo
-se puede compilar desde macOS; mientras tanto, en iPhone la app se instala desde
-Safari con *Añadir a pantalla de inicio*.
+lo que pide cada tienda— están en **[`docs/movil.md`](docs/movil.md)**, y lo que
+hay que rellenar en la ficha de Google Play —textos, gráficos, los formularios
+de seguridad de los datos y de clasificación, y la cuenta para el revisor— en
+**[`docs/play.md`](docs/play.md)**. iOS solo se puede compilar desde macOS;
+mientras tanto, en iPhone la app se instala desde Safari con *Añadir a pantalla
+de inicio*.
 
 ## Puesta a punto
 
@@ -121,7 +124,12 @@ icons/  assets/        iconos de la web y materia prima de los de las apps
 tools/make-icons.js    genera todo eso desde el dibujo de la marca
 tools/build-www.js     junta lo que se empaqueta dentro de la app
 supabase/schema.sql    tablas, migraciones y políticas de seguridad
+privacidad.html        política de privacidad (la URL que pide Google Play)
+play/                  icono, cabecera y capturas de la ficha de Play
+tools/make-play-assets.js  genera el icono y la cabecera de la ficha
+tools/make-screenshots.js  genera las capturas desde la app de verdad
 docs/supabase.md       puesta a punto paso a paso
 docs/movil.md          compilar y publicar en Google Play y la App Store
+docs/play.md           textos y formularios de la ficha de Google Play
 test/                  pruebas con Playwright
 ```

@@ -1,0 +1,244 @@
+<!doctype html>
+<!--
+  Política de privacidad de SuperStat.
+
+  Es una página aparte y a propósito: Google Play exige una URL pública que se
+  pueda abrir sin instalar nada ni entrar con una cuenta, así que no puede vivir
+  dentro de la single-page app. Por eso no depende de css/styles.css ni de
+  ningún script: se sirve sola desde la raíz del sitio.
+
+  Tampoco entra en tools/build-www.js. Dentro de la app no hace falta —lo que
+  pide Play es el enlace en la ficha de la tienda, no una pantalla más—, y
+  meterla en el binario sacaría al usuario de la app sin forma clara de volver.
+
+  El apartado "Cómo borrar tu cuenta" tiene su propio id (#borrar) porque esa
+  ancla es la que se pega en Play Console → Seguridad de los datos → URL de
+  eliminación de la cuenta. Si se renombra, hay que cambiarla también allí.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Política de privacidad · SuperStat</title>
+<meta name="description" content="Qué datos guarda SuperStat, dónde se guardan y cómo borrarlos.">
+<style>
+  :root{
+    --bg:#08090B; --panel:#141619; --line:rgba(255,255,255,0.08);
+    --text:#F5F5F7; --muted:#8A8F98; --brand:#D9182B; --brand-2:#FF5A68;
+    --font:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
+           'Segoe UI', Roboto, system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--font);
+    -webkit-font-smoothing:antialiased; line-height:1.6;
+    display:flex; justify-content:center;
+  }
+  main{width:100%; max-width:720px; padding:28px 20px 80px;}
+  .brand{display:flex; align-items:center; gap:10px; margin-bottom:34px;}
+  .brand svg{width:34px; height:34px; display:block;}
+  .brand-word{font-size:20px; font-weight:700; letter-spacing:-0.02em;}
+  .brand-word i{font-style:normal; color:var(--brand-2);}
+  h1{font-size:30px; line-height:1.2; letter-spacing:-0.03em; margin:0 0 6px;}
+  .updated{color:var(--muted); font-size:14px; margin:0 0 30px;}
+  h2{font-size:19px; letter-spacing:-0.02em; margin:34px 0 10px; scroll-margin-top:20px;}
+  p, li{color:#DCDEE3;}
+  p{margin:0 0 12px;}
+  ul{margin:0 0 12px; padding-left:20px;}
+  li{margin-bottom:6px;}
+  strong{color:var(--text);}
+  a{color:var(--brand-2);}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:16px 18px; margin:16px 0;
+  }
+  .card p:last-child, .card ul:last-child{margin-bottom:0;}
+  .tag{
+    display:inline-block; background:var(--brand); color:#fff; font-size:12px;
+    font-weight:600; letter-spacing:0.02em; border-radius:999px;
+    padding:3px 10px; margin-bottom:12px;
+  }
+  footer{
+    margin-top:46px; padding-top:18px; border-top:1px solid var(--line);
+    color:var(--muted); font-size:14px;
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <rect x="0" y="0" width="32" height="32" rx="7" fill="#D9182B"/>
+      <rect x="6.5" y="17" width="5" height="8" rx="1.4" fill="#F5F5F7"/>
+      <rect x="13.5" y="12.5" width="5" height="12.5" rx="1.4" fill="#F5F5F7"/>
+      <rect x="20.5" y="7" width="5" height="18" rx="1.4" fill="#F5F5F7"/>
+    </svg>
+    <span class="brand-word">Super<i>Stat</i></span>
+  </div>
+
+  <h1>Política de privacidad</h1>
+  <p class="updated">Última actualización: 13 de septiembre de 2026</p>
+
+  <p>SuperStat es una aplicación para llevar las estadísticas de un equipo de
+  balonmano: plantilla, partidos, tiros y eventos. Esta página explica qué datos
+  guarda, dónde los guarda y cómo borrarlos. Vale igual para la web y para la
+  app de Android.</p>
+
+  <div class="card">
+    <p><strong>Lo corto:</strong> SuperStat guarda tu correo y las estadísticas
+    que tú introduces. No hay publicidad, no hay analítica, no hay seguimiento y
+    no se venden ni se ceden datos a nadie. Puedes borrarlo todo cuando quieras.</p>
+  </div>
+
+  <h2>Quién es el responsable</h2>
+  <p>SuperStat es un proyecto personal, sin ánimo de lucro y sin empresa detrás.
+  El responsable del tratamiento es su autor, y la vía de contacto para
+  cualquier cosa relacionada con tus datos es
+  <a href="mailto:opt1a.david.martinez@gmail.com">opt1a.david.martinez@gmail.com</a>.</p>
+
+  <h2>Qué datos se recogen</h2>
+  <p><strong>De tu cuenta</strong>, para poder identificarte y que tus datos te
+  sigan de un dispositivo a otro:</p>
+  <ul>
+    <li>Tu <strong>dirección de correo electrónico</strong>.</li>
+    <li>Si entras con Google: además el <strong>nombre y la foto de perfil</strong>
+      que Google asocia a esa cuenta. SuperStat no recibe tu contraseña de Google
+      en ningún momento.</li>
+    <li>Si entras con correo y contraseña: la contraseña se guarda
+      <strong>cifrada</strong> y el autor de la app no puede verla.</li>
+  </ul>
+
+  <p><strong>Lo que tú escribes en la app</strong>, que es el motivo por el que
+  existe:</p>
+  <ul>
+    <li>Equipos, y la <strong>plantilla</strong> de cada uno: nombre, dorsal y
+      posición de cada jugador.</li>
+    <li>Partidos: rival, fecha y resultado.</li>
+    <li>Lo anotado durante el partido: tiros (zona de portería, punto de
+      lanzamiento, minuto y parte), paradas, pérdidas, robos, exclusiones,
+      tarjetas y quién estaba en pista.</li>
+  </ul>
+
+  <p><strong>Lo que NO se recoge:</strong> ubicación, agenda de contactos,
+  fotos, micrófono, cámara, identificadores de publicidad ni historial de
+  navegación. La app no incluye SDK de publicidad ni de analítica de ningún
+  tipo, y no hace perfilado ni decisiones automatizadas.</p>
+
+  <h2>Nombres de jugadores: una advertencia importante</h2>
+  <p>Los nombres, dorsales y estadísticas que introduces son datos de
+  <strong>otras personas</strong>, a menudo menores de edad. SuperStat es la
+  herramienta; quien decide qué escribir ahí eres tú. Eso significa que eres tú
+  —como entrenador, delegado o club— quien debe tener la base legal para tratar
+  esos datos: el consentimiento de los jugadores o de sus tutores, o el que ya
+  tenga el club para gestionar sus equipos.</p>
+  <p>Si prefieres no introducir nombres reales, la app funciona igual con
+  iniciales, apodos o solo dorsales.</p>
+
+  <h2>Para qué se usan</h2>
+  <p>Únicamente para prestar el servicio: identificarte, guardar lo que anotas,
+  sincronizarlo entre tus dispositivos y calcular las estadísticas que te
+  enseña la app. No se usan para nada más.</p>
+  <p>La base legal es la <strong>ejecución del servicio</strong> que solicitas al
+  crear una cuenta (artículo 6.1.b del RGPD). No se envían correos comerciales.</p>
+
+  <h2>Dónde se guardan</h2>
+  <ul>
+    <li><strong>En tu dispositivo.</strong> La app guarda una copia local de tus
+      datos (en el almacenamiento del navegador o de la app) para que funcione
+      sin cobertura, que es justo el caso de un pabellón. Esa copia es la que se
+      usa mientras no hay red, y lo pendiente se sube solo cuando vuelve.</li>
+    <li><strong>En la nube.</strong> El original vive en una base de datos
+      Postgres alojada en <strong>Supabase Inc.</strong>, que actúa como
+      encargado del tratamiento. La conexión va siempre cifrada (HTTPS) y el
+      acceso está limitado fila a fila: las políticas de seguridad de la base de
+      datos hacen que cada cuenta solo pueda leer y escribir sus propias filas.</li>
+    <li><strong>Transferencias internacionales.</strong> Si la región del
+      proyecto de Supabase está fuera del Espacio Económico Europeo, esa
+      transferencia se ampara en las cláusulas contractuales tipo aprobadas por
+      la Comisión Europea, que forman parte del contrato de Supabase con sus
+      clientes.</li>
+  </ul>
+
+  <h2>Con quién se comparten</h2>
+  <p>Con nadie más que con los dos proveedores necesarios para que la app
+  funcione:</p>
+  <ul>
+    <li><strong>Supabase Inc.</strong> — alojamiento de la base de datos y del
+      sistema de cuentas.
+      <a href="https://supabase.com/privacy" target="_blank" rel="noopener">Su política</a>.</li>
+    <li><strong>Google LLC</strong> — solo si eliges entrar con Google, y solo
+      para comprobar que esa cuenta es tuya.
+      <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Su política</a>.</li>
+  </ul>
+  <p>No se venden datos, no se ceden con fines publicitarios y no se comparten
+  con terceros para sus propios fines. Solo se entregarían datos si lo exigiera
+  una obligación legal.</p>
+
+  <h2>Cuánto tiempo se conservan</h2>
+  <p>Mientras tengas la cuenta abierta. Cuando borras un equipo o un partido
+  desde la app, deja de verse al momento y se marca como borrado para que no
+  reaparezca al sincronizar otro dispositivo; ese registro se elimina de forma
+  definitiva como máximo a los 90 días. Si borras la cuenta entera, se elimina
+  todo lo asociado a ella.</p>
+
+  <h2 id="borrar">Cómo borrar tu cuenta y tus datos</h2>
+  <div class="card">
+    <span class="tag">Eliminación de la cuenta</span>
+    <p><strong>Parte por parte, desde la app:</strong> cada partido y cada equipo
+    se puede borrar desde su propia pantalla, y con el equipo se va su plantilla
+    y todo lo anotado en sus partidos.</p>
+    <p><strong>La cuenta entera:</strong> escribe a
+    <a href="mailto:opt1a.david.martinez@gmail.com?subject=Borrar%20mi%20cuenta%20de%20SuperStat">opt1a.david.martinez@gmail.com</a>
+    desde la misma dirección con la que entras en la app, con el asunto
+    <em>«Borrar mi cuenta de SuperStat»</em>. Se borran la cuenta y todos sus
+    datos —equipos, jugadores, partidos, tiros y eventos— en un plazo máximo de
+    <strong>30 días</strong>, y recibirás confirmación. No se conserva ninguna
+    copia salvo la que obligue la ley.</p>
+    <p>Si solo quieres quitar la copia local del dispositivo, basta con
+    desinstalar la app (o borrar los datos del sitio, en el navegador). Eso no
+    borra lo que ya está en la nube.</p>
+  </div>
+
+  <h2>Tus derechos</h2>
+  <p>Puedes ejercer en cualquier momento los derechos de acceso, rectificación,
+  supresión, limitación, oposición y portabilidad, escribiendo al correo de
+  contacto. En particular:</p>
+  <ul>
+    <li><strong>Acceso y rectificación:</strong> todo lo que la app guarda de ti
+      se ve y se edita desde la propia app.</li>
+    <li><strong>Portabilidad:</strong> cada partido se puede exportar a CSV
+      desde su ficha, sin pedir nada a nadie.</li>
+    <li><strong>Supresión:</strong> como se explica en el apartado anterior.</li>
+  </ul>
+  <p>Si crees que tus datos no se están tratando bien, puedes reclamar ante la
+  Agencia Española de Protección de Datos
+  (<a href="https://www.aepd.es" target="_blank" rel="noopener">aepd.es</a>).</p>
+
+  <h2>Seguridad</h2>
+  <p>Todo el tráfico va cifrado con HTTPS. El aislamiento entre cuentas no
+  depende de la app, sino de las políticas de seguridad a nivel de fila de la
+  propia base de datos: aunque alguien manipulara la aplicación, la base de
+  datos seguiría devolviendo únicamente las filas de la cuenta con la que se
+  haya entrado. Aun así, ningún sistema es infalible, y esta app se ofrece sin
+  garantías.</p>
+
+  <h2>Menores</h2>
+  <p>La app está pensada para entrenadores, delegados y cuerpo técnico, y no se
+  dirige a menores de edad, que no deben crear una cuenta por su cuenta. Los
+  datos de menores que puedan aparecer en las plantillas son responsabilidad de
+  quien los introduce, como se explica más arriba.</p>
+
+  <h2>Cambios en esta política</h2>
+  <p>Si cambia algo relevante, se actualizará esta página y con ella la fecha de
+  arriba. Los cambios importantes se avisarán además dentro de la app.</p>
+
+  <footer>
+    SuperStat · Contacto:
+    <a href="mailto:opt1a.david.martinez@gmail.com">opt1a.david.martinez@gmail.com</a>
+  </footer>
+
+</main>
+</body>
+</html>
