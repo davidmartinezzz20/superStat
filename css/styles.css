@@ -6,6 +6,12 @@
     --text: #EDEFF2;
     --muted: #8FA1B8;
     --gold: #E8B84B;
+    /* rojo de la marca. No es --out (#C1443A, el ladrillo de "tiro fuera"):
+       ese es apagado a propósito y aquí hace falta uno saturado. --brand-2 es
+       el mismo rojo aclarado, para el texto sobre el azul marino, donde el
+       --brand puro se queda corto de contraste. */
+    --brand: #D9182B;
+    --brand-2: #FF5A68;
     --goal: #33A17F;
     --goal-dim: #1F5C48;
     --save: #4C8FD6;
@@ -57,12 +63,58 @@
     display:flex;
     align-items:baseline;
     gap:8px;
+    min-width:0;   /* en móvil estrecho manda el botón de al lado */
   }
   header.topbar .title small{
     font-family:'Inter',sans-serif;
     font-size:12px;
     color:var(--muted);
     font-weight:500;
+    /* un correo largo se recorta en vez de meterse debajo del botón */
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  header.topbar .back-btn{flex:0 0 auto;}
+  /* ---- marca ---- */
+  /* el logo se dimensiona con em: el mismo HTML sirve para la topbar y para el
+     banner de entrada, y solo cambia el font-size del contenedor. */
+  .brand{
+    display:inline-flex;
+    align-items:center;
+    gap:0.34em;
+    line-height:1;
+    white-space:nowrap;
+  }
+  .brand-mark{
+    width:1.12em;
+    height:1.12em;
+    flex:0 0 auto;
+    display:block;
+  }
+  .brand-mark .tile{fill:var(--brand);}
+  .brand-mark .bar{fill:#FFFFFF;}
+  .brand-word{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    letter-spacing:0.01em;
+    color:var(--text);
+  }
+  .brand-word i{color:var(--brand-2);font-style:normal;}
+  header.topbar .brand{font-size:20px;}
+  .brand-banner{
+    padding:26px 20px 22px;
+    background:var(--panel);
+    border-bottom:3px solid var(--brand);
+  }
+  /* en pantallas estrechas el wordmark se achica solo, sin media query */
+  .brand-banner .brand{font-size:clamp(26px,8vw,34px);}
+  .brand-tagline{
+    margin:12px 0 0;
+    color:var(--muted);
+    font-size:13.5px;
+    line-height:1.5;
   }
   .back-btn{
     background:none;
