@@ -31,17 +31,27 @@ que volver a ejecutarlo da exactamente las mismas imágenes.
 ## 1. Antes de nada: publica la web
 
 La política de privacidad tiene que estar en una **URL pública** que se pueda
-abrir sin instalar la app ni entrar con una cuenta. Sube la web y quédate con
-estas dos direcciones, que hacen falta en dos sitios distintos de Play Console:
+abrir sin instalar la app ni entrar con una cuenta. La web está en Vercel, así
+que son estas dos direcciones, y van en dos sitios distintos de Play Console:
 
 ```
-https://TU-APP.vercel.app/privacidad.html           ← política de privacidad
-https://TU-APP.vercel.app/privacidad.html#borrar    ← eliminación de la cuenta
+https://super-stat.vercel.app/privacidad.html           ← política de privacidad
+https://super-stat.vercel.app/privacidad.html#borrar    ← eliminación de la cuenta
 ```
 
-> Sustituye `TU-APP.vercel.app` por el dominio real. Aparece solo aquí: la
-> política no se nombra a sí misma en ningún sitio, así que no hay que tocar
-> `privacidad.html`.
+La primera va en *Política de privacidad*, dentro de la ficha de la tienda. La
+segunda, en *Contenido de la aplicación → Eliminación de la cuenta*: es la misma
+página, pero el ancla `#borrar` la abre justo en el apartado que explica cómo
+pedir el borrado.
+
+> Antes de pegarlas, comprueba que la primera se abre en una ventana de
+> incógnito. Si da 404, es que lo que Vercel está sirviendo en producción
+> todavía no lleva `privacidad.html` dentro. Play rechaza la ficha si esa URL no
+> responde, y es de los rechazos más tontos de arreglar tarde.
+
+Si algún día cambias de dominio, este archivo es el único que hay que tocar
+(más los ajustes de consola de [`supabase.md`](supabase.md)): la política no se
+nombra a sí misma en ningún sitio, así que `privacidad.html` se queda igual.
 
 ---
 
@@ -122,7 +132,7 @@ Varios equipos, cada uno con su plantilla. Gratis y sin compras dentro.
 | Categoría | Deportes |
 | Etiquetas | balonmano, estadísticas, entrenador, deportes de equipo |
 | Correo de contacto | opt1a.david.martinez@gmail.com |
-| Sitio web | `https://TU-APP.vercel.app` |
+| Sitio web | `https://super-stat.vercel.app` |
 | Teléfono | déjalo vacío, no es obligatorio |
 | Anuncios | **No**, la app no contiene anuncios |
 | Compras en la aplicación | **No** |
@@ -233,9 +243,12 @@ Correo:     revisor@superstat.app        (o uno tuyo con +revisor)
 Contraseña: una larga, y apúntala
 ```
 
-Si en Supabase tienes activado *Confirm email* (Authentication → Providers →
-Email), hay que confirmarla desde ese correo antes de que sirva. Usa una
-dirección a la que puedas entrar.
+Ese buzón depende de un dominio propio, así que antes de crear la cuenta
+asegúrate de una de las dos cosas: o **puedes recibir correo en
+`revisor@superstat.app`**, o tienes **desactivado *Confirm email*** en Supabase
+(Authentication → Providers → Email). Con la confirmación activada y sin
+acceso al buzón, la cuenta se crea pero se queda sin confirmar, y el revisor se
+encuentra con que las credenciales que le diste no entran.
 
 **2. Deja dentro algo que mirar.** Una cuenta vacía enseña una pantalla vacía:
 crea un equipo con cuatro o cinco jugadores y guarda un partido entero, con sus
