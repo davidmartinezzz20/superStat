@@ -41,15 +41,28 @@ Todo se guarda en `localStorage` del navegador, en JSON, bajo estas claves:
 Cada tiro es `{ zone: 1-9, type: 'goal'|'save', player: idJugador|null,
 origin: zonaPista|null }`.
 
-`origin` es la zona de la pista desde la que se lanzó, uno de los `id` de la
-constante `ORIGINS`: `EI`, `LI`, `CE`, `LD`, `ED`, `7M`, `PIV` (extremos,
-laterales, central, siete metros y pivote). Se pregunta con un toque sobre una
-media pista dibujada con una cuadrícula de 5x3 —de ahí los `col`/`row` de cada
-entrada de `ORIGINS`—, y siempre con izquierda y derecha vistas desde el
-ataque. Es opcional: se activa y desactiva con el interruptor de la pantalla de
-partido en vivo (`draft.askOrigin`, encendido por defecto) y los partidos
-guardados antes de existir esta opción tienen `origin: null`, que se muestra
-como "Sin especificar".
+`origin` es el punto de la pista desde el que se lanzó, `{ x, y }` en **metros**:
+`x` de 0 a 20 de banda a banda (de izquierda a derecha vistas desde el ataque) e
+`y` = distancia a la línea de gol, 0 en la portería. Se marca con un toque sobre
+la media pista dibujada a escala en `courtSvg()`, y `courtPointFromEvent()` es
+quien convierte el toque a metros.
+
+Las medidas viven en la constante `COURT`. La pista se dibuja sólo hasta
+`COURT.depth` (15 m) porque más lejos no se lanza casi nunca y recortarla da más
+precisión al marcar. Cuidado con una cosa: el `aspect-ratio` de `.court-svg` en
+el CSS tiene que seguir coincidiendo con `COURT_VB`, o el punto tocado deja de
+caer donde toca.
+
+Para agrupar en las estadísticas, `zoneFromPoint()` deduce del punto una de las
+zonas de `ORIGINS` (`EI`, `LI`, `CE`, `LD`, `ED`, `7M`, `PIV`). La zona no se
+guarda: siempre se recalcula, así que se puede cambiar el criterio sin migrar
+nada. Usa `shotZone(shot)` y no `zoneFromPoint()` a pelo, porque los partidos
+de la primera versión guardaban en `origin` el id de la zona en vez del punto y
+`shotZone()` entiende los dos formatos.
+
+Registrar el punto es opcional: se activa y desactiva con el interruptor de la
+pantalla de partido en vivo (`draft.askOrigin`, encendido por defecto). Los
+tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
 
 - `shotsOwn` = tiros del **rival** a nuestra portería (gol = encajado,
   parada = la hizo nuestro portero).

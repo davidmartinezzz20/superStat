@@ -17,19 +17,116 @@
 
   const POSITIONS = ['Portero','Lateral izquierdo','Central','Lateral derecho','Extremo izquierdo','Extremo derecho','Pivote'];
 
-  // Zonas de la pista desde las que se puede lanzar. col/row son la posición
-  // en la cuadrícula de 5x3 con la que se dibuja la media pista en el modal:
-  // los extremos ocupan las bandas enteras, y de arriba abajo se va desde los
-  // 9 m (laterales y central) hasta la línea de 6 m (pivote), pegada a portería.
+  // ---------- media pista ----------
+  // Medidas reales de balonmano en metros. La media pista se dibuja de banda a
+  // banda (20 m) y sólo hasta DEPTH metros de la portería: más allá no se lanza
+  // casi nunca y recortarla da más precisión al marcar el punto.
+  // Coordenadas de un lanzamiento: x de 0 a 20 de izquierda a derecha de quien
+  // ataca, y = distancia a la línea de gol (0 = línea de gol).
+  const COURT = { width:20, depth:15, goalWidth:3, postL:8.5, postR:11.5 };
+  // viewBox: la pista más un margen para el trazo y el hueco de la portería.
+  const COURT_VB = { x:-0.25, y:-0.25, w:20.5, h:16.35 };
+
+  // Zonas con las que se agrupan los lanzamientos en las estadísticas. El punto
+  // exacto es lo que se guarda; la zona se deduce de él al mostrar los datos.
   const ORIGINS = [
-    { id:'EI',  name:'Extremo izquierdo', short:'EI',     col:'1',        row:'1 / span 3' },
-    { id:'LI',  name:'Lateral izquierdo', short:'LI',     col:'2',        row:'1' },
-    { id:'CE',  name:'Central',           short:'CE',     col:'3',        row:'1' },
-    { id:'LD',  name:'Lateral derecho',   short:'LD',     col:'4',        row:'1' },
-    { id:'ED',  name:'Extremo derecho',   short:'ED',     col:'5',        row:'1 / span 3' },
-    { id:'7M',  name:'7 metros',          short:'7 m',    col:'2 / span 3', row:'2' },
-    { id:'PIV', name:'Pivote',            short:'Pivote', col:'2 / span 3', row:'3' }
+    { id:'EI',  name:'Extremo izquierdo' },
+    { id:'LI',  name:'Lateral izquierdo' },
+    { id:'CE',  name:'Central' },
+    { id:'LD',  name:'Lateral derecho' },
+    { id:'ED',  name:'Extremo derecho' },
+    { id:'PIV', name:'Pivote' },
+    { id:'7M',  name:'7 metros' }
   ];
+
+  function zoneFromPoint(p){
+    if(!p) return null;
+    const dx = p.x - COURT.width/2;
+    if(Math.abs(dx) < 0.75 && Math.abs(p.y - 7) < 0.75) return '7M';
+    if(p.x < 5.5) return 'EI';
+    if(p.x > 14.5) return 'ED';
+    if(p.y < 6.5 && Math.abs(dx) < 2.5) return 'PIV';
+    if(p.x < COURT.postL) return 'LI';
+    if(p.x > COURT.postR) return 'LD';
+    return 'CE';
+  }
+
+  // Los partidos registrados con la primera versión de esta función guardaban
+  // directamente el id de la zona en vez del punto.
+  function shotZone(s){
+    if(!s.origin) return null;
+    return typeof s.origin === 'string' ? s.origin : zoneFromPoint(s.origin);
+  }
+
+  function shotPoint(s){
+    return s.origin && typeof s.origin === 'object' ? s.origin : null;
+  }
+
+  // Media pista dibujada a escala: área de 6 m, línea de 9 m discontinua,
+  // marcas de 7 y 4 m y la portería con su red. Se usa tanto para marcar el
+  // lanzamiento (interactive) como para pintar el mapa de tiros de un partido.
+  function courtSvg(opts){
+    const o = opts || {};
+    const id = o.id || 'court';
+    const D = COURT.depth;             // y del svg = D - distancia a portería
+    const L = COURT.postL, R = COURT.postR;
+    const y6 = D - 6, y9 = D - 9, y7 = D - 7, y4 = D - 4;
+    // la línea de 9 m se sale por las bandas: se corta donde cruza x=0 y x=20
+    const y9edge = D - Math.sqrt(81 - L*L);
+    const area6 = `M ${L-6} ${D} A 6 6 0 0 1 ${L} ${y6} L ${R} ${y6} A 6 6 0 0 1 ${R+6} ${D} Z`;
+    const line9 = `M 0 ${y9edge.toFixed(2)} A 9 9 0 0 1 ${L} ${y9} L ${R} ${y9} A 9 9 0 0 1 20 ${y9edge.toFixed(2)}`;
+    const dots = (o.shots || []).map(s => {
+      const p = shotPoint(s);
+      if(!p) return '';
+      return `<circle class="shot-dot ${s.type}" cx="${p.x}" cy="${(D - p.y).toFixed(2)}" r="0.34"/>`;
+    }).join('');
+    return `
+      <svg class="court-svg${o.interactive ? ' interactive' : ''}"
+           viewBox="${COURT_VB.x} ${COURT_VB.y} ${COURT_VB.w} ${COURT_VB.h}"
+           ${o.interactive ? 'data-court="1"' : 'role="img"'}>
+        <title>Media pista de balonmano</title>
+        <defs>
+          <pattern id="parquet-${id}" width="1.15" height="4" patternUnits="userSpaceOnUse">
+            <rect width="1.15" height="4" fill="#AC8455"/>
+            <rect width="0.55" height="4" fill="#B68D5C"/>
+            <rect width="0.07" height="4" fill="#9A7446"/>
+          </pattern>
+          <pattern id="net-${id}" width="0.42" height="0.42" patternUnits="userSpaceOnUse">
+            <rect width="0.42" height="0.42" fill="#0F1A27"/>
+            <path d="M0 0 L0.42 0.42 M0.42 0 L0 0.42" stroke="#8C97A6" stroke-width="0.05"/>
+          </pattern>
+          <pattern id="post-${id}" width="0.5" height="0.5" patternUnits="userSpaceOnUse">
+            <rect width="0.5" height="0.5" fill="#F2F4F7"/>
+            <rect width="0.25" height="0.25" fill="#CC2F26"/>
+            <rect x="0.25" y="0.25" width="0.25" height="0.25" fill="#CC2F26"/>
+          </pattern>
+        </defs>
+        <rect class="court-floor" x="0" y="0" width="20" height="${D}" fill="url(#parquet-${id})"/>
+        <path class="court-area" d="${area6}"/>
+        <path class="court-line dashed" d="${line9}"/>
+        <path class="court-line" d="${area6}"/>
+        <line class="court-mark" x1="9.5" y1="${y7}" x2="10.5" y2="${y7}"/>
+        <line class="court-mark" x1="9.75" y1="${y4}" x2="10.25" y2="${y4}"/>
+        <rect class="court-border" x="0" y="0" width="20" height="${D}"/>
+        <rect x="${L}" y="${D}" width="${COURT.goalWidth}" height="0.9" fill="url(#net-${id})"/>
+        <rect class="court-goal-frame" x="${L}" y="${D}" width="${COURT.goalWidth}" height="0.9"
+              stroke="url(#post-${id})"/>
+        ${dots}
+      </svg>
+    `;
+  }
+
+  function courtPointFromEvent(svg, ev){
+    const r = svg.getBoundingClientRect();
+    if(!r.width || !r.height) return null;
+    const ux = COURT_VB.x + (ev.clientX - r.left) / r.width * COURT_VB.w;
+    const uy = COURT_VB.y + (ev.clientY - r.top) / r.height * COURT_VB.h;
+    const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+    return {
+      x: Math.round(clamp(ux, 0, COURT.width) * 100) / 100,
+      y: Math.round(clamp(COURT.depth - uy, 0, COURT.depth) * 100) / 100
+    };
+  }
 
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function esc(s){
@@ -331,7 +428,7 @@
   // guardados antes de registrar la zona caen todos en "Sin especificar".
   function originStatsHtml(shots){
     const rows = ORIGINS.map(o => {
-      const arr = shots.filter(s => s.origin === o.id);
+      const arr = shots.filter(s => shotZone(s) === o.id);
       if(arr.length === 0) return '';
       const goals = arr.filter(s => s.type === 'goal').length;
       const pct = Math.round(goals/arr.length*100);
@@ -353,6 +450,21 @@
     }
     if(rows.length === 0) return `<div class="hint-text">Sin datos todavía.</div>`;
     return rows.join('');
+  }
+
+  // Mapa de tiros sobre la pista: un punto por lanzamiento con el punto exacto
+  // registrado. Sólo aparece si el partido tiene alguno.
+  function shotMapHtml(shots, id){
+    const withPoint = shots.filter(shotPoint);
+    if(withPoint.length === 0) return '';
+    const goals = withPoint.filter(s => s.type === 'goal').length;
+    return `
+      ${courtSvg({ shots: withPoint, id })}
+      <div class="court-legend">
+        <span><i class="dot-goal"></i> ${goals} gol${goals === 1 ? '' : 'es'}</span>
+        <span><i class="dot-save"></i> ${withPoint.length - goals} parada${withPoint.length - goals === 1 ? '' : 's'}</span>
+      </div>
+    `;
   }
 
   function playerListHtml(team, entries, unit){
@@ -406,6 +518,7 @@
         <div class="card">${playerListHtml(team, groupByPlayer(m.shotsRival, 'goal'), 'goles')}</div>
 
         <div class="section-label">Desde dónde lanzamos <small>goles / tiros a puerta</small></div>
+        ${shotMapHtml(m.shotsRival, 'mapRival')}
         <div class="card">${originStatsHtml(m.shotsRival)}</div>
 
         <div class="section-label">Disparos rivales (portería propia)</div>
@@ -421,6 +534,7 @@
         <div class="card">${playerListHtml(team, groupByPlayer(m.shotsOwn, 'save'), 'paradas')}</div>
 
         <div class="section-label">Desde dónde nos lanzan <small>goles / tiros a puerta</small></div>
+        ${shotMapHtml(m.shotsOwn, 'mapOwn')}
         <div class="card">${originStatsHtml(m.shotsOwn)}</div>
       </main>
     `;
@@ -547,21 +661,13 @@
     `;
   }
 
-  // Media pista dibujada con una cuadrícula de 5x3: un toque en una zona
-  // registra desde dónde se hizo el lanzamiento.
   function renderOriginStep(p){
     const team = currentTeam();
     const who = p.side === 'own' ? state.draft.rival : team.name;
-    const zones = ORIGINS.map(o => `
-      <button class="court-zone" data-select-origin="${o.id}"
-              style="grid-column:${o.col};grid-row:${o.row};">${esc(o.short)}</button>
-    `).join('');
     return `
       <div class="modal-title">¿Desde dónde ha lanzado?</div>
-      <div class="modal-sub">Ataque de ${esc(who)} · izquierda y derecha vistas desde el ataque</div>
-      <div class="court">${zones}</div>
-      <div class="court-goal"></div>
-      <div class="court-caption">Portería</div>
+      <div class="modal-sub">Ataque de ${esc(who)} · toca el punto exacto de la pista</div>
+      ${courtSvg({ interactive:true, id:'pick' })}
       <button class="modal-skip-btn" id="skip-origin-btn">Sin especificar</button>
     `;
   }
@@ -780,8 +886,11 @@
       el.addEventListener('click', () => advancePending({ player: el.getAttribute('data-select-player') }));
     });
     bind('skip-player-btn','click', () => advancePending({ player: null }));
-    app.querySelectorAll('[data-select-origin]').forEach(el => {
-      el.addEventListener('click', () => advancePending({ origin: el.getAttribute('data-select-origin') }));
+    app.querySelectorAll('[data-court]').forEach(svg => {
+      svg.addEventListener('click', ev => {
+        const point = courtPointFromEvent(svg, ev);
+        if(point) advancePending({ origin: point });
+      });
     });
     bind('skip-origin-btn','click', () => advancePending({ origin: null }));
     bind('cancel-shot-btn','click', () => { state.pendingShot = null; render(); });
