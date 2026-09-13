@@ -273,12 +273,16 @@ async function altaEquipo(page, nombre, jugadores){
   // Si entra es que el nonce resumido fue a Google y el original a Supabase: el
   // doble rechaza el login si los dos reciben el mismo.
   check('entra con Google', await g.page.$('#create-team-btn') !== null);
-  check('la cabecera muestra el nombre de la cuenta de Google',
-        (await g.page.textContent('header .title')).includes('David'));
   await g.page.fill('#new-team-name', 'Equipo Google');
   await g.page.click('#create-team-btn');
   await g.page.waitForSelector('#to-dashboard');
   await g.page.click('#to-dashboard');
+  // El nombre de la cuenta y el botón de salir viven en la pantalla de cuenta:
+  // en la cabecera manda el logo.
+  await g.page.click('#tab-account');
+  await g.page.waitForSelector('#logout-btn');
+  check('la pantalla de cuenta muestra el nombre de la cuenta de Google',
+        (await g.page.textContent('.account-name')).includes('David'));
   await g.page.click('#logout-btn');
   await g.page.waitForSelector('#google-btn', { timeout:10000 });
   check('al salir vuelve a la pantalla de entrada', await g.page.$('#google-btn') !== null);

@@ -33,7 +33,8 @@ funciona desde un origen declarado en Google Cloud, y el nonce se calcula con
 ## Estructura
 
 - `index.html` — esqueleto de la página y carga de fuentes/estilos/scripts.
-- `css/styles.css` — todos los estilos (tema oscuro tipo pabellón, tarjetas,
+- `css/styles.css` — todos los estilos (tema oscuro sobre negro con la
+  tipografía del sistema, cabecera y barra inferior flotantes, tarjetas,
   la portería dibujada con postes/red/soportes, el modal de selección de
   jugador, etc.).
 - `js/config.js` — URL y clave anon de Supabase, y el ID de cliente de Google.
@@ -124,7 +125,19 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   vuelven a enlazar en `attachHandlers()` después de cada render. Si añades
   una vista nueva, sigue ese mismo patrón (no introduzcas un framework).
 - `render()` pone en `#app` la clase `screen-<pantalla>`, que es como el
-  partido en vivo se permite ser más ancho que el resto de la app.
+  partido en vivo se permite ser más ancho que el resto de la app, y la clase
+  `has-nav` cuando toca barra inferior.
+- Todas las pantallas montan su cabecera con `topbar({left, right})`: tres
+  huecos con el logo siempre centrado. El nombre de la pantalla no va ahí, va
+  en el contenido con `pageTitle(titulo, subtitulo)`. Los botones redondos de
+  los lados se hacen con `backBtn(id, etiqueta)` e `icon(nombre)`.
+- La barra inferior la añade `render()` a las pantallas de `NAV_SCREENS`, no
+  cada vista: así una pantalla nueva solo tiene que entrar (o no) en esa lista.
+  La pestaña activa se deduce de `state.screen`, sin estado nuevo.
+- El color de las tarjetas no se guarda en ninguna parte: el de un equipo sale
+  de su nombre (`teamTint()`) y el de un partido, del resultado
+  (`matchCardHtml()`). Si hace falta otro sitio con color, deducirlo igual en
+  vez de añadir un campo a la base.
 - Un tiro puede necesitar varias preguntas antes de registrarse (jugador,
   zona de lanzamiento, las dos o ninguna). Se resuelve con la lista
   `pendingShot.steps` y `advancePending()`: si añades otra pregunta, mete un
@@ -141,10 +154,14 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   `Store`. Si necesitas un dato nuevo, expón un método en `store.js`.
 - `render()` relee los datos del store en las pantallas de lista, así que basta
   con cambiar el store para que la pantalla se entere.
-- Dependencias externas: las Google Fonts, `supabase-js` y Google Identity
-  Services, cargadas por CDN en `index.html`. `supabase-js` va con la versión
-  fijada; GIS es la excepción, porque Google sirve una sola URL y no publica
-  versiones. No añadir más sin motivo fuerte, y seguir sin build ni framework.
+- La tipografía es la del sistema (`--font`: San Francisco en los aparatos de
+  Apple y la nativa en el resto). No hay fuentes de CDN y no conviene volver a
+  meterlas: la app tiene que verse igual sin conexión. Los titulares se marcan
+  con peso y `letter-spacing` negativo, no con otra familia.
+- Dependencias externas: solo `supabase-js` y Google Identity Services,
+  cargadas por CDN en `index.html`. `supabase-js` va con la versión fijada; GIS
+  es la excepción, porque Google sirve una sola URL y no publica versiones. No
+  añadir más sin motivo fuerte, y seguir sin build ni framework.
 - Entrar con Google no usa `signInWithOAuth`: el botón lo dibuja GIS en la propia
   página y el id_token se cambia por sesión con `signInWithIdToken`. Se hizo así
   porque el rodeo por el callback de Supabase hacía que Google anunciara
