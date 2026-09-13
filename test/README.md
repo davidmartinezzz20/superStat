@@ -10,8 +10,20 @@ Playwright instalado aparte:
 ```bash
 npm install -g playwright && playwright install chromium
 python3 -m http.server 5173 &        # servir la app
-node test/sync.js
+node test/sync.js                    # cuentas, sincronización y migración
+node test/live.js                    # el partido, las estadísticas y la PWA
 ```
+
+Si ya tienes un Chromium por tu cuenta y no quieres que Playwright se baje otro:
+`CHROMIUM_PATH=/ruta/al/chromium node test/live.js`.
+
+`live.js` cubre lo que pasa durante un partido y después: el reloj y el corte de
+la primera parte, que el portero en pista quede en todos los tiros recibidos,
+fuera y palo, los eventos y la alineación, que un partido a medias sobreviva a
+que se cierre la pestaña, lo que sale en la ficha (porteros, más/menos, filtros
+del mapa, mapa de calor, cruce con la portería), el CSV, el acumulado de
+temporada, editar y borrar un partido, y que la app abra sin red gracias al
+service worker.
 
 `supabase-stub.js` es un doble de `@supabase/supabase-js`: implementa solo lo
 que usa `js/db.js` contra un servidor en memoria, y permite simular caídas de

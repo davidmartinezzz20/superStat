@@ -11,7 +11,7 @@
     return null;
   }
   const SERVER = window.__SERVER__ = restore() || window.__SERVER__ || {
-    rows: { teams:{}, players:{}, matches:{}, shots:{} },
+    rows: { teams:{}, players:{}, matches:{}, shots:{}, events:{} },
     clock: 0,
     users: {},
     session: null,

@@ -30,6 +30,11 @@ Ya no vale abrir `index.html` a pelo con `file://`: el botón de Google solo
 funciona desde un origen declarado en Google Cloud, y el nonce se calcula con
 `crypto.subtle`, que solo existe en contexto seguro (https o localhost).
 
+La app es una PWA: `sw.js` guarda el HTML, el CSS, los tres scripts y
+`supabase-js`, así que abre sin cobertura y se puede instalar en la pantalla de
+inicio. **Si tocas cualquier archivo del shell, sube `VERSION` en `sw.js`**, o
+los navegadores que ya tengan la caché vieja seguirán sirviéndola.
+
 ## Estructura
 
 - `index.html` — esqueleto de la página y carga de fuentes/estilos/scripts.
@@ -45,16 +50,23 @@ funciona desde un origen declarado en Google Cloud, y el nonce se calcula con
   puerta de entrada a los datos para el resto de la app.
 - `js/app.js` — toda la lógica de pantalla: una single-page app hecha a mano
   con `render()` que reconstruye `#app` según `state.screen`, sin frameworks.
-- `supabase/schema.sql` — tablas, índices y políticas RLS.
+- `supabase/schema.sql` — tablas, índices, migraciones y políticas RLS.
+- `sw.js` — service worker: guarda el shell para poder abrir sin cobertura.
+- `manifest.webmanifest` e `icons/` — instalación en la pantalla de inicio.
+- `tools/make-icons.js` — genera los iconos PNG desde el dibujo de la marca.
 - `docs/supabase.md` — puesta a punto de Supabase y de Google.
 
 ## Modelo de datos
 
-La verdad está en Postgres (`supabase/schema.sql`): cuatro tablas —`teams`,
-`players`, `matches` y `shots`— con `user_id` en todas para que las políticas
-RLS sean directas. **RLS es lo único que separa los datos de un usuario de los
-de otro**, porque la clave anon la tiene cualquiera que abra la web: si añades
-una tabla, añade su política en el mismo commit.
+La verdad está en Postgres (`supabase/schema.sql`): cinco tablas —`teams`,
+`players`, `matches`, `shots` y `events`— con `user_id` en todas para que las
+políticas RLS sean directas. **RLS es lo único que separa los datos de un
+usuario de los de otro**, porque la clave anon la tiene cualquiera que abra la
+web: si añades una tabla, añade su política en el mismo commit.
+
+El archivo se puede volver a ejecutar entero sobre una base que ya tiene datos:
+lo que se añadió después de la primera versión está en su sección de
+migraciones, todo con `if exists` / `if not exists`.
 
 Cada fila lleva dos marcas de tiempo y no son intercambiables:
 
@@ -65,9 +77,12 @@ Cada fila lleva dos marcas de tiempo y no son intercambiables:
 
 En el navegador, `store.js` guarda un espejo de esas filas y una cola:
 
-- `hb:cache:<userId>` → espejo de las cuatro tablas más los cursores de `pull`.
+- `hb:cache:<userId>` → espejo de las cinco tablas más los cursores de `pull`.
 - `hb:queue:<userId>` → operaciones sin subir. Todas son upsert de la fila
   entera, así que subir una dos veces no duplica nada.
+- `hb:draft:<userId>` → el partido en curso. No es una fila todavía y no pasa
+  por la cola: es el borrador en memoria volcado en cada cambio, para que un
+  partido a medias sobreviva a que el móvil descarte la pestaña.
 
 Reglas de las que depende que la sincronización sea resoluble:
 
@@ -77,13 +92,38 @@ Reglas de las que depende que la sincronización sea resoluble:
 3. **Gana lo más reciente**, salvo que la fila esté pendiente en la cola: en ese
    caso gana lo local y no se pisa.
 
-El partido en curso (`state.draft`) no pasa por el store: es un borrador en
-memoria que solo se convierte en filas al pulsar Guardar. Anotar tiros no
+El partido en curso (`state.draft`) sigue sin pasar por el store como dato: solo
+se convierte en filas al pulsar Guardar. Lo único que hace `Store.saveDraft()`
+es volcarlo en `hb:draft:<userId>` después de cada anotación, y `loadDraft()`
+lo recupera al entrar para ofrecer seguir con él desde el panel. Anotar tiros no
 depende de la red.
 
-En pantalla, un tiro sigue siendo `{ zone: 1-9, type: 'goal'|'save',
-player: idJugador|null, origin: {x,y}|null }`; `store.js` lo traduce a la fila
-de `shots` (`result`, `player_id`, `origin_x`, `origin_y`) y al revés.
+En pantalla, un tiro es `{ zone: 1-9|null, type: 'goal'|'save'|'out'|'post',
+player, keeper, origin: {x,y}|null, minute, period, ordinal }`; `store.js` lo
+traduce a la fila de `shots` y al revés. `zone` es null justo cuando el tiro no
+fue a puerta (`out` o `post`), y esa correspondencia la comprueba la base.
+
+`keeper` es **nuestro** portero cuando el tiro va a nuestra portería, y va en
+`goalkeeper_id`. Se pone en todos los tiros recibidos y no solo en las paradas:
+sin los goles encajados no hay denominador y el porcentaje de paradas por
+portero no se puede calcular. Los partidos de antes guardaban el portero en
+`player_id` y solo en las paradas; `shotToApp()` lee los dos sitios.
+
+`minute` y `period` los pone el reloj de la pantalla de partido. El reloj es uno
+solo y no se reinicia en el descanso: el usuario decide cuándo acaba la primera
+parte con un botón, y el minuto en que lo hace se guarda en
+`matches.half_time_minute`. No se da por hecho ninguna duración de parte.
+
+`ordinal` es un contador único dentro del partido **compartido entre tiros y
+eventos**. Es lo que permite reconstruir el orden real de todo y, con los
+eventos `in` y `out`, saber quién estaba en pista en cada gol: de ahí sale el
+más/menos. Si añades otra cosa que se anote en vivo, sácale el ordinal del mismo
+contador (`stamp()`).
+
+Lo que no es un tiro va a `events`: asistencia, pérdida, robo, blocaje, 7 m
+provocado, 2 minutos, tarjetas, y las altas y bajas de pista. Para añadir un
+tipo nuevo basta con meterlo en `EVENT_TYPES` (app.js) y en el `check` de la
+tabla; no hay que tocar la sincronización.
 
 `origin` es el punto de la pista desde el que se lanzó, `{ x, y }` en **metros**:
 `x` de 0 a 20 de banda a banda (de izquierda a derecha vistas desde el ataque) e
@@ -112,11 +152,15 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   parada = la hizo nuestro portero).
 - `shotsRival` = tiros de **nuestro equipo** a la portería rival (gol =
   anotado, parada = la hizo el portero rival).
-- Al marcar gol en `shotsRival` se pregunta qué jugador ha tirado (todos los
-  jugadores). Al marcar parada en `shotsOwn` se pregunta qué portero ha sido
-  (solo jugadores con `position === 'Portero'`). El resto de combinaciones no
-  pide jugador porque correspondería a la plantilla del rival, que no se
-  gestiona en la app.
+- `missOwn` y `missRival` = los que no fueron a puerta, fuera o al palo, con la
+  misma forma. `outOwn`/`outRival` siguen siendo el total de fallados, sumando
+  los contadores sueltos de los partidos de la primera versión.
+- En **todos** los tiros nuestros (`shotsRival` y `missRival`, entren o no) se
+  pregunta quién ha lanzado: sin eso solo hay goles por jugador, no acierto.
+  En los del rival no se pregunta tirador, porque sería su plantilla y no se
+  gestiona en la app; lo que hace falta ahí es nuestro portero, y ese se
+  pregunta una sola vez —en el primer tiro que recibimos— y se queda fijado.
+  También se puede cambiar cuando se quiera desde la pantalla de partido.
 
 ## Convenciones al tocar el código
 
@@ -141,7 +185,17 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
 - Un tiro puede necesitar varias preguntas antes de registrarse (jugador,
   zona de lanzamiento, las dos o ninguna). Se resuelve con la lista
   `pendingShot.steps` y `advancePending()`: si añades otra pregunta, mete un
-  paso más en esa lista en vez de encadenar modales.
+  paso más en esa lista en vez de encadenar modales. `pendingShot.role` dice si
+  el jugador que se está eligiendo es el tirador o el portero, porque el paso
+  es el mismo y lo que cambia es qué se hace con la respuesta.
+- El reloj se refresca solo su hueco (`#clock-time`) con un `setInterval`, no
+  repintando la pantalla: un `render()` por segundo cerraría el modal abierto y
+  se cargaría el punto que se está tocando en la pista. `startClockTick()` se
+  vuelve a armar al final de `attachHandlers()`.
+- Las pantallas de estadística no guardan nada de lo que enseñan. Los filtros
+  del mapa viven en `state.mapFilter` y el acumulado de temporada se calcula
+  sobre el espejo local (`seasonStats()`), no con una consulta aparte: así sale
+  igual sin cobertura y no hay dos formas distintas de contar lo mismo.
 - La marca (el cuadro rojo con las barras más el wordmark) se pinta con
   `brandLogo()`, nunca escribiendo "SuperStat" a mano en una vista nueva. Su
   SVG va sin `<defs>` a propósito: así se puede repetir en la misma página sin
@@ -170,11 +224,21 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
 - `esc()` debe usarse siempre que se inserte texto de usuario (nombre de
   jugador, rival, etc.) en una plantilla HTML, para evitar inyección.
 
+- La marca del logo también está duplicada en `tools/make-icons.js`, que genera
+  los PNG del manifest. Si cambia el dibujo hay que tocar `brandLogo()`, el
+  favicon de `index.html` y ese archivo, y volver a generar los iconos.
+
 ## Ideas pendientes (mencionadas pero no implementadas)
 
-- Ranking de goleadores/porteros a nivel de temporada (agregando todos los
-  partidos de un equipo, no solo uno). Ahora que hay Postgres, esto sale de una
-  consulta en vez de recorrerlo todo en el navegador.
+- **Compartir un equipo con el cuerpo técnico** (que el segundo entrenador
+  anote y el delegado mire). Es la que falta de la lista y no es pequeña: hoy
+  RLS es `user_id = auth.uid()` en las cinco tablas y `pull()` se lo trae todo
+  por usuario. Hace falta una tabla de membresías, reescribir las cinco
+  políticas y que la sincronización pida por equipo y no por usuario. Como RLS
+  es lo único que separa una cuenta de otra y su aislamiento solo se puede
+  comprobar a mano contra el proyecto de verdad (ver `docs/supabase.md`), no se
+  ha hecho a ciegas junto con el resto.
 - Mostrar iniciales del jugador directamente sobre la casilla de la red.
-- Editar o borrar un partido ya guardado.
+- Corregir un tiro suelto de un partido ya guardado (el borrado lógico por tiro
+  ya está en la base y en `Store.deleteShot()`, falta la pantalla).
 - Extender a otros deportes además de balonmano.

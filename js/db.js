@@ -4,8 +4,8 @@
 window.DB = (function(){
 
   // Orden de dependencias: un jugador necesita que su equipo exista antes, y un
-  // tiro necesita su partido. Subir y aplicar siempre en este orden.
-  const TABLES = ['teams','players','matches','shots'];
+  // tiro o un evento necesitan su partido. Subir y aplicar siempre en este orden.
+  const TABLES = ['teams','players','matches','shots','events'];
   const PAGE = 1000;
 
   let client = null;

@@ -14,7 +14,7 @@
 //     pendiente en la cola local: entonces gana lo local y no se pisa.
 window.Store = (function(){
 
-  const TABLES = ['teams','players','matches','shots'];
+  const TABLES = ['teams','players','matches','shots','events'];
 
   let userId = null;
   let cache = empty();
@@ -25,7 +25,7 @@ window.Store = (function(){
   let listeners = [];
 
   function empty(){
-    return { teams:{}, players:{}, matches:{}, shots:{}, cursors:{} };
+    return { teams:{}, players:{}, matches:{}, shots:{}, events:{}, cursors:{} };
   }
 
   function uuid(){
@@ -118,34 +118,78 @@ window.Store = (function(){
       .map(t => ({ id:t.id, name:t.name, players: playersOf(t.id) }));
   }
 
+  // Un número que llega de Postgres puede venir como texto (numeric) o como
+  // null; todo lo que no sea un número de verdad vale más como null que como 0,
+  // que en un minuto o una zona significaría otra cosa.
+  function num(v){
+    return v === null || v === undefined || v === '' ? null : Number(v);
+  }
+
   function shotToApp(r){
     return {
-      zone: r.zone,
+      id: r.id,
+      zone: num(r.zone),
       type: r.result,
       player: r.player_id || null,
+      // Los partidos viejos guardaban el portero en player_id, y solo en las
+      // paradas. Se leen los dos sitios para que sigan contando.
+      keeper: r.goalkeeper_id || (r.side === 'own' ? (r.player_id || null) : null),
+      minute: num(r.minute),
+      period: num(r.period),
+      ordinal: r.ordinal || 0,
       origin: r.origin_x === null || r.origin_x === undefined
         ? null
         : { x: Number(r.origin_x), y: Number(r.origin_y) }
     };
   }
 
+  function eventToApp(r){
+    return {
+      id: r.id,
+      type: r.type,
+      player: r.player_id || null,
+      minute: num(r.minute),
+      period: num(r.period),
+      ordinal: r.ordinal || 0
+    };
+  }
+
+  // A puerta (gol o parada) y fuera (palo o fuera) se separan al leer: las
+  // pantallas de estadística tratan unos y otros de forma distinta, y así
+  // shotsOwn/shotsRival siguen significando lo mismo que siempre.
+  const ON_TARGET = { goal:true, save:true };
+
   function matches(teamId){
-    const byMatch = {};
+    const shotsByMatch = {}, eventsByMatch = {};
     Object.values(cache.shots).forEach(s => {
-      (byMatch[s.match_id] = byMatch[s.match_id] || []).push(s);
+      if(!alive(s)) return;
+      (shotsByMatch[s.match_id] = shotsByMatch[s.match_id] || []).push(s);
+    });
+    Object.values(cache.events).forEach(e => {
+      if(!alive(e)) return;
+      (eventsByMatch[e.match_id] = eventsByMatch[e.match_id] || []).push(e);
     });
     return Object.values(cache.matches)
       .filter(m => m.team_id === teamId && alive(m))
       .map(m => {
-        const shots = (byMatch[m.id] || []).sort((a,b) => a.ordinal - b.ordinal);
+        const shots = (shotsByMatch[m.id] || []).sort((a,b) => a.ordinal - b.ordinal);
+        const side = (s, want) => shots
+          .filter(s2 => s2.side === s && Boolean(ON_TARGET[s2.result]) === want)
+          .map(shotToApp);
+        const missOwn = side('own', false), missRival = side('rival', false);
         return {
           id: m.id,
           rival: m.rival,
           date: m.played_on,
-          outOwn: m.out_own,
-          outRival: m.out_rival,
-          shotsOwn:   shots.filter(s => s.side === 'own').map(shotToApp),
-          shotsRival: shots.filter(s => s.side === 'rival').map(shotToApp)
+          halfTime: num(m.half_time_minute),
+          // out_own/out_rival son de los partidos de la primera versión, cuando
+          // un tiro fuera era solo un contador. Los nuevos son filas de shots.
+          outOwn: (m.out_own || 0) + missOwn.length,
+          outRival: (m.out_rival || 0) + missRival.length,
+          shotsOwn:   side('own', true),
+          shotsRival: side('rival', true),
+          missOwn, missRival,
+          events: (eventsByMatch[m.id] || []).sort((a,b) => a.ordinal - b.ordinal).map(eventToApp)
         };
       });
   }
@@ -170,30 +214,96 @@ window.Store = (function(){
 
   function deletePlayer(playerId){ softDelete('players', playerId); }
 
-  // Un partido terminado se convierte en su fila y en una fila por tiro.
+  // Un partido terminado se convierte en su fila, una por tiro y una por evento.
+  // El ordinal de cada anotación viene del borrador y es único dentro del
+  // partido entre tiros y eventos: es lo que permite reconstruir después quién
+  // estaba en pista en cada momento.
   function saveMatch(teamId, draft){
     const matchId = uuid();
     write('matches', {
       id: matchId, team_id: teamId,
       rival: draft.rival, played_on: draft.date,
-      out_own: draft.outOwn, out_rival: draft.outRival,
+      half_time_minute: draft.halfTime === undefined ? null : draft.halfTime,
+      // Los contadores sueltos solo los usa la importación de la versión vieja:
+      // lo que se anota ahora es una fila de tiro con su minuto y su jugador.
+      out_own: draft.outOwn || 0, out_rival: draft.outRival || 0,
       deleted_at: null
     });
-    let ordinal = 0;
-    const push = (side, shots) => shots.forEach(s => {
-      write('shots', {
-        id: uuid(), match_id: matchId,
-        side, zone: s.zone, result: s.type,
-        player_id: s.player || null,
-        origin_x: s.origin ? s.origin.x : null,
-        origin_y: s.origin ? s.origin.y : null,
-        ordinal: ordinal++
-      });
+    let fallback = 0;
+    const shotRow = (side, s) => ({
+      id: uuid(), match_id: matchId,
+      side, zone: s.zone === undefined ? null : s.zone, result: s.type,
+      player_id: s.player || null,
+      goalkeeper_id: side === 'own' ? (s.keeper || null) : null,
+      minute: s.minute === undefined ? null : s.minute,
+      period: s.period === undefined ? null : s.period,
+      origin_x: s.origin ? s.origin.x : null,
+      origin_y: s.origin ? s.origin.y : null,
+      ordinal: s.ordinal === undefined ? fallback++ : s.ordinal,
+      deleted_at: null
     });
+    const push = (side, shots) => (shots || []).forEach(s => write('shots', shotRow(side, s)));
     push('own', draft.shotsOwn);
     push('rival', draft.shotsRival);
+    push('own', draft.missOwn);
+    push('rival', draft.missRival);
+    (draft.events || []).forEach(e => write('events', {
+      id: uuid(), match_id: matchId,
+      type: e.type, player_id: e.player || null,
+      minute: e.minute === undefined ? null : e.minute,
+      period: e.period === undefined ? null : e.period,
+      ordinal: e.ordinal === undefined ? fallback++ : e.ordinal,
+      deleted_at: null
+    }));
     return matchId;
   }
+
+  // Corregir un partido ya guardado: de momento el rival y la fecha, que es lo
+  // que se escribe con prisa antes de empezar.
+  function updateMatch(matchId, patch){
+    const row = cache.matches[matchId];
+    if(!row) return;
+    if(patch.rival !== undefined) row.rival = patch.rival;
+    if(patch.date !== undefined) row.played_on = patch.date;
+    write('matches', row);
+  }
+
+  // Borrar el partido basta con marcar su fila: sus tiros y sus eventos solo se
+  // leen a través de él, y en la base cuelgan con "on delete cascade".
+  function deleteMatch(matchId){ softDelete('matches', matchId); }
+
+  function deleteShot(shotId){ softDelete('shots', shotId); }
+
+  // ------------------------------------------------------ partido a medias
+  //
+  // El partido en curso no son filas todavía: es un borrador que solo se
+  // convierte en datos al pulsar Guardar. Pero tiene que sobrevivir a que el
+  // navegador descarte la pestaña, que es lo que hace un móvil cuando cambias
+  // de aplicación en mitad de un partido. Va en su propia clave y nunca en la
+  // cola de sincronización: no se sube nada hasta que se guarda.
+
+  function draftKey(){ return 'hb:draft:' + userId; }
+
+  function saveDraft(draft){
+    if(!userId) return;
+    try{
+      if(draft) localStorage.setItem(draftKey(), JSON.stringify(draft));
+      else localStorage.removeItem(draftKey());
+    }catch(e){
+      console.error('no se pudo guardar el partido en curso', e);
+    }
+  }
+
+  function loadDraft(){
+    if(!userId) return null;
+    try{
+      const raw = localStorage.getItem(draftKey());
+      const d = raw ? JSON.parse(raw) : null;
+      return d && d.rival ? d : null;
+    }catch(e){ return null; }
+  }
+
+  function clearDraft(){ saveDraft(null); }
 
   // ---------------------------------------------------------- sincronización
 
@@ -344,7 +454,9 @@ window.Store = (function(){
 
   return {
     uuid, start, stop, onChange, sync, status, pendingCount,
-    teams, matches, createTeam, addPlayer, deletePlayer, saveMatch,
+    teams, matches, createTeam, addPlayer, deletePlayer,
+    saveMatch, updateMatch, deleteMatch, deleteShot,
+    saveDraft, loadDraft, clearDraft,
     hasLegacyData, importLegacy, skipLegacy
   };
 })();

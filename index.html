@@ -11,6 +11,17 @@
      de imágenes ni una petición más, en la línea de "sin build" del proyecto.
      Si se toca el dibujo de brandLogo(), hay que tocarlo aquí también. -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23D9182B'/><rect x='6.5' y='17' width='5' height='8' rx='1.4' fill='%23fff'/><rect x='13.5' y='12.5' width='5' height='12.5' rx='1.4' fill='%23fff'/><rect x='20.5' y='7' width='5' height='18' rx='1.4' fill='%23fff'/></svg>">
+
+<!-- Instalable en la pantalla de inicio. Los iconos en PNG salen del mismo
+     dibujo con tools/make-icons.js; iOS no lee el manifest para esto y necesita
+     su propia etiqueta. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SuperStat">
+
 <!-- Sin fuentes de CDN: la tipografía es la del sistema (San Francisco en los
      aparatos de Apple), que además se ve igual sin conexión. -->
 <link rel="stylesheet" href="css/styles.css">
@@ -32,5 +43,19 @@
 <script src="js/db.js"></script>
 <script src="js/store.js"></script>
 <script src="js/app.js"></script>
+
+<!-- El service worker guarda el HTML, el CSS, los scripts y supabase-js, que es
+     lo único que antes obligaba a tener cobertura para abrir la app. Necesita
+     https o localhost, igual que el login con Google, así que desde file:// no
+     se registra y la app sigue funcionando sin él. -->
+<script>
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(e => {
+        console.warn('no se pudo registrar el service worker', e);
+      });
+    });
+  }
+</script>
 </body>
 </html>

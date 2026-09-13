@@ -8,8 +8,9 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
 - Cuenta propia: se entra con **Google** o con correo y contraseña.
 - Los datos se guardan en la nube y se **sincronizan entre dispositivos**:
   registras el partido en el móvil y lo consultas en el ordenador.
-- **Funciona sin conexión.** En un pabellón sin cobertura se registra igual;
-  lo pendiente se sube solo al volver la red, y la app te dice cuánto queda.
+- **Funciona sin conexión.** En un pabellón sin cobertura se abre y se registra
+  igual; lo pendiente se sube solo al volver la red, y la app te dice cuánto
+  queda. Se puede **instalar en la pantalla de inicio** como una app más.
 - Gestión de uno o varios equipos, cada uno con su plantilla (nombre,
   dorsal, posición).
 - Alta de partidos nuevos contra un rival, con las dos porterías dibujadas
@@ -17,20 +18,36 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
   9 zonas.
   - Un toque en una zona = **gol**.
   - Doble toque en una zona = **parada**.
-  - Botón aparte para **tiro fuera** (no tiene zona).
+  - Botones aparte para **fuera** y **palo** (no tienen zona de portería).
   - "Deshacer" por si te equivocas durante el partido.
-  - Al marcar un gol a favor se pregunta qué jugador ha tirado; al marcar
-    una parada propia se pregunta qué portero ha sido.
+  - **Reloj de partido** con pausa, y un botón para decidir tú cuándo acaba la
+    primera parte: cada anotación se queda con su minuto y su parte, sin dar
+    por hecho que las partes duren 30 minutos.
+  - **Portero en pista**: se pregunta una sola vez y se queda puesto, así que
+    los goles encajados también tienen portero y el porcentaje de paradas de
+    cada uno significa algo.
+  - En todos los tiros nuestros se pregunta quién ha lanzado, entre o no.
+  - **Registro rápido** de lo que no es un tiro: asistencia, pérdida, robo,
+    blocaje, 7 m provocado, 2 minutos y tarjetas.
+  - **Quién está en pista**, para saber qué pasa en el marcador con cada
+    jugador dentro (el más/menos).
   - **Zona de lanzamiento**: con un toque sobre una media pista dibujada a
     escala (área de 6 m, línea de 9 m, marcas de 7 y 4 m) se marca el punto
     exacto desde el que se lanzó. Se puede apagar con el interruptor de la
     propia pantalla si prefieres registrar más rápido.
+  - Si el móvil cierra la pestaña a mitad de partido **no se pierde nada**: al
+    volver a entrar, la app ofrece seguir donde lo dejaste.
 - Ficha de cada partido con el resultado, goles/paradas/fuera por lado,
-  % de efectividad, mapa de calor por zona de portería, goleadores del
-  partido, paradas por portero y un **mapa de tiros sobre la pista** con un
-  punto por lanzamiento, más su reparto por zona, tanto de los nuestros
+  % de efectividad, cuadrícula por zona de portería, **evolución del marcador**
+  con la mejor racha, goleadores, **paradas por portero**, **más/menos** por
+  jugador, el resto de registros y un **mapa de tiros sobre la pista** —con
+  filtro por jugador y por parte, y mapa de calor— más el cruce de **desde
+  dónde se lanza contra a qué parte de la portería**, tanto de los nuestros
   como de los del rival.
-- Historial de partidos anteriores por equipo.
+- **Acumulado de temporada** por equipo: balance, goleadores, porteros, dónde
+  se lanza mejor y más/menos sumando todos los partidos.
+- Historial de partidos anteriores por equipo, y se pueden **editar o borrar**.
+- **Exportar** un partido en CSV o compartirlo como imagen resumen.
 
 ## Puesta a punto
 
@@ -55,7 +72,10 @@ python3 -m http.server 5173
 ```
 
 Abrir `index.html` con `file://` ya no vale: el login con Google redirige y
-necesita un origen http(s).
+necesita un origen http(s), y el service worker tampoco se registra ahí.
+
+Las pruebas necesitan Playwright y la app servida; están en
+[`test/README.md`](test/README.md).
 
 ## Datos
 
@@ -69,12 +89,17 @@ ofrece importarlos la primera vez que entras con tu cuenta.
 ## Estructura
 
 ```
-index.html           esqueleto de la página
-css/styles.css       estilos
-js/config.js         URL y clave anon de Supabase
-js/db.js             sesión, login y sincronización con Supabase
-js/store.js          espejo local, cola de cambios y fusión
-js/app.js            pantallas y lógica de la app
-supabase/schema.sql  tablas y políticas de seguridad
-docs/supabase.md     puesta a punto paso a paso
+index.html             esqueleto de la página
+css/styles.css         estilos
+js/config.js           URL y clave anon de Supabase
+js/db.js               sesión, login y sincronización con Supabase
+js/store.js            espejo local, cola de cambios y fusión
+js/app.js              pantallas y lógica de la app
+sw.js                  caché del shell, para abrir sin cobertura
+manifest.webmanifest   instalación en la pantalla de inicio
+icons/                 iconos de la app
+tools/make-icons.js    genera esos iconos desde el dibujo de la marca
+supabase/schema.sql    tablas, migraciones y políticas de seguridad
+docs/supabase.md       puesta a punto paso a paso
+test/                  pruebas con Playwright
 ```

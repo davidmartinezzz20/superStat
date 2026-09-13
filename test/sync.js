@@ -4,6 +4,9 @@ const DIR = require('os').tmpdir();
 const STUB = fs.readFileSync(__dirname + '/supabase-stub.js', 'utf8');
 const GSTUB = fs.readFileSync(__dirname + '/google-stub.js', 'utf8');
 const BASE = 'http://localhost:5173/index.html';
+// Si el Chromium que trae Playwright no está instalado, se le puede pasar uno
+// con CHROMIUM_PATH=/ruta/al/chromium.
+const LANZAR = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {};
 
 let fallos = 0, pasadas = 0;
 function check(nombre, ok, detalle){
@@ -14,7 +17,10 @@ function check(nombre, ok, detalle){
 // El "servidor" vive en el navegador; para simular dos dispositivos se pasa su
 // estado de una página a otra.
 async function nuevaPagina(browser, serverState){
-  const ctx = await browser.newContext({ viewport:{ width:390, height:844 } });
+  // El service worker se bloquea en las pruebas: si sirviera el shell desde su
+  // caché, se saltaría los page.route() con los que se sustituyen el CDN y la
+  // configuración, y las pruebas dejarían de probar lo que creen.
+  const ctx = await browser.newContext({ viewport:{ width:390, height:844 }, serviceWorkers:'block' });
   await ctx.addInitScript({ content:
     (serverState ? 'window.__SERVER__ = ' + JSON.stringify(serverState) + ';' : '') + '\n' + STUB + '\n' + GSTUB
   });
@@ -65,7 +71,7 @@ async function altaEquipo(page, nombre, jugadores){
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(LANZAR);
 
   // ---------------------------------------------------------------- 1. alta
   console.log('\n1. Crear cuenta y dar de alta datos con conexión');
@@ -118,6 +124,10 @@ async function altaEquipo(page, nombre, jugadores){
   await tocarPista(6, 9);
   await page.waitForSelector('#pending-modal', { state:'detached' });
   await page.click('.goals-row [data-grid="own"] [data-zone="7"]');
+  // El primer tiro a nuestra portería pregunta qué portero tenemos, y se queda
+  // puesto para el resto del partido.
+  await page.waitForSelector('#pending-modal .modal-player-btn');
+  await page.click('#pending-modal .modal-player-btn:nth-of-type(1)');
   await page.waitForSelector('#pending-modal .court-svg');
   await tocarPista(17.5, 3);
   await page.waitForSelector('#pending-modal', { state:'detached' });

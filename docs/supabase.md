@@ -13,11 +13,19 @@ Ten a mano la **referencia de tu proyecto** de Supabase (el trozo de la URL:
 
 1. Supabase → **SQL Editor** → *New query*.
 2. Pega entero el contenido de `supabase/schema.sql` y pulsa **Run**.
-3. Al final verás una tabla de resultados con cuatro filas. **Comprueba que las
-   cuatro tienen `rls_activo = true` y `politicas = 1`.**
+3. Al final verás una tabla de resultados con cinco filas. **Comprueba que las
+   cinco tienen `rls_activo = true` y `politicas = 1`.**
 
 Si alguna sale en `false`, esa tabla está abierta a cualquiera que abra la web.
-No sigas hasta que las cuatro estén bien.
+No sigas hasta que las cinco estén bien.
+
+### Si ya tenías la base de una versión anterior
+
+Vuelve a pegar y ejecutar el archivo entero, igual que la primera vez. Todo es
+`if exists` / `if not exists`, así que no toca lo que ya hay: crea la tabla
+`events` y añade a `shots` el minuto, la parte, el portero y el borrado lógico.
+Los partidos que ya tengas guardados siguen leyéndose; lo que no se puede es
+inventarles el tiempo, así que salen sin minuto.
 
 ---
 

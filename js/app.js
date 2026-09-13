@@ -14,10 +14,35 @@
     authNotice: '',
     authBusy: false,
     formError: '',
-    pendingShot: null
+    pendingShot: null,
+    pendingEvent: null,
+    // Filtros del mapa de tiros de la ficha de partido. No se guardan: son una
+    // forma de mirar los datos, no un dato.
+    mapFilter: { player:'all', period:'all', heat:false },
+    editingMatch: false
   };
 
   const POSITIONS = ['Portero','Lateral izquierdo','Central','Lateral derecho','Extremo izquierdo','Extremo derecho','Pivote'];
+
+  // Lo que se puede anotar además de un tiro. El orden es el de los botones en
+  // pantalla: primero lo que más se repite. `ask` dice si hay que preguntar de
+  // qué jugador es; los que no preguntan son del rival y no tenemos su plantilla.
+  const EVENT_TYPES = [
+    { id:'assist',    name:'Asistencia',   short:'AS', ask:'all',     tone:'good' },
+    { id:'turnover',  name:'Pérdida',      short:'PE', ask:'all',     tone:'bad'  },
+    { id:'steal',     name:'Robo',         short:'RO', ask:'all',     tone:'good' },
+    { id:'block',     name:'Blocaje',      short:'BL', ask:'all',     tone:'good' },
+    { id:'foul7m',    name:'7 m provocado',short:'7M', ask:'all',     tone:'good' },
+    { id:'exclusion', name:'2 minutos',    short:'2′', ask:'all',     tone:'bad'  },
+    { id:'yellow',    name:'Amarilla',     short:'TA', ask:'all',     tone:'warn' },
+    { id:'red',       name:'Roja',         short:'TR', ask:'all',     tone:'bad'  }
+  ];
+
+  const EVENT_NAME = EVENT_TYPES.reduce((m,e) => (m[e.id] = e.name, m), {});
+
+  // Balonmano: siete en pista. No se impide pasarse —hay que poder anotar lo que
+  // de verdad pasó, incluida una alineación indebida— pero se avisa.
+  const ON_COURT_MAX = 7;
 
   // ---------- media pista ----------
   // Medidas reales de balonmano en metros. La media pista se dibuja de banda a
@@ -77,7 +102,7 @@
     const y9edge = D - Math.sqrt(81 - L*L);
     const area6 = `M ${L-6} ${D} A 6 6 0 0 1 ${L} ${y6} L ${R} ${y6} A 6 6 0 0 1 ${R+6} ${D} Z`;
     const line9 = `M 0 ${y9edge.toFixed(2)} A 9 9 0 0 1 ${L} ${y9} L ${R} ${y9} A 9 9 0 0 1 20 ${y9edge.toFixed(2)}`;
-    const dots = (o.shots || []).map(s => {
+    const dots = o.heat ? heatLayer(o.shots || [], id) : (o.shots || []).map(s => {
       const p = shotPoint(s);
       if(!p) return '';
       return `<circle class="shot-dot ${s.type}" cx="${p.x}" cy="${(D - p.y).toFixed(2)}" r="0.34"/>`;
@@ -102,6 +127,9 @@
             <rect width="0.25" height="0.25" fill="#CC2F26"/>
             <rect x="0.25" y="0.25" width="0.25" height="0.25" fill="#CC2F26"/>
           </pattern>
+          <filter id="heat-${id}" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="0.75"/>
+          </filter>
         </defs>
         <rect class="court-floor" x="0" y="0" width="20" height="${D}" fill="url(#parquet-${id})"/>
         <path class="court-area" d="${area6}"/>
@@ -116,6 +144,31 @@
         ${dots}
       </svg>
     `;
+  }
+
+  // Mapa de calor: en vez de un punto por tiro, la pista se parte en casillas de
+  // un metro y cada una se pinta según cuántos tiros cayeron dentro. Con muchos
+  // tiros, los puntos se amontonan y ya no dicen nada; esto sí.
+  function heatLayer(shots, id){
+    const CELL = 1;
+    const counts = {};
+    shots.forEach(s => {
+      const p = shotPoint(s);
+      if(!p) return;
+      const k = Math.floor(p.x/CELL) + ':' + Math.floor(p.y/CELL);
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    const values = Object.keys(counts).map(k => counts[k]);
+    if(values.length === 0) return '';
+    const max = Math.max.apply(null, values);
+    const rects = Object.keys(counts).map(k => {
+      const parts = k.split(':');
+      const cx = Number(parts[0]), cy = Number(parts[1]);
+      const a = 0.18 + 0.62 * (counts[k] / max);
+      return `<rect x="${cx*CELL}" y="${(COURT.depth - (cy+1)*CELL).toFixed(2)}"
+                    width="${CELL}" height="${CELL}" fill="#FF5A68" opacity="${a.toFixed(2)}"/>`;
+    }).join('');
+    return `<g filter="url(#heat-${id})">${rects}</g>`;
   }
 
   function courtPointFromEvent(svg, ev){
@@ -219,7 +272,12 @@
     home:  '<path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
     list:  '<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M9 3.5v3M15 3.5v3M8 14h3"/>',
     user:  '<circle cx="12" cy="8.5" r="3.7"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0"/>',
-    plus:  '<path d="M12 5.5v13M5.5 12h13"/>'
+    plus:  '<path d="M12 5.5v13M5.5 12h13"/>',
+    play:  '<path d="M8 5.5 18.5 12 8 18.5z" fill="currentColor" stroke-linejoin="round"/>',
+    pause: '<path d="M9 5.5v13M15 5.5v13"/>',
+    share: '<path d="M12 15.5V4m0 0L8.5 7.5M12 4l3.5 3.5"/><path d="M5.5 13v5.5a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5V13"/>',
+    trash: '<path d="M5 7h14M10 7V5.5A1.5 1.5 0 0 1 11.5 4h1A1.5 1.5 0 0 1 14 5.5V7m-7 0 .8 11.1A1.5 1.5 0 0 0 9.3 20h5.4a1.5 1.5 0 0 0 1.5-1.4L17 7"/>',
+    pencil:'<path d="M16.5 4.5 19.5 7.5M4.5 19.5l.9-3.6L16 5.3a1.2 1.2 0 0 1 1.7 0l1 1a1.2 1.2 0 0 1 0 1.7L8.1 18.6z"/>'
   };
 
   function icon(name){
@@ -378,6 +436,12 @@
     render();
     await Store.start(user.id);
     reloadTeams();
+    // Un partido a medias sobrevive a que el navegador descarte la pestaña, que
+    // es lo que hace un móvil cuando cambias de aplicación. No se entra solo en
+    // él: se ofrece desde el panel, por si lo que quería era otra cosa.
+    const saved = Store.loadDraft();
+    state.draft = saved && state.teams.some(t => t.id === saved.teamId) ? saved : null;
+    if(!state.draft) Store.clearDraft();
     state.screen = Store.hasLegacyData() ? 'migrate' : 'dashboard';
     render();
   }
@@ -399,7 +463,7 @@
     // llega de otro dispositivo aparece sin tener que recordar refrescarlo.
     if(state.user){
       if(state.screen === 'dashboard' || state.screen === 'team' || state.screen === 'account') reloadTeams();
-      if(state.screen === 'matchList' || state.screen === 'matchDetail'){
+      if(state.screen === 'matchList' || state.screen === 'matchDetail' || state.screen === 'season'){
         reloadTeams();
         reloadMatches();
       }
@@ -410,6 +474,7 @@
     else if(state.screen === 'team') html = renderTeam();
     else if(state.screen === 'matchList') html = renderMatchList();
     else if(state.screen === 'matchDetail') html = renderMatchDetail();
+    else if(state.screen === 'season') html = renderSeason();
     else if(state.screen === 'newMatchSetup') html = renderNewMatchSetup();
     else if(state.screen === 'liveMatch') html = renderLiveMatch();
     else if(state.screen === 'migrate') html = renderMigrate();
@@ -425,12 +490,12 @@
 
   // Pantallas que llevan barra inferior. Fuera quedan la entrada, la migración,
   // los formularios y el partido en vivo, donde taparía lo que se está tocando.
-  const NAV_SCREENS = ['dashboard','team','matchList','matchDetail','account'];
+  const NAV_SCREENS = ['dashboard','team','matchList','matchDetail','season','account'];
 
   function bottomNav(){
     const s = state.screen;
     const tab = s === 'account' ? 'account'
-              : (s === 'matchList' || s === 'matchDetail') ? 'matches'
+              : (s === 'matchList' || s === 'matchDetail' || s === 'season') ? 'matches'
               : 'home';
     const btn = (id, name, ic, label) => `
       <button class="nav-btn${tab === name ? ' on' : ''}" id="${id}">
@@ -574,6 +639,7 @@
       <main>
         ${pageTitle('Equipos')}
         ${syncBanner()}
+        ${resumeCardHtml()}
         ${teamsHtml}
         <div class="section-label">Nuevo equipo</div>
         <div class="field">
@@ -582,6 +648,32 @@
         </div>
         <button class="primary" id="create-team-btn">Crear equipo</button>
       </main>
+    `;
+  }
+
+  // Un partido sin guardar es lo único que no está a salvo en ningún sitio: se
+  // enseña arriba del todo hasta que se guarda o se descarta.
+  function resumeCardHtml(){
+    const d = state.draft;
+    if(!d || state.screen !== 'dashboard') return '';
+    const gf = d.shotsRival.filter(s => s.type === 'goal').length;
+    const ga = d.shotsOwn.filter(s => s.type === 'goal').length;
+    const team = state.teams.find(t => t.id === d.teamId);
+    return `
+      <div class="resume-card">
+        <div class="resume-head">
+          <span class="resume-live">Sin guardar</span>
+          <span class="resume-score">${gf} – ${ga}</span>
+        </div>
+        <div class="resume-sub">
+          ${esc((team && team.name) || 'Tu equipo')} · ${esc(d.rival)} ·
+          ${d.period === 1 ? '1ª' : '2ª'} parte, ${clockText(d)}
+        </div>
+        <div class="resume-actions">
+          <button class="primary slim" id="resume-match">Seguir con el partido</button>
+          <button class="secondary slim" id="drop-match">Descartar</button>
+        </div>
+      </div>
     `;
   }
 
@@ -679,6 +771,8 @@
         <button class="primary" id="new-match-btn">＋ Nuevo partido</button>
         <div style="height:10px;"></div>
         <button class="secondary" id="view-matches-btn">Ver estadísticas de partidos anteriores</button>
+        <div style="height:10px;"></div>
+        <button class="secondary" id="view-season-btn">Acumulado de la temporada</button>
       </main>
     `;
   }
@@ -727,6 +821,7 @@
       ${topbar({ left: backBtn('to-team', team.name) })}
       <main>
         ${pageTitle('Partidos', team.name)}
+        ${list.length ? `<button class="secondary slim" id="to-season">Ver el acumulado de la temporada</button><div style="height:14px;"></div>` : ''}
         ${rows}
       </main>
     `;
@@ -770,6 +865,23 @@
     return p ? `${p.dorsal} · ${p.name}` : 'Sin especificar';
   }
 
+  // Versión corta para cuando hay que nombrar a varios en una línea: el dorsal
+  // y el nombre de pila, que es como se llaman entre ellos.
+  function playerShort(team, id){
+    if(id === 'none') return 'sin asignar';
+    const p = team.players.find(pp => pp.id === id);
+    return p ? `${p.dorsal} ${p.name.split(/\s+/)[0]}` : 'sin asignar';
+  }
+
+  // Todos los lanzamientos de un lado: los que fueron a puerta y los que no.
+  // Para el porcentaje de acierto hay que contar también los que se fueron
+  // fuera, o sale un acierto inflado.
+  function attemptsOf(m, side){
+    return side === 'own'
+      ? m.shotsOwn.concat(m.missOwn || [])
+      : m.shotsRival.concat(m.missRival || []);
+  }
+
   // Tiros agrupados por la zona de la pista desde la que se lanzó. Los partidos
   // guardados antes de registrar la zona caen todos en "Sin especificar".
   function originStatsHtml(shots){
@@ -798,17 +910,268 @@
     return rows.join('');
   }
 
+  // ---------- filtros del mapa ----------
+  // No son un dato del partido: son una forma de mirarlo. Por eso viven en
+  // state.mapFilter y no se guardan en ninguna parte.
+
+  function applyMapFilter(shots, side){
+    const f = state.mapFilter;
+    return shots.filter(s => {
+      if(f.period !== 'all' && s.period !== Number(f.period)) return false;
+      // El filtro por jugador solo tiene sentido en los tiros nuestros: de los
+      // del rival no se lleva plantilla.
+      if(side === 'rival' && f.player !== 'all' && s.player !== f.player) return false;
+      return true;
+    });
+  }
+
+  function mapFilterHtml(team, m, side){
+    const f = state.mapFilter;
+    const hasPeriods = attemptsOf(m, side).some(s => s.period);
+    const chip = (val, label) => `
+      <button class="filter-chip${String(f.period) === String(val) ? ' on' : ''}" data-period="${val}">${label}</button>`;
+    const players = sortedPlayers(team.players);
+    return `
+      <div class="filter-row">
+        ${hasPeriods ? chip('all','Todo') + chip('1','1ª parte') + chip('2','2ª parte') : ''}
+        <button class="filter-chip${f.heat ? ' on' : ''}" id="toggle-heat">Mapa de calor</button>
+      </div>
+      ${side === 'rival' && players.length ? `
+        <div class="filter-row">
+          <select class="filter-select" id="filter-player">
+            <option value="all">Todos los jugadores</option>
+            ${players.map(p => `
+              <option value="${p.id}"${f.player === p.id ? ' selected' : ''}>${esc(p.dorsal + ' · ' + p.name)}</option>
+            `).join('')}
+          </select>
+        </div>` : ''}
+    `;
+  }
+
   // Mapa de tiros sobre la pista: un punto por lanzamiento con el punto exacto
-  // registrado. Sólo aparece si el partido tiene alguno.
+  // registrado, o el mapa de calor si se pide. Sólo aparece si hay alguno.
   function shotMapHtml(shots, id){
     const withPoint = shots.filter(shotPoint);
-    if(withPoint.length === 0) return '';
+    if(withPoint.length === 0){
+      return `<div class="hint-text">Ningún lanzamiento con punto registrado${
+        state.mapFilter.period !== 'all' || state.mapFilter.player !== 'all' ? ' con este filtro' : ''}.</div>`;
+    }
     const goals = withPoint.filter(s => s.type === 'goal').length;
+    const missed = withPoint.filter(s => s.type === 'out' || s.type === 'post').length;
+    const saved = withPoint.length - goals - missed;
     return `
-      ${courtSvg({ shots: withPoint, id })}
+      ${courtSvg({ shots: withPoint, id, heat: state.mapFilter.heat })}
       <div class="court-legend">
-        <span><i class="dot-goal"></i> ${goals} gol${goals === 1 ? '' : 'es'}</span>
-        <span><i class="dot-save"></i> ${withPoint.length - goals} parada${withPoint.length - goals === 1 ? '' : 's'}</span>
+        ${state.mapFilter.heat
+          ? `<span>${withPoint.length} lanzamiento${withPoint.length === 1 ? '' : 's'}</span>`
+          : `<span><i class="dot-goal"></i> ${goals} gol${goals === 1 ? '' : 'es'}</span>
+             <span><i class="dot-save"></i> ${saved} parada${saved === 1 ? '' : 's'}</span>
+             ${missed ? `<span><i class="dot-out"></i> ${missed} fuera</span>` : ''}`}
+      </div>
+    `;
+  }
+
+  // ---------- cruce pista × portería ----------
+  // Desde dónde se lanza contra a qué parte de la portería se tira. Es el dato
+  // que de verdad se usa para preparar a un portero: "el lateral zurdo siempre
+  // busca el palo largo abajo".
+  const ZONE_NAMES = ['arriba izq.','arriba centro','arriba der.',
+                      'media izq.','media centro','media der.',
+                      'abajo izq.','abajo centro','abajo der.'];
+
+  function crossMatrixHtml(shots){
+    const rows = ORIGINS.map(o => {
+      const arr = shots.filter(s => shotZone(s) === o.id && s.zone);
+      if(arr.length === 0) return null;
+      const cells = [];
+      let max = 0;
+      for(let z = 1; z <= 9; z++){
+        const inZone = arr.filter(s => s.zone === z);
+        const goals = inZone.filter(s => s.type === 'goal').length;
+        cells.push({ z, n: inZone.length, goals });
+        if(inZone.length > max) max = inZone.length;
+      }
+      return { o, cells, max, total: arr.length };
+    }).filter(Boolean);
+    if(rows.length === 0) return `<div class="hint-text">Hace falta registrar el punto de lanzamiento para cruzarlo con la portería.</div>`;
+    return `
+      <div class="cross-wrap">
+        ${rows.map(r => `
+          <div class="cross-row">
+            <div class="cross-name">${esc(r.o.name)}<small>${r.total}</small></div>
+            <div class="cross-grid">
+              ${r.cells.map(c => `
+                <div class="cross-cell${c.n ? '' : ' empty'}"
+                     style="--fill:${c.n ? (0.15 + 0.6*(c.n/r.max)).toFixed(2) : 0}"
+                     title="${esc(ZONE_NAMES[c.z-1])}: ${c.goals} de ${c.n}">
+                  ${c.n ? c.goals + '/' + c.n : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="hint-text">Goles / lanzamientos a cada parte de la portería. Cuanto más claro, más se tira ahí.</div>
+    `;
+  }
+
+  // ---------- porteros ----------
+  // Esto es lo que antes no se podía calcular: hacía falta saber qué portero
+  // estaba en portería también en los goles, no solo en las paradas.
+  function keeperStatsHtml(team, m){
+    const byKeeper = {};
+    m.shotsOwn.forEach(s => {
+      const k = s.keeper || 'none';
+      const e = byKeeper[k] = byKeeper[k] || { faced:0, saves:0 };
+      e.faced++;
+      if(s.type === 'save') e.saves++;
+    });
+    const rows = Object.keys(byKeeper)
+      .sort((a,b) => byKeeper[b].faced - byKeeper[a].faced)
+      .map(id => {
+        const e = byKeeper[id];
+        const pct = e.faced ? Math.round(e.saves/e.faced*100) : 0;
+        return `
+          <div class="stat-list-row">
+            <span>${esc(playerLabel(team, id))}</span>
+            <span class="count">${e.saves}/${e.faced} · ${pct}%</span>
+          </div>
+        `;
+      });
+    if(rows.length === 0) return `<div class="hint-text">Sin tiros a nuestra portería todavía.</div>`;
+    return rows.join('');
+  }
+
+  // ---------- más/menos ----------
+  // Se reconstruye el partido en orden (tiros y eventos comparten el ordinal) y
+  // se va llevando quién está en pista: cada gol suma o resta a los que estaban.
+  // Los partidos en los que no se marcó la pista no dan nada, y está bien así.
+  function plusMinus(m){
+    const seq = [];
+    m.shotsRival.forEach(s => { if(s.type === 'goal') seq.push({ ordinal:s.ordinal, goal:1 }); });
+    m.shotsOwn.forEach(s => { if(s.type === 'goal') seq.push({ ordinal:s.ordinal, goal:-1 }); });
+    (m.events || []).forEach(e => {
+      if(e.type === 'in' || e.type === 'out') seq.push({ ordinal:e.ordinal, sub:e.type, player:e.player });
+    });
+    seq.sort((a,b) => a.ordinal - b.ordinal);
+    const onCourt = {}, out = {};
+    seq.forEach(item => {
+      if(item.sub === 'in' && item.player) onCourt[item.player] = true;
+      else if(item.sub === 'out' && item.player) delete onCourt[item.player];
+      else if(item.goal){
+        Object.keys(onCourt).forEach(id => {
+          const e = out[id] = out[id] || { plus:0, minus:0 };
+          if(item.goal > 0) e.plus++; else e.minus++;
+        });
+      }
+    });
+    return out;
+  }
+
+  function plusMinusHtml(team, m){
+    const pm = plusMinus(m);
+    const ids = Object.keys(pm).sort((a,b) => (pm[b].plus - pm[b].minus) - (pm[a].plus - pm[a].minus));
+    if(ids.length === 0){
+      return `<div class="hint-text">Marca quién está en pista durante el partido y aquí sale lo que pasa en el marcador mientras cada uno juega.</div>`;
+    }
+    return ids.map(id => {
+      const e = pm[id];
+      const diff = e.plus - e.minus;
+      return `
+        <div class="stat-list-row">
+          <span>${esc(playerLabel(team, id))}</span>
+          <span class="count ${diff > 0 ? 'good' : (diff < 0 ? 'bad' : '')}">
+            ${diff > 0 ? '+' : ''}${diff} <small>${e.plus}·${e.minus}</small>
+          </span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // ---------- eventos ----------
+  function eventStatsHtml(team, m){
+    const evs = (m.events || []).filter(e => e.type !== 'in' && e.type !== 'out');
+    if(evs.length === 0) return `<div class="hint-text">No se anotó ninguno en este partido.</div>`;
+    return EVENT_TYPES.map(spec => {
+      const arr = evs.filter(e => e.type === spec.id);
+      if(arr.length === 0) return '';
+      const byPlayer = {};
+      arr.forEach(e => { const k = e.player || 'none'; byPlayer[k] = (byPlayer[k]||0)+1; });
+      const who = Object.keys(byPlayer)
+        .sort((a,b) => byPlayer[b] - byPlayer[a])
+        .map(id => `${esc(playerShort(team, id))}${byPlayer[id] > 1 ? ' ×'+byPlayer[id] : ''}`)
+        .join(', ');
+      return `
+        <div class="stat-list-row">
+          <span>${esc(spec.name)}<small class="who">${who}</small></span>
+          <span class="count">${arr.length}</span>
+        </div>
+      `;
+    }).filter(Boolean).join('');
+  }
+
+  // ---------- evolución del marcador ----------
+  // Un partido de balonmano se decide en rachas de tres o cuatro goles
+  // seguidos; en la lista de tiros eso no se ve y en una línea sí.
+  function scoreRun(m){
+    const goals = m.shotsRival.filter(s => s.type === 'goal').map(s => ({ o:s.ordinal, t:1, m:s.minute }))
+      .concat(m.shotsOwn.filter(s => s.type === 'goal').map(s => ({ o:s.ordinal, t:-1, m:s.minute })))
+      .sort((a,b) => a.o - b.o);
+    let best = { n:0, t:0, from:null, to:null }, cur = { n:0, t:0, from:null, to:null };
+    goals.forEach(g => {
+      if(g.t === cur.t){ cur.n++; cur.to = g.m; }
+      else cur = { n:1, t:g.t, from:g.m, to:g.m };
+      if(cur.n > best.n) best = Object.assign({}, cur);
+    });
+    return { goals, best };
+  }
+
+  function timelineHtml(m){
+    const { goals, best } = scoreRun(m);
+    const timed = goals.filter(g => g.m !== null && g.m !== undefined);
+    if(goals.length < 2) return '';
+    const W = 100, H = 34;
+    const maxMin = Math.max(1, timed.length ? timed[timed.length-1].m : goals.length);
+    let diff = 0, maxAbs = 1;
+    const pts = goals.map((g, i) => {
+      diff += g.t;
+      if(Math.abs(diff) > maxAbs) maxAbs = Math.abs(diff);
+      const x = timed.length ? ((g.m || 0)/maxMin)*W : (i/(goals.length-1))*W;
+      return { x, diff };
+    });
+    const y = v => (H/2) - (v/maxAbs)*(H/2 - 2);
+    // Línea en escalera: el marcador salta, no sube en diagonal.
+    let path = `M 0 ${y(0).toFixed(2)}`;
+    let prev = 0;
+    pts.forEach(p => {
+      path += ` L ${p.x.toFixed(2)} ${y(prev).toFixed(2)} L ${p.x.toFixed(2)} ${y(p.diff).toFixed(2)}`;
+      prev = p.diff;
+    });
+    path += ` L ${W} ${y(prev).toFixed(2)}`;
+    const halfX = m.halfTime && timed.length ? (m.halfTime/maxMin)*W : null;
+    const runText = best.n >= 3
+      ? `Mejor racha: ${best.n} goles seguidos ${best.t > 0 ? 'nuestros' : 'del rival'}${
+          best.from !== null && best.from !== undefined ? ` (min ${best.from}–${best.to})` : ''}`
+      : '';
+    return `
+      <div class="timeline-card">
+        <svg class="timeline-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img">
+          <title>Evolución de la diferencia de goles</title>
+          <defs>
+            <clipPath id="tl-up"><rect x="0" y="0" width="${W}" height="${H/2}"/></clipPath>
+            <clipPath id="tl-down"><rect x="0" y="${H/2}" width="${W}" height="${H/2}"/></clipPath>
+          </defs>
+          <line class="tl-zero" x1="0" y1="${H/2}" x2="${W}" y2="${H/2}"/>
+          ${halfX !== null ? `<line class="tl-half" x1="${halfX.toFixed(2)}" y1="0" x2="${halfX.toFixed(2)}" y2="${H}"/>` : ''}
+          <!-- La misma línea dos veces, recortada por arriba y por abajo de la
+               línea de cero: verde cuando vamos por delante, roja cuando no. -->
+          <path class="tl-line up" d="${path}" clip-path="url(#tl-up)"/>
+          <path class="tl-line down" d="${path}" clip-path="url(#tl-down)"/>
+        </svg>
+        <div class="timeline-foot">
+          <span class="tl-range">${timed.length ? `min 0 – ${maxMin}` : 'gol a gol'}</span>
+          ${runText ? `<span>${esc(runText)}</span>` : ''}
+        </div>
       </div>
     `;
   }
@@ -837,20 +1200,27 @@
     const effR = totalRivalShots ? Math.round(gf/totalRivalShots*100) : 0;
     const effO = totalOwnShots ? Math.round((sv_o/totalOwnShots)*100) : 0;
 
+    const ourShots = applyMapFilter(attemptsOf(m, 'rival'), 'rival');
+    const theirShots = applyMapFilter(attemptsOf(m, 'own'), 'own');
     return `
-      ${topbar({ left: backBtn('to-matches','Partidos') })}
+      ${topbar({
+        left: backBtn('to-matches','Partidos'),
+        right: `<button class="back-btn" id="edit-match" aria-label="Editar partido" title="Editar partido">${icon('pencil')}</button>`
+      })}
       <main>
-        ${pageTitle('vs ' + m.rival, shortDate(m.date))}
+        ${pageTitle('vs ' + m.rival, shortDate(m.date) + (m.halfTime !== null ? ` · descanso en el ${m.halfTime}′` : ''))}
         <div class="card score-hero">
           <div class="score-hero-num">${gf} – ${ga}</div>
           <div class="score-hero-lbl">${esc(team.name)} · ${esc(m.rival)}</div>
         </div>
+        ${state.editingMatch ? editMatchHtml(m) : ''}
+        ${timelineHtml(m)}
 
         <div class="section-label">Nuestros disparos (portería rival)</div>
         <div class="stat-grid">
           <div class="stat-cell"><div class="num" style="color:var(--goal)">${gf}</div><div class="lbl">Goles</div></div>
           <div class="stat-cell"><div class="num" style="color:var(--save)">${sv_r}</div><div class="lbl">Parados por el rival</div></div>
-          <div class="stat-cell"><div class="num" style="color:var(--out)">${out_r}</div><div class="lbl">Fuera</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--out)">${out_r}</div><div class="lbl">Fuera y palos</div></div>
           <div class="stat-cell"><div class="num">${effR}%</div><div class="lbl">Efectividad</div></div>
         </div>
         ${miniGrid(m.shotsRival)}
@@ -858,9 +1228,13 @@
         <div class="section-label">Goleadores del partido</div>
         <div class="card">${playerListHtml(team, groupByPlayer(m.shotsRival, 'goal'), 'goles')}</div>
 
-        <div class="section-label">Desde dónde lanzamos <small>goles / tiros a puerta</small></div>
-        ${shotMapHtml(m.shotsRival, 'mapRival')}
-        <div class="card">${originStatsHtml(m.shotsRival)}</div>
+        <div class="section-label">Desde dónde lanzamos <small>goles / lanzamientos</small></div>
+        ${mapFilterHtml(team, m, 'rival')}
+        ${shotMapHtml(ourShots, 'mapRival')}
+        <div class="card">${originStatsHtml(ourShots)}</div>
+
+        <div class="section-label">A qué parte de la portería <small>desde cada zona</small></div>
+        ${crossMatrixHtml(attemptsOf(m, 'rival'))}
 
         <div class="section-label">Disparos rivales (portería propia)</div>
         <div class="stat-grid">
@@ -871,14 +1245,415 @@
         </div>
         ${miniGrid(m.shotsOwn)}
 
-        <div class="section-label">Paradas por portero</div>
-        <div class="card">${playerListHtml(team, groupByPlayer(m.shotsOwn, 'save'), 'paradas')}</div>
+        <div class="section-label">Porteros <small>paradas / tiros recibidos</small></div>
+        <div class="card">${keeperStatsHtml(team, m)}</div>
 
-        <div class="section-label">Desde dónde nos lanzan <small>goles / tiros a puerta</small></div>
-        ${shotMapHtml(m.shotsOwn, 'mapOwn')}
-        <div class="card">${originStatsHtml(m.shotsOwn)}</div>
+        <div class="section-label">Desde dónde nos lanzan <small>goles / lanzamientos</small></div>
+        ${mapFilterHtml(team, m, 'own')}
+        ${shotMapHtml(theirShots, 'mapOwn')}
+        <div class="card">${originStatsHtml(theirShots)}</div>
+
+        <div class="section-label">Más/menos <small>con cada jugador en pista</small></div>
+        <div class="card">${plusMinusHtml(team, m)}</div>
+
+        <div class="section-label">Otros registros</div>
+        <div class="card">${eventStatsHtml(team, m)}</div>
+
+        <div class="section-label">Compartir</div>
+        <div class="export-row">
+          <button class="secondary slim" id="share-match">${icon('share')} Imagen</button>
+          <button class="secondary slim" id="csv-match">Descargar CSV</button>
+        </div>
       </main>
     `;
+  }
+
+  function editMatchHtml(m){
+    return `
+      <div class="card edit-card">
+        <div class="card-title">Editar partido</div>
+        <div class="field">
+          <label for="edit-rival">Rival</label>
+          <input id="edit-rival" type="text" maxlength="80" value="${esc(m.rival)}">
+        </div>
+        <div class="field">
+          <label for="edit-date">Fecha</label>
+          <input id="edit-date" type="date" value="${esc(m.date)}">
+        </div>
+        ${state.formError ? `<div class="error-msg">${esc(state.formError)}</div>` : ''}
+        <div class="export-row">
+          <button class="primary slim" id="save-match-edit">Guardar cambios</button>
+          <button class="secondary slim" id="cancel-match-edit">Cancelar</button>
+        </div>
+        <button class="danger slim" id="delete-match">${icon('trash')} Borrar este partido</button>
+      </div>
+    `;
+  }
+
+  function handleSaveMatchEdit(){
+    const rival = document.getElementById('edit-rival').value.trim();
+    const date = document.getElementById('edit-date').value;
+    if(!rival || !date){
+      state.formError = 'Indica el rival y la fecha.';
+      render();
+      return;
+    }
+    if(rival.length > 80){
+      state.formError = 'El nombre del rival es demasiado largo (máximo 80).';
+      render();
+      return;
+    }
+    Store.updateMatch(state.currentMatchId, { rival, date });
+    state.formError = '';
+    state.editingMatch = false;
+    reloadMatches();
+    render();
+    toast('Partido actualizado');
+  }
+
+  function handleDeleteMatch(){
+    const m = state.matches.find(mm => mm.id === state.currentMatchId);
+    if(!m) return;
+    if(!confirm(`¿Borrar el partido contra ${m.rival}? No se puede deshacer.`)) return;
+    Store.deleteMatch(state.currentMatchId);
+    state.editingMatch = false;
+    state.currentMatchId = null;
+    reloadMatches();
+    state.screen = 'matchList';
+    render();
+    toast('Partido borrado');
+  }
+
+  // ---------- TEMPORADA ----------
+  //
+  // El acumulado de todos los partidos del equipo. Se calcula aquí y no con una
+  // consulta a Postgres porque el espejo local ya tiene todos los datos: así
+  // sale igual de rápido, funciona sin cobertura y no hay una segunda forma de
+  // contar lo mismo que pueda acabar diciendo otra cosa que la ficha de partido.
+
+  function seasonStats(team, matches){
+    const s = {
+      played: matches.length, won:0, drawn:0, lost:0,
+      gf:0, ga:0, attempts:0, faced:0, saves:0,
+      scorers:{}, keepers:{}, origins:{}, plus:{}, events:{}
+    };
+    matches.forEach(m => {
+      const gf = m.shotsRival.filter(x => x.type === 'goal').length;
+      const ga = m.shotsOwn.filter(x => x.type === 'goal').length;
+      s.gf += gf; s.ga += ga;
+      if(gf > ga) s.won++; else if(gf < ga) s.lost++; else s.drawn++;
+      s.attempts += attemptsOf(m, 'rival').length;
+      s.faced += m.shotsOwn.length;
+      s.saves += m.shotsOwn.filter(x => x.type === 'save').length;
+
+      m.shotsRival.forEach(x => {
+        if(x.type !== 'goal') return;
+        const k = x.player || 'none';
+        s.scorers[k] = (s.scorers[k] || 0) + 1;
+      });
+      m.shotsOwn.forEach(x => {
+        const k = x.keeper || 'none';
+        const e = s.keepers[k] = s.keepers[k] || { faced:0, saves:0 };
+        e.faced++;
+        if(x.type === 'save') e.saves++;
+      });
+      attemptsOf(m, 'rival').forEach(x => {
+        const z = shotZone(x);
+        if(!z) return;
+        const e = s.origins[z] = s.origins[z] || { n:0, goals:0 };
+        e.n++;
+        if(x.type === 'goal') e.goals++;
+      });
+      const pm = plusMinus(m);
+      Object.keys(pm).forEach(id => {
+        const e = s.plus[id] = s.plus[id] || { plus:0, minus:0 };
+        e.plus += pm[id].plus;
+        e.minus += pm[id].minus;
+      });
+      (m.events || []).forEach(ev => {
+        if(ev.type === 'in' || ev.type === 'out') return;
+        s.events[ev.type] = (s.events[ev.type] || 0) + 1;
+      });
+    });
+    return s;
+  }
+
+  function renderSeason(){
+    const team = currentTeam();
+    const matches = state.matches;
+    if(matches.length === 0){
+      return `
+        ${topbar({ left: backBtn('to-team', team.name) })}
+        <main>
+          ${pageTitle('Temporada', team.name)}
+          <div class="empty-state">
+            <div class="big-num">Todavía no hay partidos</div>
+            Cuando guardes alguno, aquí se suma todo: goleadores, porteros y
+            desde dónde se tira mejor.
+          </div>
+        </main>
+      `;
+    }
+    const s = seasonStats(team, matches);
+    const per = n => (n / s.played).toFixed(1).replace('.', ',');
+    const eff = s.attempts ? Math.round(s.gf/s.attempts*100) : 0;
+    const savePct = s.faced ? Math.round(s.saves/s.faced*100) : 0;
+
+    const scorers = Object.keys(s.scorers).sort((a,b) => s.scorers[b] - s.scorers[a]);
+    const keepers = Object.keys(s.keepers).sort((a,b) => s.keepers[b].faced - s.keepers[a].faced);
+    const pmIds = Object.keys(s.plus)
+      .sort((a,b) => (s.plus[b].plus - s.plus[b].minus) - (s.plus[a].plus - s.plus[a].minus));
+
+    const list = (rows, vacio) => rows.length ? rows.join('') : `<div class="hint-text">${vacio}</div>`;
+
+    return `
+      ${topbar({ left: backBtn('to-team', team.name) })}
+      <main>
+        ${pageTitle('Temporada', `${team.name} · ${s.played} partido${s.played === 1 ? '' : 's'}`)}
+
+        <div class="card score-hero">
+          <div class="score-hero-num">${s.won}–${s.drawn}–${s.lost}</div>
+          <div class="score-hero-lbl">victorias · empates · derrotas</div>
+        </div>
+
+        <div class="section-label">En total</div>
+        <div class="stat-grid">
+          <div class="stat-cell"><div class="num" style="color:var(--goal)">${s.gf}</div><div class="lbl">Goles a favor · ${per(s.gf)}/partido</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--out)">${s.ga}</div><div class="lbl">En contra · ${per(s.ga)}/partido</div></div>
+          <div class="stat-cell"><div class="num">${eff}%</div><div class="lbl">Efectividad en ${s.attempts} lanzamientos</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--save)">${savePct}%</div><div class="lbl">Paradas en ${s.faced} tiros recibidos</div></div>
+        </div>
+
+        <div class="section-label">Goleadores <small>toda la temporada</small></div>
+        <div class="card">${list(scorers.map(id => `
+          <div class="stat-list-row">
+            <span>${esc(playerLabel(team, id))}</span>
+            <span class="count">${s.scorers[id]} <small>${per(s.scorers[id])}/partido</small></span>
+          </div>`), 'Sin goles asignados a jugador todavía.')}</div>
+
+        <div class="section-label">Porteros <small>paradas / tiros recibidos</small></div>
+        <div class="card">${list(keepers.map(id => {
+          const e = s.keepers[id];
+          return `
+            <div class="stat-list-row">
+              <span>${esc(playerLabel(team, id))}</span>
+              <span class="count">${e.saves}/${e.faced} · ${e.faced ? Math.round(e.saves/e.faced*100) : 0}%</span>
+            </div>`;
+        }), 'Sin tiros recibidos todavía.')}</div>
+
+        <div class="section-label">Desde dónde lanzamos mejor <small>goles / lanzamientos</small></div>
+        <div class="card">${list(ORIGINS.filter(o => s.origins[o.id]).map(o => {
+          const e = s.origins[o.id];
+          return `
+            <div class="stat-list-row">
+              <span>${esc(o.name)}</span>
+              <span class="count">${e.goals}/${e.n} · ${Math.round(e.goals/e.n*100)}%</span>
+            </div>`;
+        }), 'Hace falta registrar el punto de lanzamiento.')}</div>
+
+        <div class="section-label">Más/menos acumulado</div>
+        <div class="card">${list(pmIds.map(id => {
+          const e = s.plus[id], diff = e.plus - e.minus;
+          return `
+            <div class="stat-list-row">
+              <span>${esc(playerLabel(team, id))}</span>
+              <span class="count ${diff > 0 ? 'good' : (diff < 0 ? 'bad' : '')}">
+                ${diff > 0 ? '+' : ''}${diff} <small>${e.plus}·${e.minus}</small>
+              </span>
+            </div>`;
+        }), 'Marca quién está en pista durante los partidos para verlo aquí.')}</div>
+
+        <div class="section-label">Otros registros</div>
+        <div class="card">${list(EVENT_TYPES.filter(t => s.events[t.id]).map(t => `
+          <div class="stat-list-row">
+            <span>${esc(t.name)}</span>
+            <span class="count">${s.events[t.id]}</span>
+          </div>`), 'No se anotó ninguno todavía.')}</div>
+      </main>
+    `;
+  }
+
+  // ---------- EXPORTAR ----------
+  //
+  // Dos formas de sacar un partido de la app: el CSV para quien quiera hacer
+  // sus cuentas en una hoja de cálculo, y una imagen para el grupo del equipo,
+  // que es por donde de verdad circulan estas cosas.
+
+  function saveBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Sin esto el objeto se queda en memoria hasta recargar la página.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function csvCell(v){
+    const s = v === null || v === undefined ? '' : String(v);
+    return /[",;\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  }
+
+  function slug(s){
+    return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'partido';
+  }
+
+  function matchCsv(team, m){
+    // Punto y coma: es lo que espera un Excel en español, que es donde va a
+    // acabar esto.
+    const head = ['tipo','parte','minuto','lado','resultado','zona_porteria','jugador','dorsal','zona_pista','origen_x','origen_y'];
+    const lines = [head.join(';')];
+    const nameOf = id => {
+      const p = team.players.find(pp => pp.id === id);
+      return p ? [p.name, p.dorsal] : ['', ''];
+    };
+    const pushShot = (side, s) => {
+      const who = nameOf(side === 'own' ? s.keeper : s.player);
+      lines.push([
+        'tiro', s.period, s.minute, side === 'own' ? 'nuestra porteria' : 'porteria rival',
+        s.type, s.zone, who[0], who[1], shotZone(s) || '',
+        s.origin ? s.origin.x : '', s.origin ? s.origin.y : ''
+      ].map(csvCell).join(';'));
+    };
+    attemptsOf(m, 'rival').sort((a,b)=>a.ordinal-b.ordinal).forEach(s => pushShot('rival', s));
+    attemptsOf(m, 'own').sort((a,b)=>a.ordinal-b.ordinal).forEach(s => pushShot('own', s));
+    (m.events || []).forEach(e => {
+      const who = nameOf(e.player);
+      lines.push([
+        'evento', e.period, e.minute, '', EVENT_NAME[e.type] || e.type, '',
+        who[0], who[1], '', '', ''
+      ].map(csvCell).join(';'));
+    });
+    return lines.join('\n');
+  }
+
+  function downloadMatchCsv(){
+    const team = currentTeam();
+    const m = state.matches.find(mm => mm.id === state.currentMatchId);
+    if(!m) return;
+    // El BOM es lo que hace que Excel abra las tildes bien.
+    const blob = new Blob(['﻿' + matchCsv(team, m)], { type:'text/csv;charset=utf-8' });
+    saveBlob(blob, `${slug(team.name)}-${slug(m.rival)}-${m.date}.csv`);
+    toast('CSV descargado');
+  }
+
+  // El resumen dibujado a mano en un canvas: sin librerías y con la misma
+  // tipografía del sistema que el resto de la app.
+  function matchSummaryCanvas(team, m){
+    const W = 1080, H = 1350, c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const gf = m.shotsRival.filter(s=>s.type==='goal').length;
+    const ga = m.shotsOwn.filter(s=>s.type==='goal').length;
+
+    g.fillStyle = '#08090B'; g.fillRect(0,0,W,H);
+    g.fillStyle = gf > ga ? 'rgba(51,161,127,0.16)' : (gf < ga ? 'rgba(193,68,58,0.16)' : 'rgba(138,143,152,0.12)');
+    g.fillRect(0,0,W,420);
+
+    const font = (size, weight) => {
+      g.font = `${weight||400} ${size}px -apple-system, "Segoe UI", Roboto, system-ui, sans-serif`;
+    };
+    const center = (text, y) => g.fillText(text, W/2 - g.measureText(text).width/2, y);
+
+    // la marca
+    g.fillStyle = '#D9182B';
+    roundRect(g, W/2 - 150, 70, 56, 56, 12); g.fill();
+    g.fillStyle = '#F5F5F7';
+    [[12,30,10,14],[26,22,10,22],[40,12,10,32]].forEach(b => {
+      roundRect(g, W/2 - 150 + b[0], 70 + b[1], b[2], b[3], 3); g.fill();
+    });
+    font(38, 700);
+    g.fillText('SuperStat', W/2 - 80, 112);
+
+    font(140, 700);
+    g.fillStyle = '#F5F5F7';
+    center(`${gf} – ${ga}`, 290);
+    font(32, 600);
+    g.fillStyle = '#8A8F98';
+    center(`${team.name}  ·  ${m.rival}`, 350);
+    font(26, 400);
+    center(shortDate(m.date) + (m.halfTime !== null ? `  ·  descanso en el ${m.halfTime}′` : ''), 392);
+
+    // cuadro de cifras
+    const attempts = attemptsOf(m, 'rival').length;
+    const savesOwn = m.shotsOwn.filter(s=>s.type==='save').length;
+    const facedOwn = m.shotsOwn.length;
+    const cells = [
+      ['Efectividad', attempts ? Math.round(gf/attempts*100) + '%' : '—'],
+      ['Lanzamientos', String(attempts)],
+      ['Paradas', String(savesOwn)],
+      ['% paradas', facedOwn ? Math.round(savesOwn/facedOwn*100) + '%' : '—']
+    ];
+    cells.forEach((cell, i) => {
+      const x = 60 + (i % 2) * 500, y = 480 + Math.floor(i/2) * 150;
+      g.fillStyle = '#141619';
+      roundRect(g, x, y, 460, 125, 18); g.fill();
+      g.fillStyle = '#F5F5F7'; font(52, 700);
+      g.fillText(cell[1], x + 28, y + 68);
+      g.fillStyle = '#8A8F98'; font(24, 400);
+      g.fillText(cell[0], x + 28, y + 102);
+    });
+
+    // goleadores
+    let y = 810;
+    g.fillStyle = '#8A8F98'; font(24, 600);
+    g.fillText('GOLEADORES', 60, y);
+    y += 46;
+    const scorers = groupByPlayer(m.shotsRival, 'goal').slice(0, 7);
+    if(scorers.length === 0){
+      g.fillStyle = '#8A8F98'; font(28, 400);
+      g.fillText('Sin goles registrados por jugador', 60, y + 10);
+    }
+    scorers.forEach(entry => {
+      g.fillStyle = '#F5F5F7'; font(30, 500);
+      g.fillText(playerLabel(team, entry[0]), 60, y);
+      g.fillStyle = '#E8B84B'; font(30, 700);
+      const t = entry[1] + (entry[1] === 1 ? ' gol' : ' goles');
+      g.fillText(t, W - 60 - g.measureText(t).width, y);
+      g.fillStyle = '#1C1F24';
+      g.fillRect(60, y + 16, W - 120, 1);
+      y += 62;
+    });
+
+    g.fillStyle = '#8A8F98'; font(22, 400);
+    center('Hecho con SuperStat', H - 60);
+    return c;
+  }
+
+  function roundRect(g, x, y, w, h, r){
+    g.beginPath();
+    g.moveTo(x+r, y);
+    g.arcTo(x+w, y, x+w, y+h, r);
+    g.arcTo(x+w, y+h, x, y+h, r);
+    g.arcTo(x, y+h, x, y, r);
+    g.arcTo(x, y, x+w, y, r);
+    g.closePath();
+  }
+
+  async function shareMatchImage(){
+    const team = currentTeam();
+    const m = state.matches.find(mm => mm.id === state.currentMatchId);
+    if(!m) return;
+    const canvas = matchSummaryCanvas(team, m);
+    const blob = await new Promise(ok => canvas.toBlob(ok, 'image/png'));
+    if(!blob){ toast('No se ha podido generar la imagen'); return; }
+    const name = `${slug(team.name)}-${slug(m.rival)}-${m.date}.png`;
+    const file = new File([blob], name, { type:'image/png' });
+    // En el móvil se abre la hoja de compartir; en el escritorio, que casi
+    // nunca la tiene, se descarga y ya la manda el usuario por donde quiera.
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      try{
+        await navigator.share({ files:[file], title:`${team.name} ${'–'} ${m.rival}` });
+        return;
+      }catch(e){
+        if(e && e.name === 'AbortError') return;   // lo ha cancelado el usuario
+      }
+    }
+    saveBlob(blob, name);
+    toast('Imagen descargada');
   }
 
   // ---------- NEW MATCH SETUP ----------
@@ -916,20 +1691,100 @@
       return;
     }
     state.formError = '';
-    state.draft = {
+    state.draft = newDraft(state.currentTeamId, rival, date);
+    state.pendingShot = null;
+    state.pendingEvent = null;
+    state.screen = 'liveMatch';
+    saveDraft();
+    render();
+  }
+
+  function newDraft(teamId, rival, date){
+    return {
       id: Store.uuid(),
+      teamId,
       rival,
       date,
-      shotsOwn: [],   // shots faced at OUR goal (rival shooting)
-      shotsRival: [], // shots taken at RIVAL goal (our team shooting)
-      outOwn: 0,
-      outRival: 0,
-      askOrigin: true, // preguntar desde qué zona de la pista se ha lanzado
-      log: []  // ordered log of actions for undo: {side:'own'|'rival', kind:'shot'|'out', zone, type}
+      shotsOwn: [],   // tiros a NUESTRA portería (tira el rival)
+      shotsRival: [], // tiros a la portería RIVAL (tiramos nosotros)
+      missOwn: [],    // fuera y palo del rival
+      missRival: [],  // fuera y palo nuestros
+      events: [],     // asistencias, pérdidas, tarjetas, altas y bajas de pista
+      askOrigin: true,// preguntar desde qué punto de la pista se ha lanzado
+      seq: 0,         // ordinal compartido por tiros y eventos
+      period: 1,
+      halfTime: null, // minuto en que se dio por acabada la primera parte
+      clock: { running:false, elapsed:0, since:null },
+      keeper: null,   // portero nuestro en pista
+      onCourt: [],    // jugadores nuestros en pista
+      log: []         // orden de lo anotado, para deshacer
     };
-    state.pendingShot = null;
-    state.screen = 'liveMatch';
+  }
+
+  // ---------- reloj del partido ----------
+  //
+  // El tiempo corre de verdad: `since` es la hora del reloj del aparato en que
+  // se puso en marcha, así que si el navegador descarta la pestaña y se vuelve,
+  // el partido sigue en el minuto que le toca en vez de donde se quedó.
+  //
+  // Es un único cronómetro que no se reinicia en el descanso: la segunda parte
+  // sigue contando desde donde acabó la primera y `halfTime` guarda el corte.
+  // Un partido de dos partes de 25 no es raro, y así no hay que dar por hecho
+  // ninguna duración.
+
+  function clockMs(d){
+    const c = (d || state.draft).clock;
+    return c.elapsed + (c.running && c.since ? Date.now() - c.since : 0);
+  }
+
+  function clockMinute(d){
+    return Math.floor(clockMs(d) / 60000);
+  }
+
+  function clockText(d){
+    const total = Math.floor(clockMs(d) / 1000);
+    return `${String(Math.floor(total/60)).padStart(2,'0')}:${String(total%60).padStart(2,'0')}`;
+  }
+
+  function toggleClock(){
+    const c = state.draft.clock;
+    if(c.running){
+      c.elapsed = clockMs();
+      c.running = false;
+      c.since = null;
+    } else {
+      c.running = true;
+      c.since = Date.now();
+    }
+    saveDraft();
     render();
+  }
+
+  // El usuario decide cuándo se acaba la primera parte, así que esto es un
+  // botón y no una cuenta atrás. Deja el reloj parado, como en el descanso.
+  function endFirstHalf(){
+    const d = state.draft;
+    if(d.period !== 1) return;
+    d.halfTime = clockMinute(d);
+    d.period = 2;
+    d.clock.elapsed = clockMs(d);
+    d.clock.running = false;
+    d.clock.since = null;
+    saveDraft();
+    render();
+    toast(`Fin de la primera parte en el minuto ${d.halfTime}`);
+  }
+
+  // Cada anotación se queda con el minuto y la parte en que se hizo, y con un
+  // ordinal único dentro del partido: es lo que permite reconstruir después el
+  // orden real de todo y saber quién estaba en pista en cada gol.
+  function stamp(){
+    const d = state.draft;
+    return { minute: clockMinute(d), period: d.period, ordinal: d.seq++ };
+  }
+
+  function saveDraft(){
+    Store.saveDraft(state.draft);
   }
 
   // ---------- LIVE MATCH ----------
@@ -948,13 +1803,15 @@
     }
     const goals = shots.filter(s=>s.type==='goal').length;
     const saves = shots.filter(s=>s.type==='save').length;
-    const outs = side === 'own' ? state.draft.outOwn : state.draft.outRival;
+    const miss = side === 'own' ? state.draft.missOwn : state.draft.missRival;
+    const outs = miss.filter(s=>s.type==='out').length;
+    const posts = miss.filter(s=>s.type==='post').length;
     return `
       <div class="goal-block">
         <div class="goal-header">
           <div class="goal-title">${esc(label)}</div>
           <div class="goal-sub">${esc(sub)}</div>
-          <div class="goal-tally">${goals} G · ${saves} P · ${outs} fuera</div>
+          <div class="goal-tally">${goals} G · ${saves} P · ${outs} fuera${posts ? ` · ${posts} palo` : ''}</div>
         </div>
         <div class="goal-wrap">
           <div class="goal-frame">
@@ -968,28 +1825,57 @@
           <div class="goal-ground"></div>
         </div>
         <div class="goal-actions">
-          <button class="btn-out" data-out="${side}">Tiro fuera</button>
+          <button class="btn-out" data-out="${side}">Fuera</button>
+          <button class="btn-post" data-post="${side}">Palo</button>
           <button class="btn-undo" data-undo="${side}">Deshacer</button>
         </div>
       </div>
     `;
   }
 
+  const SHOT_ON_TARGET = { goal:true, save:true };
+
+  function sortedPlayers(list){
+    return list.slice().sort((a,b) => a.dorsal - b.dorsal);
+  }
+
+  function keepersOf(team){
+    return sortedPlayers(team.players.filter(p => p.position === 'Portero'));
+  }
+
+  // Quién hay que preguntar antes de anotar el tiro.
+  //
+  // Los tiros nuestros (side 'rival') preguntan siempre el tirador, entre o no:
+  // sin eso no hay porcentaje de acierto por jugador, solo goles. Los del rival
+  // no preguntan tirador porque su plantilla no se lleva en la app; lo que hace
+  // falta ahí es nuestro portero, y ese se fija una vez y se queda puesto.
   function candidatesFor(side, type){
     const team = currentTeam();
-    if(side === 'rival' && type === 'goal'){
-      return team.players.slice().sort((a,b)=>a.dorsal-b.dorsal);
-    }
-    if(side === 'own' && type === 'save'){
-      return team.players.filter(p => p.position === 'Portero').sort((a,b)=>a.dorsal-b.dorsal);
-    }
+    if(side === 'rival') return sortedPlayers(team.players);
+    if(SHOT_ON_TARGET[type] && !state.draft.keeper) return keepersOf(team);
     return [];
   }
 
+  // El mismo paso de elegir jugador sirve para el tirador y para el portero: lo
+  // que cambia es qué se hace con la respuesta, y eso lo dice `role`.
+  function playerRoleFor(side, type){
+    return side === 'own' && SHOT_ON_TARGET[type] ? 'keeper' : 'shooter';
+  }
+
+  const SHOT_TITLE = {
+    goal: '¿Quién ha marcado?',
+    save: '¿Quién ha lanzado?',
+    out:  '¿Quién ha tirado fuera?',
+    post: '¿Quién ha dado en el palo?'
+  };
+
   function renderPlayerStep(p){
-    let title = 'Selecciona jugador';
-    if(p.side === 'rival' && p.type === 'goal') title = '¿Quién ha marcado?';
-    if(p.side === 'own' && p.type === 'save') title = '¿Qué portero ha parado?';
+    const title = p.role === 'keeper'
+      ? '¿Qué portero tenemos en portería?'
+      : (SHOT_TITLE[p.type] || 'Selecciona jugador');
+    const sub = p.role === 'keeper'
+      ? 'Se queda puesto para el resto del partido; puedes cambiarlo cuando entre otro.'
+      : '';
     const btns = p.candidates.map(pl => `
       <button class="modal-player-btn" data-select-player="${pl.id}">
         <span class="dorsal-mini">${pl.dorsal}</span> ${esc(pl.name)}
@@ -997,8 +1883,30 @@
     `).join('');
     return `
       <div class="modal-title">${title}</div>
+      ${sub ? `<div class="modal-sub">${sub}</div>` : ''}
       ${btns}
       <button class="modal-skip-btn" id="skip-player-btn">Sin especificar</button>
+    `;
+  }
+
+  function renderEventModal(){
+    const p = state.pendingEvent;
+    if(!p) return '';
+    const btns = p.candidates.map(pl => `
+      <button class="modal-player-btn" data-event-player="${pl.id}">
+        <span class="dorsal-mini">${pl.dorsal}</span> ${esc(pl.name)}
+      </button>
+    `).join('');
+    return `
+      <div class="modal-overlay" id="event-modal">
+        <div class="modal-box">
+          <div class="modal-title">${esc(EVENT_NAME[p.type] || '')}</div>
+          <div class="modal-sub">¿De qué jugador?</div>
+          ${btns}
+          <button class="modal-skip-btn" id="skip-event-player">Sin especificar</button>
+          <button class="modal-cancel-btn" id="cancel-event-btn">Cancelar, no registrar</button>
+        </div>
+      </div>
     `;
   }
 
@@ -1027,11 +1935,100 @@
     `;
   }
 
+  function playerById(id){
+    const team = currentTeam();
+    return team.players.find(p => p.id === id) || null;
+  }
+
+  function playerChip(p, on, attr){
+    return `
+      <button class="court-chip${on ? ' on' : ''}" ${attr}="${p.id}">
+        <span class="dorsal-mini">${p.dorsal}</span>${esc(p.name.split(/\s+/)[0])}
+      </button>
+    `;
+  }
+
+  function clockHtml(){
+    const d = state.draft;
+    const running = d.clock.running;
+    return `
+      <div class="clock-bar">
+        <button class="clock-play${running ? ' on' : ''}" id="toggle-clock"
+                aria-label="${running ? 'Parar el reloj' : 'Poner el reloj en marcha'}">
+          ${running ? icon('pause') : icon('play')}
+        </button>
+        <div class="clock-read">
+          <div class="clock-time" id="clock-time">${clockText(d)}</div>
+          <div class="clock-period">${d.period === 1 ? '1ª parte' : '2ª parte'}${
+            d.halfTime !== null ? ` · descanso en el ${d.halfTime}′` : ''
+          }</div>
+        </div>
+        ${d.period === 1
+          ? `<button class="clock-half" id="end-half-btn">Fin 1ª parte</button>`
+          : `<span class="clock-half done">2ª parte</span>`}
+      </div>
+    `;
+  }
+
+  // Quién está en portería y quién en pista. Fijar el portero es lo que hace que
+  // los goles encajados tengan dueño y que el porcentaje de paradas signifique
+  // algo; marcar los siete de pista es lo que permite calcular el más/menos.
+  function lineupHtml(){
+    const team = currentTeam();
+    const d = state.draft;
+    const keepers = keepersOf(team);
+    const field = sortedPlayers(team.players.filter(p => p.position !== 'Portero'));
+    const onCount = d.onCourt.length;
+    return `
+      <div class="section-label">
+        En portería
+        ${d.keeper ? '' : '<small>sin fijar: los goles encajados no tendrán portero</small>'}
+      </div>
+      <div class="chip-row">
+        ${keepers.length
+          ? keepers.map(p => playerChip(p, d.keeper === p.id, 'data-keeper')).join('')
+          : '<div class="hint-text">No hay ningún portero en la plantilla.</div>'}
+      </div>
+
+      <div class="section-label">
+        En pista
+        <small>${onCount}/${ON_COURT_MAX}${onCount > ON_COURT_MAX ? ' · te has pasado' : ''}</small>
+      </div>
+      <div class="chip-row">
+        ${field.length
+          ? field.map(p => playerChip(p, d.onCourt.indexOf(p.id) !== -1, 'data-court-player')).join('')
+          : '<div class="hint-text">No hay jugadores de campo en la plantilla.</div>'}
+      </div>
+      <div class="hint-text">Toca a quien entra o sale. Con esto sale el más/menos de cada uno.</div>
+    `;
+  }
+
+  function eventPadHtml(){
+    const last = state.draft.events.filter(e => e.type !== 'in' && e.type !== 'out').slice(-1)[0];
+    return `
+      <div class="section-label">Registro rápido</div>
+      <div class="event-pad">
+        ${EVENT_TYPES.map(e => `
+          <button class="event-btn tone-${e.tone}" data-event="${e.id}">
+            <span class="ev-short">${e.short}</span>
+            <span class="ev-name">${esc(e.name)}</span>
+          </button>
+        `).join('')}
+      </div>
+      ${last ? `
+        <button class="secondary slim" id="undo-event-btn">
+          Deshacer ${esc((EVENT_NAME[last.type] || '').toLowerCase())}${
+            last.player ? ' de ' + esc((playerById(last.player) || {}).name || '') : ''}
+        </button>` : ''}
+    `;
+  }
+
   function renderLiveMatch(){
     const team = currentTeam();
     const d = state.draft;
     const gf = d.shotsRival.filter(s=>s.type==='goal').length;
     const ga = d.shotsOwn.filter(s=>s.type==='goal').length;
+    const keeper = d.keeper ? playerById(d.keeper) : null;
     return `
       ${topbar({ right:`<button class="back-btn wide" id="finish-match-btn">Guardar</button>` })}
       <main class="live-main">
@@ -1040,26 +2037,33 @@
           <div class="score-box"><div class="num" style="color:var(--out)">${ga}</div><div class="lbl">${esc(d.rival)}</div></div>
         </div>
 
+        ${clockHtml()}
+
+        <div class="goals-row">
+          ${goalGridHtml('own', 'Nuestra portería', keeper ? `para ${keeper.dorsal} ${keeper.name}` : 'tira el rival')}
+          ${goalGridHtml('rival', 'Portería rival', 'tiramos nosotros')}
+        </div>
+        <div class="hint-text center">1 toque = gol · 2 toques = parada</div>
+
+        ${eventPadHtml()}
+        ${lineupHtml()}
+
+        <div class="section-label">Opciones</div>
         <button class="origin-toggle ${d.askOrigin ? 'on' : ''}" id="toggle-origin">
           <span class="dot"></span>
           <span>Preguntar zona de lanzamiento</span>
         </button>
 
-        <div class="goals-row">
-          ${goalGridHtml('own', 'Nuestra portería', 'tira el rival')}
-          ${goalGridHtml('rival', 'Portería rival', 'tiramos nosotros')}
-        </div>
-        <div class="hint-text center">1 toque = gol · 2 toques = parada</div>
-
         <button class="secondary" id="cancel-match-btn">Descartar partido</button>
       </main>
       ${renderPendingModal()}
+      ${renderEventModal()}
     `;
   }
 
-  // Un tiro puede necesitar preguntar el jugador, la zona de lanzamiento, las
+  // Un tiro puede necesitar preguntar el jugador, el punto de lanzamiento, las
   // dos cosas o ninguna: se monta la lista de pasos y se van recorriendo.
-  function maybeAskPlayer(side, zone, type){
+  function beginShot(side, zone, type){
     const candidates = candidatesFor(side, type);
     const steps = [];
     if(candidates.length > 0) steps.push('player');
@@ -1068,8 +2072,11 @@
       registerShot(side, zone, type, null, null);
       return;
     }
-    state.pendingShot = { side, zone, type, candidates, player:null, origin:null, steps, step:0 };
-    renderLiveMatchInPlace();
+    state.pendingShot = {
+      side, zone, type, candidates, player:null, origin:null, steps, step:0,
+      role: playerRoleFor(side, type)
+    };
+    render();
   }
 
   function advancePending(patch){
@@ -1078,26 +2085,40 @@
     Object.assign(p, patch);
     p.step++;
     if(p.step >= p.steps.length){
+      // Si lo que se ha preguntado era el portero, la respuesta no es el autor
+      // del tiro: es quién tenemos en portería a partir de ahora.
+      if(p.role === 'keeper'){
+        if(p.player) state.draft.keeper = p.player;
+        p.player = null;
+      }
       registerShot(p.side, p.zone, p.type, p.player, p.origin);
     } else {
-      renderLiveMatchInPlace();
+      render();
     }
   }
 
   function registerShot(side, zone, type, playerId, origin){
     const d = state.draft;
-    const entry = { zone, type, player: playerId || null, origin: origin || null };
-    if(side === 'own') d.shotsOwn.push(entry); else d.shotsRival.push(entry);
-    d.log.push({ side, kind:'shot' });
+    const st = stamp();
+    const entry = {
+      zone: zone === undefined ? null : zone,
+      type,
+      player: playerId || null,
+      origin: origin || null,
+      minute: st.minute, period: st.period, ordinal: st.ordinal
+    };
+    // Los tiros a nuestra portería llevan el portero que estaba en ese momento,
+    // vayan dentro o los pare: sin el denominador no hay porcentaje de paradas.
+    if(side === 'own') entry.keeper = d.keeper || null;
+    const onTarget = Boolean(SHOT_ON_TARGET[type]);
+    const arr = side === 'own'
+      ? (onTarget ? d.shotsOwn : d.missOwn)
+      : (onTarget ? d.shotsRival : d.missRival);
+    arr.push(entry);
+    d.log.push({ side, kind: onTarget ? 'shot' : 'miss' });
     state.pendingShot = null;
-    renderLiveMatchInPlace();
-  }
-
-  function registerOut(side){
-    const d = state.draft;
-    if(side === 'own') d.outOwn++; else d.outRival++;
-    d.log.push({ side, kind:'out' });
-    renderLiveMatchInPlace();
+    saveDraft();
+    render();
   }
 
   function undoLast(side){
@@ -1105,18 +2126,77 @@
     for(let i = d.log.length - 1; i >= 0; i--){
       if(d.log[i].side === side){
         const action = d.log[i];
-        if(action.kind === 'shot'){
-          const arr = side === 'own' ? d.shotsOwn : d.shotsRival;
-          arr.pop();
-        } else {
-          if(side === 'own') d.outOwn = Math.max(0, d.outOwn - 1);
-          else d.outRival = Math.max(0, d.outRival - 1);
-        }
+        const arr = action.kind === 'shot'
+          ? (side === 'own' ? d.shotsOwn : d.shotsRival)
+          : (side === 'own' ? d.missOwn : d.missRival);
+        arr.pop();
         d.log.splice(i, 1);
         break;
       }
     }
-    renderLiveMatchInPlace();
+    saveDraft();
+    render();
+  }
+
+  // ---------- eventos y alineación ----------
+
+  function beginEvent(type){
+    const spec = EVENT_TYPES.find(e => e.id === type);
+    if(!spec) return;
+    const candidates = sortedPlayers(currentTeam().players);
+    if(candidates.length === 0){
+      registerEvent(type, null);
+      return;
+    }
+    state.pendingEvent = { type, candidates };
+    render();
+  }
+
+  function registerEvent(type, playerId){
+    const st = stamp();
+    state.draft.events.push({
+      type, player: playerId || null,
+      minute: st.minute, period: st.period, ordinal: st.ordinal
+    });
+    state.pendingEvent = null;
+    saveDraft();
+    render();
+  }
+
+  function undoLastEvent(){
+    const evs = state.draft.events;
+    for(let i = evs.length - 1; i >= 0; i--){
+      if(evs[i].type !== 'in' && evs[i].type !== 'out'){
+        evs.splice(i, 1);
+        break;
+      }
+    }
+    saveDraft();
+    render();
+  }
+
+  // Entrar y salir de la pista se anota como evento para poder reconstruir
+  // después quién estaba dentro en cada gol, que es de donde sale el más/menos.
+  function toggleCourt(playerId){
+    const d = state.draft;
+    const i = d.onCourt.indexOf(playerId);
+    const st = stamp();
+    if(i === -1){
+      d.onCourt.push(playerId);
+      d.events.push({ type:'in', player:playerId, minute:st.minute, period:st.period, ordinal:st.ordinal });
+    } else {
+      d.onCourt.splice(i, 1);
+      d.events.push({ type:'out', player:playerId, minute:st.minute, period:st.period, ordinal:st.ordinal });
+    }
+    saveDraft();
+    render();
+  }
+
+  function setKeeper(playerId){
+    const d = state.draft;
+    d.keeper = d.keeper === playerId ? null : playerId;
+    saveDraft();
+    render();
   }
 
   function flashCell(side, zone, type){
@@ -1131,14 +2211,25 @@
     setTimeout(()=> fl.remove(), 500);
   }
 
-  function renderLiveMatchInPlace(){
-    // re-render only the live match main content to keep it snappy
-    render();
+  // El reloj se refresca solo su propio hueco cada segundo: repintar la
+  // pantalla entera cada segundo se cargaría el modal abierto y el punto que se
+  // está tocando en la pista.
+  let clockTimer = null;
+
+  function startClockTick(){
+    if(clockTimer){ clearInterval(clockTimer); clockTimer = null; }
+    if(state.screen !== 'liveMatch' || !state.draft || !state.draft.clock.running) return;
+    clockTimer = setInterval(() => {
+      const el = document.getElementById('clock-time');
+      if(!el || !state.draft){ clearInterval(clockTimer); clockTimer = null; return; }
+      el.textContent = clockText(state.draft);
+    }, 1000);
   }
 
   async function handleFinishMatch(){
     const matchId = Store.saveMatch(state.currentTeamId, state.draft);
     state.draft = null;
+    Store.clearDraft();
     reloadMatches();
     state.currentMatchId = matchId;
     toast(Store.status() === 'synced' ? 'Partido guardado' : 'Partido guardado en este dispositivo');
@@ -1172,6 +2263,18 @@
     bind('migrate-no','click', () => {
       Store.skipLegacy();
       state.screen = 'dashboard';
+      render();
+    });
+
+    bind('resume-match','click', () => {
+      state.currentTeamId = state.draft.teamId;
+      state.screen = 'liveMatch';
+      render();
+    });
+    bind('drop-match','click', () => {
+      if(!confirm('¿Descartar el partido sin guardar? Se perderá lo anotado.')) return;
+      state.draft = null;
+      Store.clearDraft();
       render();
     });
 
@@ -1214,6 +2317,12 @@
       state.screen = 'matchList';
       render();
     });
+    bind('view-season-btn','click', () => {
+      reloadMatches();
+      state.screen = 'season';
+      render();
+    });
+    bind('to-season','click', () => { state.screen = 'season'; render(); });
 
     bind('to-team','click', () => { state.screen='team'; render(); });
     app.querySelectorAll('[data-match]').forEach(el => {
@@ -1223,7 +2332,36 @@
         render();
       });
     });
-    bind('to-matches','click', () => { state.screen='matchList'; render(); });
+    bind('to-matches','click', () => {
+      state.screen='matchList';
+      state.editingMatch = false;
+      render();
+    });
+
+    bind('edit-match','click', () => {
+      state.editingMatch = !state.editingMatch;
+      state.formError = '';
+      render();
+    });
+    bind('save-match-edit','click', handleSaveMatchEdit);
+    bind('cancel-match-edit','click', () => {
+      state.editingMatch = false;
+      state.formError = '';
+      render();
+    });
+    bind('delete-match','click', handleDeleteMatch);
+    bind('share-match','click', shareMatchImage);
+    bind('csv-match','click', downloadMatchCsv);
+
+    app.querySelectorAll('[data-period]').forEach(el => {
+      el.addEventListener('click', () => {
+        state.mapFilter.period = el.getAttribute('data-period');
+        render();
+      });
+    });
+    bind('toggle-heat','click', () => { state.mapFilter.heat = !state.mapFilter.heat; render(); });
+    const fp = document.getElementById('filter-player');
+    if(fp) fp.addEventListener('change', () => { state.mapFilter.player = fp.value; render(); });
 
     bind('start-match-btn','click', handleStartMatch);
 
@@ -1236,21 +2374,41 @@
         if(clickTimers[key]){
           clearTimeout(clickTimers[key]);
           delete clickTimers[key];
-          maybeAskPlayer(side, zone, 'save');
+          beginShot(side, zone, 'save');
         } else {
           clickTimers[key] = setTimeout(() => {
-            maybeAskPlayer(side, zone, 'goal');
+            beginShot(side, zone, 'goal');
             delete clickTimers[key];
           }, 260);
         }
       });
     });
     app.querySelectorAll('[data-out]').forEach(el => {
-      el.addEventListener('click', () => registerOut(el.getAttribute('data-out')));
+      el.addEventListener('click', () => beginShot(el.getAttribute('data-out'), null, 'out'));
+    });
+    app.querySelectorAll('[data-post]').forEach(el => {
+      el.addEventListener('click', () => beginShot(el.getAttribute('data-post'), null, 'post'));
     });
     app.querySelectorAll('[data-undo]').forEach(el => {
       el.addEventListener('click', () => undoLast(el.getAttribute('data-undo')));
     });
+    app.querySelectorAll('[data-event]').forEach(el => {
+      el.addEventListener('click', () => beginEvent(el.getAttribute('data-event')));
+    });
+    app.querySelectorAll('[data-event-player]').forEach(el => {
+      el.addEventListener('click', () => registerEvent(state.pendingEvent.type, el.getAttribute('data-event-player')));
+    });
+    bind('skip-event-player','click', () => registerEvent(state.pendingEvent.type, null));
+    bind('cancel-event-btn','click', () => { state.pendingEvent = null; render(); });
+    bind('undo-event-btn','click', undoLastEvent);
+    app.querySelectorAll('[data-keeper]').forEach(el => {
+      el.addEventListener('click', () => setKeeper(el.getAttribute('data-keeper')));
+    });
+    app.querySelectorAll('[data-court-player]').forEach(el => {
+      el.addEventListener('click', () => toggleCourt(el.getAttribute('data-court-player')));
+    });
+    bind('toggle-clock','click', toggleClock);
+    bind('end-half-btn','click', endFirstHalf);
     app.querySelectorAll('[data-select-player]').forEach(el => {
       el.addEventListener('click', () => advancePending({ player: el.getAttribute('data-select-player') }));
     });
@@ -1266,6 +2424,7 @@
 
     bind('toggle-origin','click', () => {
       state.draft.askOrigin = !state.draft.askOrigin;
+      saveDraft();
       render();
     });
 
@@ -1273,10 +2432,15 @@
     bind('cancel-match-btn','click', () => {
       if(confirm('¿Descartar este partido? Se perderán los tiros registrados.')){
         state.draft = null;
+        Store.clearDraft();
         state.screen = 'team';
         render();
       }
     });
+
+    // El reloj se refresca aparte del render, así que hay que volver a armarlo
+    // después de cada pintada.
+    startClockTick();
   }
 
   // ---------- boot ----------
