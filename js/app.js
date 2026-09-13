@@ -11,6 +11,8 @@
     draft: null,
     authMode: 'login',
     authError: '',
+    authNotice: '',
+    authBusy: false,
     formError: '',
     pendingShot: null
   };
@@ -128,31 +130,22 @@
     };
   }
 
-  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function esc(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
 
-  // ---------- storage helpers (browser localStorage) ----------
-  async function getVal(key, fallback){
-    try{
-      const raw = localStorage.getItem(key);
-      return raw !== null ? JSON.parse(raw) : fallback;
-    }catch(e){
-      return fallback;
-    }
-  }
-  async function setVal(key, value){
-    try{
-      localStorage.setItem(key, JSON.stringify(value));
-    }catch(e){
-      console.error('storage error', e);
-    }
+  // ---------- datos ----------
+  // Todo pasa por Store: escribe en el espejo local y encola la subida, así que
+  // ninguna pantalla espera a la red. Ver js/store.js.
+
+  function reloadTeams(){
+    state.teams = Store.teams();
   }
 
-  function usersKey(){ return 'hb:users'; }
-  function teamsKey(user){ return 'hb:teams:'+user; }
-  function matchesKey(user, teamId){ return 'hb:matches:'+user+':'+teamId; }
+  function reloadMatches(){
+    state.matches = Store.matches(state.currentTeamId)
+      .sort((a,b) => b.date.localeCompare(a.date));
+  }
 
   // ---------- toast ----------
   function toast(msg){
@@ -163,9 +156,125 @@
     setTimeout(()=>t.remove(), 2200);
   }
 
+  // ---------- sesión y sincronización ----------
+
+  function userLabel(){
+    const u = state.user;
+    if(!u) return '';
+    const meta = u.user_metadata || {};
+    return meta.name || meta.full_name || u.email || 'mi cuenta';
+  }
+
+  const SYNC_TEXT = {
+    syncing: 'Sincronizando…',
+    pending: 'Cambios pendientes de subir',
+    offline: 'Sin conexión: se guarda aquí y se sube al volver',
+    error:   'No se ha podido sincronizar. Se reintentará solo.',
+    local:   'Supabase sin configurar: los datos solo están en este dispositivo'
+  };
+
+  // Solo aparece cuando hay algo que contar: si todo está al día, estorba.
+  function syncBanner(){
+    const st = Store.status();
+    if(st === 'synced') return '';
+    // El recuento importa también sin conexión: es lo que te dice cuánto
+    // llevas anotado que todavía no está a salvo en ningún otro sitio.
+    const n = Store.pendingCount();
+    const extra = n && (st === 'pending' || st === 'offline' || st === 'error')
+      ? ` · ${n} sin subir` : '';
+    return `
+      <button class="sync-banner st-${st}" id="sync-banner">
+        <span class="sync-dot"></span>
+        ${esc(SYNC_TEXT[st] || '')}${extra}
+      </button>
+    `;
+  }
+
+  function onStoreChange(){
+    // Repintar entero solo donde no puede haber un formulario a medias: en la
+    // pantalla de equipo se estaría escribiendo un jugador y se perdería.
+    if(state.screen === 'dashboard' || state.screen === 'matchList'){
+      render();
+      return;
+    }
+    refreshSyncBanner();
+  }
+
+  function refreshSyncBanner(){
+    const el = document.getElementById('sync-banner');
+    const html = syncBanner();
+    // Si la banda aparece o desaparece cambia el hueco: hay que repintar.
+    if((!el && html) || (el && !html)){
+      if(state.screen === 'team') render();
+      return;
+    }
+    if(el && html){
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      el.className = tmp.firstElementChild.className;
+      el.innerHTML = tmp.firstElementChild.innerHTML;
+    }
+  }
+
+  function renderMigrate(){
+    return `
+      <header class="topbar"><div class="title">🤾 SuperStat</div></header>
+      <main>
+        <div class="section-label">Datos de este navegador</div>
+        <div class="card">
+          <p style="margin:0 0 10px;font-size:14px;line-height:1.5;">
+            Este navegador tiene equipos y partidos guardados de antes de que
+            hubiera cuentas. ¿Los quieres pasar a la tuya?
+          </p>
+          <p style="margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;">
+            Se copian, no se borran. Si dices que no, se quedan donde están y no
+            se vuelve a preguntar.
+          </p>
+        </div>
+        <div style="height:14px;"></div>
+        <button class="primary" id="migrate-yes">Importar a mi cuenta</button>
+        <div style="height:10px;"></div>
+        <button class="secondary" id="migrate-no">No, empezar de cero</button>
+      </main>
+    `;
+  }
+
+  async function enterApp(user){
+    if(state.user && state.user.id === user.id) return;  // onAuthChange repite
+    state.user = user;
+    state.authError = '';
+    state.authNotice = '';
+    state.authBusy = false;
+    state.screen = 'loading';
+    render();
+    await Store.start(user.id);
+    reloadTeams();
+    state.screen = Store.hasLegacyData() ? 'migrate' : 'dashboard';
+    render();
+  }
+
+  function leaveApp(){
+    Store.stop();
+    state = Object.assign({}, state, {
+      screen:'auth', user:null, teams:[], matches:[], currentTeamId:null,
+      currentMatchId:null, draft:null, authMode:'login', authError:'',
+      authNotice:'', authBusy:false, formError:'', pendingShot:null
+    });
+    render();
+  }
+
   // ---------- render root ----------
   function render(){
     const app = document.getElementById('app');
+    // Las pantallas de datos se releen del store en cada pintada: así lo que
+    // llega de otro dispositivo aparece sin tener que recordar refrescarlo.
+    if(state.user){
+      if(state.screen === 'dashboard' || state.screen === 'team') reloadTeams();
+      if(state.screen === 'matchList' || state.screen === 'matchDetail'){
+        reloadTeams();
+        reloadMatches();
+      }
+    }
     let html = '';
     if(state.screen === 'auth') html = renderAuth();
     else if(state.screen === 'dashboard') html = renderDashboard();
@@ -174,6 +283,7 @@
     else if(state.screen === 'matchDetail') html = renderMatchDetail();
     else if(state.screen === 'newMatchSetup') html = renderNewMatchSetup();
     else if(state.screen === 'liveMatch') html = renderLiveMatch();
+    else if(state.screen === 'migrate') html = renderMigrate();
     else html = '<div class="loading-msg">Cargando…</div>';
     app.className = 'screen-' + state.screen; // el partido en vivo necesita más ancho
     app.innerHTML = html;
@@ -183,6 +293,18 @@
   // ---------- AUTH ----------
   function renderAuth(){
     const isLogin = state.authMode === 'login';
+    if(!DB.isConfigured()){
+      return `
+        <header class="topbar"><div class="title">🤾 SuperStat</div></header>
+        <main>
+          <div class="error-msg">
+            Falta configurar Supabase. Rellena <code>js/config.js</code> con la URL
+            del proyecto y la clave anon (Project Settings → API).
+          </div>
+          <div class="hint-text">Mientras tanto no se puede entrar ni guardar nada.</div>
+        </main>
+      `;
+    }
     return `
       <header class="topbar">
         <div class="title">🤾 SuperStat</div>
@@ -193,50 +315,89 @@
             Estadísticas de partidos de balonmano, equipo a equipo, tiro a tiro.
           </p>
         </div>
+
+        <button class="google-btn" id="google-btn">
+          <span class="g-mark" aria-hidden="true">G</span>
+          Entrar con Google
+        </button>
+        <div class="auth-divider"><span>o con tu correo</span></div>
+
         <h2 style="font-size:19px;margin-bottom:16px;">${isLogin ? 'Entrar' : 'Crear cuenta'}</h2>
         <div class="field">
-          <label for="auth-user">Usuario</label>
-          <input id="auth-user" type="text" autocomplete="username" placeholder="tu_usuario">
+          <label for="auth-user">Correo electrónico</label>
+          <input id="auth-user" type="email" autocomplete="email" placeholder="tu@correo.com">
         </div>
         <div class="field">
           <label for="auth-pass">Contraseña</label>
           <input id="auth-pass" type="password" autocomplete="${isLogin ? 'current-password' : 'new-password'}" placeholder="••••••••">
         </div>
         ${state.authError ? `<div class="error-msg">${esc(state.authError)}</div>` : ''}
-        <button class="primary" id="auth-submit">${isLogin ? 'Entrar' : 'Crear cuenta'}</button>
+        ${state.authNotice ? `<div class="notice-msg">${esc(state.authNotice)}</div>` : ''}
+        <button class="primary" id="auth-submit" ${state.authBusy ? 'disabled' : ''}>
+          ${state.authBusy ? 'Un momento…' : (isLogin ? 'Entrar' : 'Crear cuenta')}
+        </button>
         <div style="text-align:center;margin-top:14px;">
           <button class="link-btn" id="auth-toggle">${isLogin ? '¿No tienes cuenta? Crea una' : '¿Ya tienes cuenta? Entra'}</button>
         </div>
       </main>
-      <footer class="note">Los datos se guardan solo en tu cuenta, sin cifrado adicional.</footer>
+      <footer class="note">Tus datos se guardan en tu cuenta y se sincronizan entre tus dispositivos.</footer>
     `;
   }
 
-  async function handleAuthSubmit(){
-    const user = document.getElementById('auth-user').value.trim();
-    const pass = document.getElementById('auth-pass').value;
-    if(!user || !pass){ state.authError = 'Escribe usuario y contraseña.'; render(); return; }
-    const users = await getVal(usersKey(), {});
-    if(state.authMode === 'login'){
-      if(!users[user] || users[user] !== pass){
-        state.authError = 'Usuario o contraseña incorrectos.';
-        render();
-        return;
-      }
-    } else {
-      if(users[user]){
-        state.authError = 'Ese usuario ya existe.';
-        render();
-        return;
-      }
-      users[user] = pass;
-      await setVal(usersKey(), users);
-    }
+  // Los mensajes de Supabase vienen en inglés; se traducen los habituales.
+  function authErrorText(e){
+    const m = (e && e.message ? e.message : String(e)).toLowerCase();
+    if(m.includes('invalid login credentials')) return 'Correo o contraseña incorrectos.';
+    if(m.includes('user already registered')) return 'Ya existe una cuenta con ese correo. Entra en vez de crearla.';
+    if(m.includes('password should be at least')) return 'La contraseña es demasiado corta: mínimo 6 caracteres.';
+    if(m.includes('unable to validate email')) return 'Ese correo no parece válido.';
+    if(m.includes('email not confirmed')) return 'Tienes que confirmar el correo antes de entrar. Mira tu bandeja.';
+    if(m.includes('failed to fetch') || m.includes('network')) return 'Sin conexión con el servidor. Revisa la red.';
+    return 'No se ha podido completar: ' + (e && e.message ? e.message : 'error desconocido');
+  }
+
+  async function handleGoogleSignIn(){
     state.authError = '';
-    state.user = user;
-    state.teams = await getVal(teamsKey(user), []);
-    state.screen = 'dashboard';
+    state.authBusy = true;
     render();
+    try{
+      await DB.signInWithGoogle();   // redirige fuera; al volver lo recoge boot()
+    }catch(e){
+      state.authBusy = false;
+      state.authError = authErrorText(e);
+      render();
+    }
+  }
+
+  async function handleAuthSubmit(){
+    if(state.authBusy) return;
+    const email = document.getElementById('auth-user').value.trim();
+    const pass = document.getElementById('auth-pass').value;
+    if(!email || !pass){ state.authError = 'Escribe tu correo y la contraseña.'; render(); return; }
+    state.authError = '';
+    state.authNotice = '';
+    state.authBusy = true;
+    render();
+    try{
+      if(state.authMode === 'login'){
+        await DB.signInWithPassword(email, pass);
+      } else {
+        const res = await DB.signUpWithPassword(email, pass);
+        if(res.needsConfirmation){
+          state.authBusy = false;
+          state.authMode = 'login';
+          state.authNotice = 'Cuenta creada. Confirma el correo que te hemos enviado y entra.';
+          render();
+          return;
+        }
+      }
+      // La sesión nueva la recoge onAuthChange, que llama a enterApp().
+    }catch(e){
+      state.authError = authErrorText(e);
+    }finally{
+      state.authBusy = false;
+      if(state.screen === 'auth') render();
+    }
   }
 
   // ---------- DASHBOARD ----------
@@ -254,16 +415,17 @@
     `;
     return `
       <header class="topbar">
-        <div class="title">🤾 SuperStat <small>${esc(state.user)}</small></div>
+        <div class="title">🤾 SuperStat <small>${esc(userLabel())}</small></div>
         <button class="back-btn" id="logout-btn">Salir</button>
       </header>
       <main>
+        ${syncBanner()}
         <div class="section-label">Tus equipos</div>
         ${teamsHtml}
         <div class="section-label">Nuevo equipo</div>
         <div class="field">
           <label for="new-team-name">Nombre del equipo</label>
-          <input id="new-team-name" type="text" placeholder="Ej. CB Sabadell">
+          <input id="new-team-name" type="text" maxlength="80" placeholder="Ej. CB Sabadell">
         </div>
         <button class="primary" id="create-team-btn">Crear equipo</button>
       </main>
@@ -273,9 +435,13 @@
   async function handleCreateTeam(){
     const name = document.getElementById('new-team-name').value.trim();
     if(!name) return;
-    const team = { id: uid(), name, players: [] };
-    state.teams.push(team);
-    await setVal(teamsKey(state.user), state.teams);
+    if(name.length > 80){
+      state.formError = 'El nombre del equipo es demasiado largo (máximo 80).';
+      render();
+      return;
+    }
+    const team = Store.createTeam(name);
+    reloadTeams();
     state.currentTeamId = team.id;
     state.screen = 'team';
     render();
@@ -312,7 +478,7 @@
         <div class="row">
           <div class="field" style="flex:2;">
             <label for="p-name">Nombre</label>
-            <input id="p-name" type="text" placeholder="Nombre del jugador">
+            <input id="p-name" type="text" maxlength="80" placeholder="Nombre del jugador">
           </div>
           <div class="field" style="flex:1;">
             <label for="p-dorsal">Dorsal</label>
@@ -345,17 +511,26 @@
       render();
       return;
     }
-    const team = currentTeam();
-    team.players.push({ id: uid(), name, dorsal: parseInt(dorsalRaw,10), position });
+    const dorsal = parseInt(dorsalRaw, 10);
+    if(!Number.isInteger(dorsal) || dorsal < 0 || dorsal > 99){
+      state.formError = 'El dorsal tiene que ser un número entre 0 y 99.';
+      render();
+      return;
+    }
+    if(name.length > 80){
+      state.formError = 'El nombre es demasiado largo (máximo 80 caracteres).';
+      render();
+      return;
+    }
+    Store.addPlayer(state.currentTeamId, { name, dorsal, position });
     state.formError = '';
-    await setVal(teamsKey(state.user), state.teams);
+    reloadTeams();
     render();
   }
 
   async function handleDeletePlayer(id){
-    const team = currentTeam();
-    team.players = team.players.filter(p => p.id !== id);
-    await setVal(teamsKey(state.user), state.teams);
+    Store.deletePlayer(id);
+    reloadTeams();
     render();
   }
 
@@ -552,7 +727,7 @@
         <span class="team-pill">${esc(team.name)}</span>
         <div class="field">
           <label for="rival-name">Nombre del equipo rival</label>
-          <input id="rival-name" type="text" placeholder="Ej. BM Granollers">
+          <input id="rival-name" type="text" maxlength="80" placeholder="Ej. BM Granollers">
         </div>
         <div class="field">
           <label for="match-date">Fecha</label>
@@ -572,9 +747,14 @@
       render();
       return;
     }
+    if(rival.length > 80){
+      state.formError = 'El nombre del rival es demasiado largo (máximo 80).';
+      render();
+      return;
+    }
     state.formError = '';
     state.draft = {
-      id: uid(),
+      id: Store.uuid(),
       rival,
       date,
       shotsOwn: [],   // shots faced at OUR goal (rival shooting)
@@ -799,17 +979,11 @@
   }
 
   async function handleFinishMatch(){
-    const d = state.draft;
-    const match = {
-      id: d.id, rival: d.rival, date: d.date,
-      shotsOwn: d.shotsOwn, shotsRival: d.shotsRival,
-      outOwn: d.outOwn, outRival: d.outRival
-    };
-    state.matches.push(match);
-    await setVal(matchesKey(state.user, state.currentTeamId), state.matches);
+    const matchId = Store.saveMatch(state.currentTeamId, state.draft);
     state.draft = null;
-    state.currentMatchId = match.id;
-    toast('Partido guardado');
+    reloadMatches();
+    state.currentMatchId = matchId;
+    toast(Store.status() === 'synced' ? 'Partido guardado' : 'Partido guardado en este dispositivo');
     state.screen = 'matchDetail';
     render();
   }
@@ -821,8 +995,27 @@
     const bind = (id, ev, fn) => { const el = document.getElementById(id); if(el) el.addEventListener(ev, fn); };
 
     bind('auth-submit','click', handleAuthSubmit);
-    bind('auth-toggle','click', () => { state.authMode = state.authMode === 'login' ? 'register' : 'login'; state.authError=''; render(); });
-    bind('logout-btn','click', () => { state = {screen:'auth', user:null, teams:[], authMode:'login', authError:'', formError:''}; render(); });
+    bind('google-btn','click', handleGoogleSignIn);
+    bind('auth-toggle','click', () => {
+      state.authMode = state.authMode === 'login' ? 'register' : 'login';
+      state.authError = '';
+      state.authNotice = '';
+      render();
+    });
+    bind('logout-btn','click', async () => { await DB.signOut(); leaveApp(); });
+    bind('sync-banner','click', () => Store.sync());
+    bind('migrate-yes','click', () => {
+      const n = Store.importLegacy();
+      reloadTeams();
+      state.screen = 'dashboard';
+      render();
+      toast(n ? `Importados ${n} partido${n===1?'':'s'}` : 'Datos importados');
+    });
+    bind('migrate-no','click', () => {
+      Store.skipLegacy();
+      state.screen = 'dashboard';
+      render();
+    });
 
     bind('create-team-btn','click', handleCreateTeam);
     app.querySelectorAll('[data-team]').forEach(el => {
@@ -841,7 +1034,7 @@
     });
     bind('new-match-btn','click', () => { state.formError=''; state.screen='newMatchSetup'; render(); });
     bind('view-matches-btn','click', async () => {
-      state.matches = await getVal(matchesKey(state.user, state.currentTeamId), []);
+      reloadMatches();
       state.screen = 'matchList';
       render();
     });
@@ -912,8 +1105,27 @@
 
   // ---------- boot ----------
   (async function boot(){
-    state.screen = 'auth';
+    state.screen = 'loading';
     render();
+
+    if(!DB.isConfigured()){
+      state.screen = 'auth';
+      render();
+      return;
+    }
+
+    DB.init();
+    Store.onChange(onStoreChange);
+
+    // getSession() resuelve después de que la librería haya leído el token que
+    // Google deja en la URL; hasta entonces no se puede limpiar la barra.
+    const user = await DB.currentUser();
+    DB.cleanAuthUrl();
+
+    DB.onAuthChange((u) => { if(u) enterApp(u); else if(state.user) leaveApp(); });
+
+    if(user) await enterApp(user);
+    else { state.screen = 'auth'; render(); }
   })();
 
 })();
