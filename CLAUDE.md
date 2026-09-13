@@ -35,7 +35,7 @@ funciona desde un origen declarado en Google Cloud, y el nonce se calcula con
 - `index.html` — esqueleto de la página y carga de fuentes/estilos/scripts.
 - `css/styles.css` — todos los estilos (tema oscuro sobre negro con la
   tipografía del sistema, cabecera y barra inferior flotantes, tarjetas,
-  la portería dibujada con postes/red/soportes, el modal de selección de
+  la portería dibujada con postes y red, el modal de selección de
   jugador, etc.).
 - `js/config.js` — URL y clave anon de Supabase, y el ID de cliente de Google.
   Las tres se publican a propósito.

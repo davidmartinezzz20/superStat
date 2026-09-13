@@ -465,17 +465,6 @@
     top:0; bottom:0; right:0; width:10px;
     background-image:repeating-linear-gradient(to bottom, #CC2F26 0 16px, #F7F6F2 16px 32px);
   }
-  .goal-support{
-    position:absolute;
-    bottom:-9px;
-    width:30px;height:16px;
-    background-image:repeating-linear-gradient(to right, #CC2F26 0 8px, #F7F6F2 8px 16px);
-    clip-path:polygon(0 100%, 100% 100%, 100% 0%);
-    z-index:1;
-    box-shadow:0 1px 2px rgba(0,0,0,0.35);
-  }
-  .goal-support.left{ left:2px; }
-  .goal-support.right{ right:2px; transform:scaleX(-1); }
   .goal-ground{
     height:4px;
     margin:0 -2px 0;
@@ -791,7 +780,6 @@
   .goals-row .goal-post.left,
   .goals-row .goal-post.right{width:6px;}
   .goals-row .goal-net{margin:6px 6px 0;padding:2px;}
-  .goals-row .goal-support{width:20px;height:11px;bottom:-6px;}
   .goals-row .goal-cell .marks{gap:3px;}
   .goals-row .mark-chip{font-size:9.5px;padding:1px 4px;}
   .goals-row .flash{font-size:15px;}

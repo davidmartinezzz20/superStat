@@ -965,8 +965,6 @@
               <div class="goal-grid" data-grid="${side}">${cells}</div>
             </div>
           </div>
-          <div class="goal-support left"></div>
-          <div class="goal-support right"></div>
           <div class="goal-ground"></div>
         </div>
         <div class="goal-actions">
