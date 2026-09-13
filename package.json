@@ -4,6 +4,27 @@
   "description": "App web para llevar estadísticas de equipos de balonmano: plantillas, partidos y mapa de tiros por portería.",
   "private": true,
   "scripts": {
-    "start": "npx --yes serve . -l 5173"
+    "start": "npx --yes serve . -l 5173",
+    "test": "node test/sync.js && node test/live.js",
+    "build:www": "node tools/build-www.js",
+    "sync": "npm run build:www && cap sync",
+    "android": "npm run build:www && cap sync android && cap open android",
+    "ios": "npm run build:www && cap sync ios && cap open ios",
+    "assets": "capacitor-assets generate --iconBackgroundColor '#08090B' --iconBackgroundColorDark '#08090B' --splashBackgroundColor '#08090B' --splashBackgroundColorDark '#08090B'"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/filesystem": "^8.1.3",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/share": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
+    "@capgo/capacitor-social-login": "^8.5.7"
   }
 }

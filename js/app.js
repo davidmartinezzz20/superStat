@@ -588,6 +588,14 @@
   // Los mensajes de Supabase vienen en inglés; se traducen los habituales.
   function authErrorText(e){
     const m = (e && e.message ? e.message : String(e)).toLowerCase();
+    // Lo que puede fallar solo en la app de móvil. Cancelar el diálogo de
+    // Google llega como error y no lo es: no se enseña nada.
+    if(m.includes('cancel') || m.includes('12501') || m.includes('user_cancel')) return '';
+    if(m.includes('google-sin-token')) return 'Google no ha devuelto la sesión. Inténtalo otra vez.';
+    if(m.includes('sin-plataforma-nativa')) return 'Ahora mismo no se puede entrar con Google.';
+    if(m.includes('10:') || m.includes('developer_error')){
+      return 'La app no está dada de alta en Google con esta firma. Revisa el ID de cliente y la huella SHA-1.';
+    }
     if(m.includes('invalid login credentials')) return 'Correo o contraseña incorrectos.';
     if(m.includes('user already registered')) return 'Ya existe una cuenta con ese correo. Entra en vez de crearla.';
     if(m.includes('password should be at least')) return 'La contraseña es demasiado corta: mínimo 6 caracteres.';
@@ -597,12 +605,48 @@
     return 'No se ha podido completar: ' + (e && e.message ? e.message : 'error desconocido');
   }
 
-  // El botón de Google lo dibuja él mismo dentro de #google-slot, así que no hay
-  // click propio que enlazar: se monta después de cada render de la entrada.
-  // Si no se puede dibujar, se dice ahí mismo en vez de dejar un hueco mudo.
+  // El botón de Google.
+  //
+  // En el navegador lo dibuja Google dentro de #google-slot, así que no hay
+  // click propio que enlazar: se monta después de cada render de la entrada. Si
+  // no se puede dibujar, se dice ahí mismo en vez de dejar un hueco mudo.
+  //
+  // En la app de móvil ese botón no sirve —Google no admite su flujo web dentro
+  // de un WebView— así que se pinta uno nuestro que le pide el token al
+  // sistema operativo.
   function mountGoogleButton(){
     const slot = document.getElementById('google-slot');
     if(!slot) return;
+    if(window.Native && Native.isNative()){
+      slot.innerHTML = `
+        <button class="google-native-btn" id="google-native">
+          <svg viewBox="0 0 18 18" aria-hidden="true" width="18" height="18">
+            <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/>
+            <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/>
+            <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.9 11.42 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
+          </svg>
+          <span>Entrar con Google</span>
+        </button>
+      `;
+      const btn = document.getElementById('google-native');
+      btn.addEventListener('click', async () => {
+        if(state.authBusy) return;
+        state.authBusy = true;
+        state.authError = '';
+        render();
+        try{
+          await DB.signInWithGoogleNative();
+          // La sesión la recoge onAuthChange, igual que con el correo.
+        }catch(e){
+          state.authError = authErrorText(e);
+        }finally{
+          state.authBusy = false;
+          if(state.screen === 'auth') render();
+        }
+      });
+      return;
+    }
     DB.renderGoogleButton(slot, (e) => {
       state.authError = authErrorText(e);
       render();
@@ -1504,7 +1548,14 @@
   // sus cuentas en una hoja de cálculo, y una imagen para el grupo del equipo,
   // que es por donde de verdad circulan estas cosas.
 
-  function saveBlob(blob, filename){
+  // Guardar un archivo. En el navegador es un enlace con `download`; dentro de
+  // la app de móvil eso no hace nada —no hay carpeta de descargas ni barra del
+  // navegador— y hay que escribirlo con Filesystem.
+  async function saveBlob(blob, filename){
+    if(window.Native && Native.isNative()){
+      const ruta = await Native.saveFile(blob, filename);
+      if(ruta){ toast('Guardado en Documentos: ' + filename); return; }
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1514,6 +1565,7 @@
     a.remove();
     // Sin esto el objeto se queda en memoria hasta recargar la página.
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast('Descargado');
   }
 
   function csvCell(v){
@@ -1555,14 +1607,13 @@
     return lines.join('\n');
   }
 
-  function downloadMatchCsv(){
+  async function downloadMatchCsv(){
     const team = currentTeam();
     const m = state.matches.find(mm => mm.id === state.currentMatchId);
     if(!m) return;
     // El BOM es lo que hace que Excel abra las tildes bien.
     const blob = new Blob(['﻿' + matchCsv(team, m)], { type:'text/csv;charset=utf-8' });
-    saveBlob(blob, `${slug(team.name)}-${slug(m.rival)}-${m.date}.csv`);
-    toast('CSV descargado');
+    await saveBlob(blob, `${slug(team.name)}-${slug(m.rival)}-${m.date}.csv`);
   }
 
   // El resumen dibujado a mano en un canvas: sin librerías y con la misma
@@ -1666,19 +1717,31 @@
     const blob = await new Promise(ok => canvas.toBlob(ok, 'image/png'));
     if(!blob){ toast('No se ha podido generar la imagen'); return; }
     const name = `${slug(team.name)}-${slug(m.rival)}-${m.date}.png`;
+    const titulo = `${team.name} – ${m.rival}`;
+
+    // Dentro de la app, la hoja de compartir la abre el sistema: navigator.share
+    // no existe en el WebView de Android.
+    if(window.Native && Native.isNative()){
+      try{
+        const hecho = await Native.shareFile(blob, name, titulo);
+        if(hecho !== null) return;    // compartido o cancelado; en ambos, listo
+      }catch(e){
+        console.warn('no se pudo compartir', e);
+      }
+    }
+
     const file = new File([blob], name, { type:'image/png' });
     // En el móvil se abre la hoja de compartir; en el escritorio, que casi
     // nunca la tiene, se descarga y ya la manda el usuario por donde quiera.
     if(navigator.canShare && navigator.canShare({ files:[file] })){
       try{
-        await navigator.share({ files:[file], title:`${team.name} ${'–'} ${m.rival}` });
+        await navigator.share({ files:[file], title: titulo });
         return;
       }catch(e){
         if(e && e.name === 'AbortError') return;   // lo ha cancelado el usuario
       }
     }
-    saveBlob(blob, name);
-    toast('Imagen descargada');
+    await saveBlob(blob, name);
   }
 
   // ---------- NEW MATCH SETUP ----------
@@ -2468,10 +2531,45 @@
     startClockTick();
   }
 
+  // El botón atrás de Android. Lo llama js/native.js y devuelve true si se ha
+  // ocupado él; si devuelve false, el sistema cierra la app.
+  //
+  // Desde el partido en vivo se sale al panel en vez de quedarse atrapado: lo
+  // anotado sobrevive como borrador y la tarjeta de "seguir con el partido"
+  // está esperando ahí, así que no se pierde nada.
+  const ATRAS = {
+    matchDetail: 'matchList',
+    matchList: 'team',
+    season: 'team',
+    newMatchSetup: 'team',
+    liveMatch: 'dashboard',
+    team: 'dashboard',
+    account: 'dashboard',
+    migrate: null,
+    auth: null,
+    dashboard: null
+  };
+
+  window.SuperStatBack = function(){
+    if(state.pendingShot){ state.pendingShot = null; render(); return true; }
+    if(state.pendingEvent){ state.pendingEvent = null; render(); return true; }
+    if(state.editingMatch){ state.editingMatch = false; render(); return true; }
+    const destino = ATRAS[state.screen];
+    if(!destino) return false;
+    state.screen = destino;
+    state.formError = '';
+    render();
+    return true;
+  };
+
   // ---------- boot ----------
   (async function boot(){
     state.screen = 'loading';
     render();
+
+    // Barra de estado, botón atrás, login nativo y quitar la pantalla de carga.
+    // En el navegador no hace nada.
+    if(window.Native) Native.start().catch(e => console.warn('arranque nativo', e));
 
     if(!DB.isConfigured()){
       state.screen = 'auth';

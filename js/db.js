@@ -136,6 +136,24 @@ window.DB = (function(){
     });
   }
 
+  // Entrar con Google dentro de la app de Android o iOS.
+  //
+  // Google no deja usar su flujo web dentro de un WebView embebido, así que
+  // allí el id_token lo pide el sistema operativo (ver js/native.js). Lo que
+  // viene después es exactamente lo mismo que en la web: el token se cambia por
+  // una sesión de Supabase. Va sin nonce a propósito, y el motivo está contado
+  // en native.js, donde se pide el token.
+  async function signInWithGoogleNative(){
+    const c = init();
+    if(!c) throw new Error('Supabase no está configurado.');
+    if(!window.Native || !Native.isNative()) throw new Error('sin-plataforma-nativa');
+    const token = await Native.googleIdToken();
+    if(!token) throw new Error('google-sin-token');
+    const { error } = await c.auth.signInWithIdToken({ provider:'google', token });
+    if(error) throw error;
+    // La sesión entra por onAuthChange, igual que con el correo.
+  }
+
   async function signInWithPassword(email, password){
     const c = init();
     if(!c) throw new Error('Supabase no está configurado.');
@@ -159,6 +177,10 @@ window.DB = (function(){
   async function signOut(){
     const c = init();
     if(c) await c.auth.signOut();
+    // En la app hay además una sesión de Google en el propio sistema: si no se
+    // cierra, el siguiente "entrar con Google" vuelve a entrar con la misma
+    // cuenta sin preguntar, y no hay forma de cambiar de usuario.
+    if(window.Native && Native.isNative()) await Native.googleSignOut();
   }
 
   // ------------------------------------------------------- sincronización
@@ -206,7 +228,8 @@ window.DB = (function(){
 
   return {
     TABLES, init, isConfigured, currentUser, onAuthChange, cleanAuthUrl,
-    renderGoogleButton, signInWithPassword, signUpWithPassword, signOut,
+    renderGoogleButton, signInWithGoogleNative,
+    signInWithPassword, signUpWithPassword, signOut,
     pull, push
   };
 })();

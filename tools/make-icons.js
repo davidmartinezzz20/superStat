@@ -1,59 +1,111 @@
-// Genera los iconos de la PWA a partir del mismo dibujo de la marca.
+// Genera todos los iconos de la marca: los de la web (PWA) y los que necesitan
+// las apps de Android y iOS.
 //
-// Hacen falta en PNG porque el manifest de Android y el icono de pantalla de
-// inicio de iOS no aceptan SVG. El dibujo está aquí una vez y de él salen los
-// tres archivos, para no tener tres versiones distintas del logo conviviendo.
+// El dibujo está aquí una vez y de él salen todos los archivos, para no tener
+// varias versiones del logo conviviendo. Si se toca, hay que tocar también
+// brandLogo() en js/app.js y el favicon en línea de index.html.
 //
 // Se ejecuta a mano y solo cuando cambie la marca:
 //   CHROMIUM_PATH=/ruta/al/chromium node tools/make-icons.js
 //
-// Si se toca el dibujo, hay que tocar también brandLogo() en js/app.js y el
-// favicon en línea de index.html.
+// Lo que deja en icons/ lo usa la web directamente. Lo que deja en assets/ es
+// la materia prima de @capacitor/assets, que es quien saca de ahí los tamaños
+// concretos que piden Android e iOS:
+//   npx capacitor-assets generate
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 
 const LANZAR = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {};
-const DEST = path.join(__dirname, '..', 'icons');
+const RAIZ = path.join(__dirname, '..');
 
-// `pad` es el hueco que queda alrededor del cuadro rojo, en tanto por uno. El
-// icono normal va a sangre; el "maskable" se deja con aire porque Android le
-// recorta las esquinas con la forma que use el lanzador de aplicaciones.
-function svg(pad, redondeo){
-  const s = 512, m = s * pad, w = s - m*2;
-  const bar = (x, y, h) => {
-    const bw = w * 0.156, bx = m + w * x, by = m + w * y, bh = w * h;
-    return `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${bw*0.28}" fill="#F5F5F7"/>`;
-  };
+const ROJO  = '#D9182B';
+const NEGRO = '#08090B';
+const CLARO = '#F5F5F7';
+
+// Las tres barras del logo, en proporciones sobre el lado del cuadro rojo.
+const BARRAS = [[0.203, 0.531, 0.25], [0.422, 0.391, 0.39], [0.641, 0.219, 0.562]];
+
+// `pad` es el hueco alrededor del cuadro rojo, en tanto por uno del lienzo.
+// `redondeo` es el radio de sus esquinas, sobre el lado del cuadro.
+// `fondo` puede ser null para dejarlo transparente.
+function svg(opts){
+  const s = 1024;
+  const m = s * opts.pad, w = s - m*2;
+  const fondo = opts.fondo
+    ? `<rect width="${s}" height="${s}" fill="${opts.fondo}"/>` : '';
+  // El fondo del icono adaptativo de Android es solo color: el cuadro y las
+  // barras van en la capa de delante, que es la que el lanzador mueve.
+  if(opts.soloFondo) return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}"
+      viewBox="0 0 ${s} ${s}">${fondo}</svg>`;
+  const barras = BARRAS.map(b => {
+    const bw = w * 0.156;
+    return `<rect x="${m + w*b[0]}" y="${m + w*b[1]}" width="${bw}"
+                  height="${w*b[2]}" rx="${bw*0.28}" fill="${CLARO}"/>`;
+  }).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">
-    <rect width="${s}" height="${s}" fill="#08090B"/>
-    <rect x="${m}" y="${m}" width="${w}" height="${w}" rx="${w*redondeo}" fill="#D9182B"/>
-    ${bar(0.203, 0.531, 0.25)}
-    ${bar(0.422, 0.391, 0.39)}
-    ${bar(0.641, 0.219, 0.562)}
+    ${fondo}
+    <rect x="${m}" y="${m}" width="${w}" height="${w}" rx="${w*opts.redondeo}" fill="${ROJO}"/>
+    ${barras}
   </svg>`;
 }
 
-const ICONOS = [
-  { file:'icon-192.png',      size:192, pad:0,    redondeo:0.219 },
-  { file:'icon-512.png',      size:512, pad:0,    redondeo:0.219 },
-  // Zona segura de un icono maskable: el círculo central del 80%. Con este
-  // hueco el cuadro rojo entero cae dentro, se recorte como se recorte.
-  { file:'icon-maskable.png', size:512, pad:0.18, redondeo:0.16  },
+// El splash es solo el cuadro de la marca centrado sobre el negro de la app.
+// Sin el nombre escrito a propósito: la tipografía de la app es la del sistema
+// y aquí saldría la del navegador que genera la imagen, que es otra.
+function svgSplash(lado){
+  const logo = lado * 0.22, x = (lado - logo) / 2;
+  const barras = BARRAS.map(b => {
+    const bw = logo * 0.156;
+    return `<rect x="${x + logo*b[0]}" y="${x + logo*b[1]}" width="${bw}"
+                  height="${logo*b[2]}" rx="${bw*0.28}" fill="${CLARO}"/>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${lado}" height="${lado}" viewBox="0 0 ${lado} ${lado}">
+    <rect width="${lado}" height="${lado}" fill="${NEGRO}"/>
+    <rect x="${x}" y="${x}" width="${logo}" height="${logo}" rx="${logo*0.219}" fill="${ROJO}"/>
+    ${barras}
+  </svg>`;
+}
+
+const TRABAJOS = [
+  // --- la web ---
+  { file:'icons/icon-192.png', size:192, svg: svg({ pad:0, redondeo:0.219, fondo:NEGRO }) },
+  { file:'icons/icon-512.png', size:512, svg: svg({ pad:0, redondeo:0.219, fondo:NEGRO }) },
+  // Zona segura de un icono "maskable": el círculo central del 80%. Con este
+  // hueco el cuadro rojo cae entero dentro, se recorte como se recorte.
+  { file:'icons/icon-maskable.png', size:512, svg: svg({ pad:0.18, redondeo:0.16, fondo:NEGRO }) },
   // iOS no aplica máscara: recorta un cuadrado y le pone él las esquinas.
-  { file:'apple-touch-icon.png', size:180, pad:0, redondeo:0 }
+  { file:'icons/apple-touch-icon.png', size:180, svg: svg({ pad:0, redondeo:0, fondo:ROJO }) },
+
+  // --- materia prima de las apps ---
+  // Sin esquinas redondeadas y sin transparencia: cada sistema las redondea a
+  // su manera, y un icono de iOS con transparencia lo rechaza la App Store.
+  { file:'assets/icon.png', size:1024, svg: svg({ pad:0, redondeo:0, fondo:ROJO }) },
+  // Icono adaptativo de Android: el fondo y el dibujo van por separado y el
+  // lanzador los recorta con la forma que use. El dibujo se queda en el centro
+  // porque de los 108 dp del lienzo solo se ven 72.
+  { file:'assets/icon-background.png', size:1024, svg: svg({ pad:0, fondo:ROJO, soloFondo:true }) },
+  { file:'assets/icon-foreground.png', size:1024, svg: svg({ pad:0.30, redondeo:0.16, fondo:null }) },
+  // Pantalla de carga. Cuadrada y grande para que valga en cualquier aparato y
+  // orientación: el sistema recorta lo que le sobra del centro.
+  { file:'assets/splash.png', size:2732, svg: svgSplash(2732) },
+  { file:'assets/splash-dark.png', size:2732, svg: svgSplash(2732) }
 ];
 
 (async () => {
-  fs.mkdirSync(DEST, { recursive:true });
   const browser = await chromium.launch(LANZAR);
   const page = await browser.newPage();
-  for(const ic of ICONOS){
-    await page.setViewportSize({ width: ic.size, height: ic.size });
-    await page.setContent(`<style>html,body{margin:0;padding:0;}svg{display:block;width:${ic.size}px;height:${ic.size}px;}</style>`
-      + svg(ic.pad, ic.redondeo));
-    await page.screenshot({ path: path.join(DEST, ic.file), omitBackground:false });
-    console.log('  ' + ic.file);
+  for(const t of TRABAJOS){
+    const destino = path.join(RAIZ, t.file);
+    fs.mkdirSync(path.dirname(destino), { recursive:true });
+    await page.setViewportSize({ width:t.size, height:t.size });
+    await page.setContent(
+      `<style>html,body{margin:0;padding:0;background:transparent;}
+       svg{display:block;width:${t.size}px;height:${t.size}px;}</style>` + t.svg);
+    // omitBackground deja el PNG con transparencia donde el SVG no pinta nada,
+    // que es lo que necesita el dibujo del icono adaptativo de Android.
+    await page.screenshot({ path:destino, omitBackground:true });
+    console.log('  ' + t.file);
   }
   await browser.close();
 })();

@@ -1,2 +1,18 @@
 node_modules/
 .DS_Store
+
+# Lo que arma tools/build-www.js para empaquetar la app de móvil: sale de los
+# archivos del repo, así que no tiene sentido guardarlo.
+www/
+
+# Los proyectos nativos los genera Capacitor con `npx cap add android|ios` a
+# partir de capacitor.config.json y de los plugins instalados. No se guardan en
+# el repo a propósito: se regeneran igual en cualquier máquina y así no hay una
+# copia del proyecto de Android con versiones de hace seis meses conviviendo con
+# el package.json de hoy.
+#
+# Lo que sí hay que guardar fuera del repo, y en un sitio seguro, es el almacén
+# de claves con el que se firma el AAB de Android: si se pierde, Google Play no
+# deja volver a subir la misma app. Está explicado en docs/movil.md.
+android/
+ios/

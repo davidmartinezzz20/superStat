@@ -26,8 +26,9 @@ async function nuevaPagina(browser, serverState){
   });
   const page = await ctx.newPage();
   page.on('pageerror', e => { fallos++; console.log('  FALLA error en página: ' + e.message); });
-  // el CDN no es alcanzable desde aquí: se sirve el doble en su lugar
-  await page.route('**/supabase-js*/**', r => r.fulfill({ contentType:'application/javascript', body:'' }));
+  // supabase-js ya no viene de un CDN sino de vendor/: se sirve vacío para que
+  // no pise al doble que addInitScript acaba de dejar en window.supabase.
+  await page.route('**/vendor/supabase-js-*.js', r => r.fulfill({ contentType:'application/javascript', body:'' }));
   // Google Identity Services tampoco es alcanzable: el doble ya está puesto por
   // addInitScript, así que su script se sirve vacío.
   await page.route('**/gsi/client*', r => r.fulfill({ contentType:'application/javascript', body:'' }));
