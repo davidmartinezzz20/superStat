@@ -158,14 +158,14 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
 
   // ------------------------------------------------ 4. eventos y alineación
   console.log('\n4. Eventos y alineación');
-  await page.click('[data-event="assist"]');
+  await page.click('[data-event="steal"]');
   await page.waitForSelector('#event-modal .modal-player-btn');
   await page.click('#event-modal .modal-player-btn:nth-of-type(4)');    // Aleix Serra
   await page.waitForSelector('#event-modal', { state:'detached' });
   d = await draft(page);
-  const asist = d.events.filter(e => e.type === 'assist');
-  check('la asistencia se registra con jugador y minuto',
-        asist.length === 1 && !!asist[0].player && asist[0].minute !== null);
+  const robos = d.events.filter(e => e.type === 'steal');
+  check('el robo se registra con jugador y minuto',
+        robos.length === 1 && !!robos[0].player && robos[0].minute !== null);
 
   await page.click('.chip-row [data-court-player]:nth-of-type(1)');
   d = await draft(page);
@@ -175,7 +175,7 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
   await page.click('#undo-event-btn');
   d = await draft(page);
   check('deshacer quita el último evento pero no las altas de pista',
-        d.events.filter(e => e.type === 'assist').length === 0 && d.events.some(e => e.type === 'in'));
+        d.events.filter(e => e.type === 'steal').length === 0 && d.events.some(e => e.type === 'in'));
 
   // ------------------------------------- 5. el partido sobrevive a la recarga
   console.log('\n5. El partido a medias sobrevive a cerrar la pestaña');

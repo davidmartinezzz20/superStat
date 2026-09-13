@@ -643,15 +643,25 @@
   .court-chip .dorsal-mini{flex:none;}
 
   /* ---- botones de evento ---- */
+  /* Flex y no rejilla fija: los botones se reparten la fila entera sean los que
+     sean, así que quitar o añadir uno del panel no deja un hueco suelto ni
+     obliga a tocar el número de columnas. */
   .event-pad{
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
+    display:flex;
+    flex-wrap:wrap;
     gap:6px;
   }
   .event-btn{
+    /* base 0 y todos con el mismo crecimiento: se reparten la fila a partes
+       iguales sean los que sean, en vez de que el último se quede solo en una
+       fila estirado. El min-width es lo único que los hace bajar de línea, y es
+       el ancho con el que "2 minutos" todavía se lee. */
+    flex:1 1 0;
+    min-width:52px;
     display:flex;
     flex-direction:column;
     align-items:center;
+    justify-content:center;
     gap:3px;
     padding:9px 3px;
     border-radius:var(--radius);
@@ -667,9 +677,6 @@
   .event-btn.tone-good .ev-short{color:var(--goal);}
   .event-btn.tone-bad  .ev-short{color:var(--out);}
   .event-btn.tone-warn .ev-short{color:var(--gold);}
-  @media (max-width:360px){
-    .event-pad{grid-template-columns:repeat(3,1fr);}
-  }
 
   /* ---- partido a medias, en el panel ---- */
   .resume-card{

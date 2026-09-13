@@ -24,21 +24,45 @@
 
   const POSITIONS = ['Portero','Lateral izquierdo','Central','Lateral derecho','Extremo izquierdo','Extremo derecho','Pivote'];
 
-  // Lo que se puede anotar además de un tiro. El orden es el de los botones en
-  // pantalla: primero lo que más se repite. `ask` dice si hay que preguntar de
-  // qué jugador es; los que no preguntan son del rival y no tenemos su plantilla.
+  // Los botones del registro rápido, en el orden en que salen en pantalla.
+  // Quitar uno de aquí lo quita del panel y nada más: lo que ya estuviera
+  // anotado con ese tipo se sigue guardando, leyendo y contando.
   const EVENT_TYPES = [
-    { id:'assist',    name:'Asistencia',   short:'AS', ask:'all',     tone:'good' },
-    { id:'turnover',  name:'Pérdida',      short:'PE', ask:'all',     tone:'bad'  },
-    { id:'steal',     name:'Robo',         short:'RO', ask:'all',     tone:'good' },
-    { id:'block',     name:'Blocaje',      short:'BL', ask:'all',     tone:'good' },
-    { id:'foul7m',    name:'7 m provocado',short:'7M', ask:'all',     tone:'good' },
-    { id:'exclusion', name:'2 minutos',    short:'2′', ask:'all',     tone:'bad'  },
-    { id:'yellow',    name:'Amarilla',     short:'TA', ask:'all',     tone:'warn' },
-    { id:'red',       name:'Roja',         short:'TR', ask:'all',     tone:'bad'  }
+    { id:'turnover',  name:'Pérdida',      short:'PE', tone:'bad'  },
+    { id:'steal',     name:'Robo',         short:'RO', tone:'good' },
+    { id:'exclusion', name:'2 minutos',    short:'2′', tone:'bad'  },
+    { id:'yellow',    name:'Amarilla',     short:'TA', tone:'warn' },
+    { id:'red',       name:'Roja',         short:'TR', tone:'bad'  }
   ];
 
-  const EVENT_NAME = EVENT_TYPES.reduce((m,e) => (m[e.id] = e.name, m), {});
+  // Nombre de cada tipo y orden en el que se listan en las estadísticas. Tiene
+  // más entradas que botones tiene el panel a propósito: la base acepta todas
+  // (ver el check de `events` en schema.sql), así que un partido anotado con una
+  // versión anterior de la app —o desde otro dispositivo que aún no se haya
+  // actualizado— tiene que poder enseñarse con su nombre y no como un código.
+  const EVENT_NAME = {
+    turnover:  'Pérdida',
+    steal:     'Robo',
+    exclusion: '2 minutos',
+    yellow:    'Amarilla',
+    red:       'Roja',
+    assist:    'Asistencia',
+    block:     'Blocaje',
+    foul7m:    '7 m provocado'
+  };
+
+  const EVENT_ORDER = Object.keys(EVENT_NAME);
+
+  // Los tipos que de verdad aparecen en unos datos, en el orden de arriba. Se
+  // recorre lo anotado y no la lista de botones, para que quitar un botón no
+  // haga desaparecer de las estadísticas lo que ya se había anotado con él.
+  function eventTypesIn(counts){
+    const ids = Object.keys(counts).filter(id => id !== 'in' && id !== 'out');
+    return ids.sort((a,b) => {
+      const ia = EVENT_ORDER.indexOf(a), ib = EVENT_ORDER.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+  }
 
   // Balonmano: siete en pista. No se impide pasarse —hay que poder anotar lo que
   // de verdad pasó, incluida una alineación indebida— pero se avisa.
@@ -1092,22 +1116,23 @@
   function eventStatsHtml(team, m){
     const evs = (m.events || []).filter(e => e.type !== 'in' && e.type !== 'out');
     if(evs.length === 0) return `<div class="hint-text">No se anotó ninguno en este partido.</div>`;
-    return EVENT_TYPES.map(spec => {
-      const arr = evs.filter(e => e.type === spec.id);
-      if(arr.length === 0) return '';
+    const porTipo = {};
+    evs.forEach(e => { porTipo[e.type] = true; });
+    return eventTypesIn(porTipo).map(tipo => {
+      const arr = evs.filter(e => e.type === tipo);
       const byPlayer = {};
       arr.forEach(e => { const k = e.player || 'none'; byPlayer[k] = (byPlayer[k]||0)+1; });
       const who = Object.keys(byPlayer)
         .sort((a,b) => byPlayer[b] - byPlayer[a])
-        .map(id => `${esc(playerShort(team, id))}${byPlayer[id] > 1 ? ' ×'+byPlayer[id] : ''}`)
+        .map(pid => `${esc(playerShort(team, pid))}${byPlayer[pid] > 1 ? ' ×'+byPlayer[pid] : ''}`)
         .join(', ');
       return `
         <div class="stat-list-row">
-          <span>${esc(spec.name)}<small class="who">${who}</small></span>
+          <span>${esc(EVENT_NAME[tipo] || tipo)}<small class="who">${who}</small></span>
           <span class="count">${arr.length}</span>
         </div>
       `;
-    }).filter(Boolean).join('');
+    }).join('');
   }
 
   // ---------- evolución del marcador ----------
@@ -1464,10 +1489,10 @@
         }), 'Marca quién está en pista durante los partidos para verlo aquí.')}</div>
 
         <div class="section-label">Otros registros</div>
-        <div class="card">${list(EVENT_TYPES.filter(t => s.events[t.id]).map(t => `
+        <div class="card">${list(eventTypesIn(s.events).map(t => `
           <div class="stat-list-row">
-            <span>${esc(t.name)}</span>
-            <span class="count">${s.events[t.id]}</span>
+            <span>${esc(EVENT_NAME[t] || t)}</span>
+            <span class="count">${s.events[t]}</span>
           </div>`), 'No se anotó ninguno todavía.')}</div>
       </main>
     `;

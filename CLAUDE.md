@@ -120,10 +120,17 @@ eventos `in` y `out`, saber quién estaba en pista en cada gol: de ahí sale el
 más/menos. Si añades otra cosa que se anote en vivo, sácale el ordinal del mismo
 contador (`stamp()`).
 
-Lo que no es un tiro va a `events`: asistencia, pérdida, robo, blocaje, 7 m
-provocado, 2 minutos, tarjetas, y las altas y bajas de pista. Para añadir un
-tipo nuevo basta con meterlo en `EVENT_TYPES` (app.js) y en el `check` de la
-tabla; no hay que tocar la sincronización.
+Lo que no es un tiro va a `events`: pérdida, robo, 2 minutos y tarjetas, más las
+altas y bajas de pista. Para añadir un tipo nuevo basta con meterlo en
+`EVENT_TYPES` y en `EVENT_NAME` (app.js) y, si no estuviera ya, en el `check` de
+la tabla; no hay que tocar la sincronización.
+
+`EVENT_TYPES` son los botones del panel y `EVENT_NAME` los nombres para
+enseñarlos, y tiene más entradas a propósito (`assist`, `block`, `foul7m`): la
+base los sigue aceptando, así que un partido anotado con otra versión de la app
+se enseña con su nombre. Por eso las estadísticas recorren los tipos que
+aparecen en los datos (`eventTypesIn()`) y no la lista de botones: quitar un
+botón no hace desaparecer lo que ya se anotó con él.
 
 `origin` es el punto de la pista desde el que se lanzó, `{ x, y }` en **metros**:
 `x` de 0 a 20 de banda a banda (de izquierda a derecha vistas desde el ataque) e

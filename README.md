@@ -27,8 +27,8 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
     los goles encajados también tienen portero y el porcentaje de paradas de
     cada uno significa algo.
   - En todos los tiros nuestros se pregunta quién ha lanzado, entre o no.
-  - **Registro rápido** de lo que no es un tiro: asistencia, pérdida, robo,
-    blocaje, 7 m provocado, 2 minutos y tarjetas.
+  - **Registro rápido** de lo que no es un tiro: pérdida, robo, 2 minutos y
+    tarjetas.
   - **Quién está en pista**, para saber qué pasa en el marcador con cada
     jugador dentro (el más/menos).
   - **Zona de lanzamiento**: con un toque sobre una media pista dibujada a

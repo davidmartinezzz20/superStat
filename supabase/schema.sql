@@ -145,16 +145,20 @@ alter table public.matches drop constraint if exists matches_half_time_check;
 alter table public.matches add  constraint matches_half_time_check
   check (half_time_minute between 0 and 200);
 
+-- La lista es más larga que los botones que enseña la app: el panel de registro
+-- rápido es una decisión de pantalla y puede cambiar, pero lo que ya se anotó
+-- con un tipo tiene que seguir entrando y leyéndose, también desde un
+-- dispositivo con otra versión de la app.
 alter table public.events drop constraint if exists events_type_check;
 alter table public.events add  constraint events_type_check check (type in (
-  'assist',     -- asistencia
   'turnover',   -- pérdida
   'steal',      -- robo
-  'block',      -- blocaje
-  'foul7m',     -- 7 metros provocado
   'exclusion',  -- 2 minutos
   'yellow',     -- tarjeta amarilla
   'red',        -- tarjeta roja
+  'assist',     -- asistencia
+  'block',      -- blocaje
+  'foul7m',     -- 7 metros provocado
   'in',         -- entra a pista
   'out'         -- sale de pista
 ));
