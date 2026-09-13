@@ -279,10 +279,14 @@ async function altaEquipo(page, nombre, jugadores){
   await g.page.screenshot({ path: DIR + '/10-login.png', animations:'disabled' });
   await g.ctx.close();
 
-  // sin config.js relleno la app no deja hacer nada, pero lo dice claro
+  // sin config.js relleno la app no deja hacer nada, pero lo dice claro.
+  // Se sirve un config.js vacío en vez de confiar en que el del repositorio lo
+  // esté: ahí viven las credenciales reales del proyecto.
   const sc = await browser.newContext();
   const scp = await sc.newPage();
   await scp.route('**/supabase-js*/**', r => r.fulfill({ contentType:'application/javascript', body:'' }));
+  await scp.route('**/js/config.js', r => r.fulfill({ contentType:'application/javascript',
+    body:"window.SUPERSTAT_CONFIG={SUPABASE_URL:'',SUPABASE_ANON_KEY:''};" }));
   await scp.goto(BASE);
   await scp.waitForSelector('.error-msg', { timeout:10000 });
   check('avisa de que falta configurar Supabase',
