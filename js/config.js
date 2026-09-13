@@ -19,5 +19,5 @@
 window.SUPERSTAT_CONFIG = {
   SUPABASE_URL: 'https://cqjpexlgjqyzdjkcdwpw.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxanBleGxnanF5emRqa2Nkd3B3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyNzYwMTIsImV4cCI6MjEwNDg1MjAxMn0.pmgU4Z3PpEjfEe7aEUxW8AFLsarru_R98CcG0dXZ0cY',
-  GOOGLE_CLIENT_ID: ''  // 1234567890-xxxxxxxx.apps.googleusercontent.com
+  GOOGLE_CLIENT_ID: '749407066281-h4trcuskeo8a60ljl7dg1579pm7aq81k.apps.googleusercontent.com'
 };
