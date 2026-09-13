@@ -17,6 +17,20 @@
 
   const POSITIONS = ['Portero','Lateral izquierdo','Central','Lateral derecho','Extremo izquierdo','Extremo derecho','Pivote'];
 
+  // Zonas de la pista desde las que se puede lanzar. col/row son la posición
+  // en la cuadrícula de 5x3 con la que se dibuja la media pista en el modal:
+  // los extremos ocupan las bandas enteras, y de arriba abajo se va desde los
+  // 9 m (laterales y central) hasta la línea de 6 m (pivote), pegada a portería.
+  const ORIGINS = [
+    { id:'EI',  name:'Extremo izquierdo', short:'EI',     col:'1',        row:'1 / span 3' },
+    { id:'LI',  name:'Lateral izquierdo', short:'LI',     col:'2',        row:'1' },
+    { id:'CE',  name:'Central',           short:'CE',     col:'3',        row:'1' },
+    { id:'LD',  name:'Lateral derecho',   short:'LD',     col:'4',        row:'1' },
+    { id:'ED',  name:'Extremo derecho',   short:'ED',     col:'5',        row:'1 / span 3' },
+    { id:'7M',  name:'7 metros',          short:'7 m',    col:'2 / span 3', row:'2' },
+    { id:'PIV', name:'Pivote',            short:'Pivote', col:'2 / span 3', row:'3' }
+  ];
+
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
   function esc(s){
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -64,6 +78,7 @@
     else if(state.screen === 'newMatchSetup') html = renderNewMatchSetup();
     else if(state.screen === 'liveMatch') html = renderLiveMatch();
     else html = '<div class="loading-msg">Cargando…</div>';
+    app.className = 'screen-' + state.screen; // el partido en vivo necesita más ancho
     app.innerHTML = html;
     attachHandlers();
   }
@@ -73,7 +88,7 @@
     const isLogin = state.authMode === 'login';
     return `
       <header class="topbar">
-        <div class="title">🤾 Marcador</div>
+        <div class="title">🤾 SuperStat</div>
       </header>
       <main>
         <div class="field" style="margin-bottom:26px;">
@@ -142,7 +157,7 @@
     `;
     return `
       <header class="topbar">
-        <div class="title">🤾 Marcador <small>${esc(state.user)}</small></div>
+        <div class="title">🤾 SuperStat <small>${esc(state.user)}</small></div>
         <button class="back-btn" id="logout-btn">Salir</button>
       </header>
       <main>
@@ -312,6 +327,34 @@
     return p ? `${p.dorsal} · ${p.name}` : 'Sin especificar';
   }
 
+  // Tiros agrupados por la zona de la pista desde la que se lanzó. Los partidos
+  // guardados antes de registrar la zona caen todos en "Sin especificar".
+  function originStatsHtml(shots){
+    const rows = ORIGINS.map(o => {
+      const arr = shots.filter(s => s.origin === o.id);
+      if(arr.length === 0) return '';
+      const goals = arr.filter(s => s.type === 'goal').length;
+      const pct = Math.round(goals/arr.length*100);
+      return `
+        <div class="stat-list-row">
+          <span>${esc(o.name)}</span>
+          <span class="count">${goals}/${arr.length} · ${pct}%</span>
+        </div>
+      `;
+    }).filter(Boolean);
+    const unknown = shots.filter(s => !s.origin).length;
+    if(unknown){
+      rows.push(`
+        <div class="stat-list-row">
+          <span>Sin especificar</span>
+          <span class="count">${unknown} tiros</span>
+        </div>
+      `);
+    }
+    if(rows.length === 0) return `<div class="hint-text">Sin datos todavía.</div>`;
+    return rows.join('');
+  }
+
   function playerListHtml(team, entries, unit){
     if(entries.length === 0) return `<div class="hint-text">Sin datos todavía.</div>`;
     return entries.map(([id, count]) => `
@@ -362,6 +405,9 @@
         <div class="section-label">Goleadores del partido</div>
         <div class="card">${playerListHtml(team, groupByPlayer(m.shotsRival, 'goal'), 'goles')}</div>
 
+        <div class="section-label">Desde dónde lanzamos <small>goles / tiros a puerta</small></div>
+        <div class="card">${originStatsHtml(m.shotsRival)}</div>
+
         <div class="section-label">Disparos rivales (portería propia)</div>
         <div class="stat-grid">
           <div class="stat-cell"><div class="num" style="color:var(--out)">${ga}</div><div class="lbl">Goles encajados</div></div>
@@ -373,6 +419,9 @@
 
         <div class="section-label">Paradas por portero</div>
         <div class="card">${playerListHtml(team, groupByPlayer(m.shotsOwn, 'save'), 'paradas')}</div>
+
+        <div class="section-label">Desde dónde nos lanzan <small>goles / tiros a puerta</small></div>
+        <div class="card">${originStatsHtml(m.shotsOwn)}</div>
       </main>
     `;
   }
@@ -418,6 +467,7 @@
       shotsRival: [], // shots taken at RIVAL goal (our team shooting)
       outOwn: 0,
       outRival: 0,
+      askOrigin: true, // preguntar desde qué zona de la pista se ha lanzado
       log: []  // ordered log of actions for undo: {side:'own'|'rival', kind:'shot'|'out', zone, type}
     };
     state.pendingShot = null;
@@ -428,7 +478,7 @@
   // ---------- LIVE MATCH ----------
   let clickTimers = {}; // per-cell timers for single/double click disambiguation
 
-  function goalGridHtml(side, label){
+  function goalGridHtml(side, label, sub){
     const team = currentTeam();
     const shots = side === 'own' ? state.draft.shotsOwn : state.draft.shotsRival;
     const counts = zoneCounts(shots);
@@ -445,7 +495,8 @@
     return `
       <div class="goal-block">
         <div class="goal-header">
-          <div class="goal-title">${label}</div>
+          <div class="goal-title">${esc(label)}</div>
+          <div class="goal-sub">${esc(sub)}</div>
           <div class="goal-tally">${goals} G · ${saves} P · ${outs} fuera</div>
         </div>
         <div class="goal-wrap">
@@ -463,9 +514,8 @@
         </div>
         <div class="goal-actions">
           <button class="btn-out" data-out="${side}">Tiro fuera</button>
-          <button class="btn-undo" data-undo="${side}">Deshacer último</button>
+          <button class="btn-undo" data-undo="${side}">Deshacer</button>
         </div>
-        <div class="hint-text">Toque = gol · doble toque = parada</div>
       </div>
     `;
   }
@@ -481,9 +531,7 @@
     return [];
   }
 
-  function renderPendingModal(){
-    if(!state.pendingShot) return '';
-    const p = state.pendingShot;
+  function renderPlayerStep(p){
     let title = 'Selecciona jugador';
     if(p.side === 'rival' && p.type === 'goal') title = '¿Quién ha marcado?';
     if(p.side === 'own' && p.type === 'save') title = '¿Qué portero ha parado?';
@@ -493,11 +541,39 @@
       </button>
     `).join('');
     return `
+      <div class="modal-title">${title}</div>
+      ${btns}
+      <button class="modal-skip-btn" id="skip-player-btn">Sin especificar</button>
+    `;
+  }
+
+  // Media pista dibujada con una cuadrícula de 5x3: un toque en una zona
+  // registra desde dónde se hizo el lanzamiento.
+  function renderOriginStep(p){
+    const team = currentTeam();
+    const who = p.side === 'own' ? state.draft.rival : team.name;
+    const zones = ORIGINS.map(o => `
+      <button class="court-zone" data-select-origin="${o.id}"
+              style="grid-column:${o.col};grid-row:${o.row};">${esc(o.short)}</button>
+    `).join('');
+    return `
+      <div class="modal-title">¿Desde dónde ha lanzado?</div>
+      <div class="modal-sub">Ataque de ${esc(who)} · izquierda y derecha vistas desde el ataque</div>
+      <div class="court">${zones}</div>
+      <div class="court-goal"></div>
+      <div class="court-caption">Portería</div>
+      <button class="modal-skip-btn" id="skip-origin-btn">Sin especificar</button>
+    `;
+  }
+
+  function renderPendingModal(){
+    const p = state.pendingShot;
+    if(!p) return '';
+    const body = p.steps[p.step] === 'player' ? renderPlayerStep(p) : renderOriginStep(p);
+    return `
       <div class="modal-overlay" id="pending-modal">
         <div class="modal-box">
-          <div class="modal-title">${title}</div>
-          ${btns}
-          <button class="modal-skip-btn" id="skip-player-btn">Sin especificar</button>
+          ${body}
           <button class="modal-cancel-btn" id="cancel-shot-btn">Cancelar, no registrar</button>
         </div>
       </div>
@@ -514,14 +590,22 @@
         <div class="title">${esc(team.name)} vs ${esc(d.rival)}</div>
         <button class="back-btn" id="finish-match-btn">Guardar</button>
       </header>
-      <main>
+      <main class="live-main">
         <div class="scoreboard">
           <div class="score-box"><div class="num" style="color:var(--goal)">${gf}</div><div class="lbl">${esc(team.name)}</div></div>
           <div class="score-box"><div class="num" style="color:var(--out)">${ga}</div><div class="lbl">${esc(d.rival)}</div></div>
         </div>
 
-        ${goalGridHtml('own', 'Portería propia — disparos del rival')}
-        ${goalGridHtml('rival', 'Portería rival — nuestros disparos')}
+        <button class="origin-toggle ${d.askOrigin ? 'on' : ''}" id="toggle-origin">
+          <span class="dot"></span>
+          <span>Preguntar zona de lanzamiento</span>
+        </button>
+
+        <div class="goals-row">
+          ${goalGridHtml('own', 'Nuestra portería', 'tira el rival')}
+          ${goalGridHtml('rival', 'Portería rival', 'tiramos nosotros')}
+        </div>
+        <div class="hint-text center">1 toque = gol · 2 toques = parada</div>
 
         <button class="secondary" id="cancel-match-btn">Descartar partido</button>
       </main>
@@ -529,19 +613,36 @@
     `;
   }
 
+  // Un tiro puede necesitar preguntar el jugador, la zona de lanzamiento, las
+  // dos cosas o ninguna: se monta la lista de pasos y se van recorriendo.
   function maybeAskPlayer(side, zone, type){
     const candidates = candidatesFor(side, type);
-    if(candidates.length === 0){
-      registerShot(side, zone, type, null);
+    const steps = [];
+    if(candidates.length > 0) steps.push('player');
+    if(state.draft.askOrigin) steps.push('origin');
+    if(steps.length === 0){
+      registerShot(side, zone, type, null, null);
       return;
     }
-    state.pendingShot = { side, zone, type, candidates };
+    state.pendingShot = { side, zone, type, candidates, player:null, origin:null, steps, step:0 };
     renderLiveMatchInPlace();
   }
 
-  function registerShot(side, zone, type, playerId){
+  function advancePending(patch){
+    const p = state.pendingShot;
+    if(!p) return;
+    Object.assign(p, patch);
+    p.step++;
+    if(p.step >= p.steps.length){
+      registerShot(p.side, p.zone, p.type, p.player, p.origin);
+    } else {
+      renderLiveMatchInPlace();
+    }
+  }
+
+  function registerShot(side, zone, type, playerId, origin){
     const d = state.draft;
-    const entry = { zone, type, player: playerId || null };
+    const entry = { zone, type, player: playerId || null, origin: origin || null };
     if(side === 'own') d.shotsOwn.push(entry); else d.shotsRival.push(entry);
     d.log.push({ side, kind:'shot' });
     state.pendingShot = null;
@@ -676,18 +777,19 @@
       el.addEventListener('click', () => undoLast(el.getAttribute('data-undo')));
     });
     app.querySelectorAll('[data-select-player]').forEach(el => {
-      el.addEventListener('click', () => {
-        const p = state.pendingShot;
-        if(!p) return;
-        registerShot(p.side, p.zone, p.type, el.getAttribute('data-select-player'));
-      });
+      el.addEventListener('click', () => advancePending({ player: el.getAttribute('data-select-player') }));
     });
-    bind('skip-player-btn','click', () => {
-      const p = state.pendingShot;
-      if(!p) return;
-      registerShot(p.side, p.zone, p.type, null);
+    bind('skip-player-btn','click', () => advancePending({ player: null }));
+    app.querySelectorAll('[data-select-origin]').forEach(el => {
+      el.addEventListener('click', () => advancePending({ origin: el.getAttribute('data-select-origin') }));
     });
+    bind('skip-origin-btn','click', () => advancePending({ origin: null }));
     bind('cancel-shot-btn','click', () => { state.pendingShot = null; render(); });
+
+    bind('toggle-origin','click', () => {
+      state.draft.askOrigin = !state.draft.askOrigin;
+      render();
+    });
 
     bind('finish-match-btn','click', handleFinishMatch);
     bind('cancel-match-btn','click', () => {

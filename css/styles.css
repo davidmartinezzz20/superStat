@@ -552,3 +552,150 @@
     cursor:pointer;
     font-family:'Inter',sans-serif;
   }
+
+  /* ---- las dos porterías, una al lado de la otra ---- */
+  /* con dos porterías en paralelo cada casilla de la red se queda a la mitad de
+     ancho, así que en el partido en vivo se recorta el relleno y, donde hay
+     sitio, se ensancha el contenedor para recuperar tamaño de toque. */
+  #app.screen-liveMatch{max-width:760px;}
+  main.live-main{padding-left:8px;padding-right:8px;}
+  .live-main .goals-row{gap:8px;}
+  .live-main .scoreboard,
+  .live-main .origin-toggle,
+  .live-main #cancel-match-btn{max-width:480px;margin-left:auto;margin-right:auto;}
+  .live-main #cancel-match-btn{display:block;margin-top:14px;}
+  .hint-text.center{text-align:center;margin-top:2px;}
+  .section-label small{
+    font-family:'Inter',sans-serif;
+    font-size:11px;
+    font-weight:400;
+    text-transform:none;
+  }
+  .goals-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    align-items:start;
+  }
+  .goals-row .goal-block{margin-bottom:8px;}
+  .goals-row .goal-header{display:block;margin-bottom:8px;}
+  .goals-row .goal-title{font-size:13px;line-height:1.25;}
+  .goals-row .goal-sub{font-size:10.5px;color:var(--muted);line-height:1.3;}
+  .goals-row .goal-tally{font-size:10.5px;margin-top:2px;}
+  /* a media anchura los postes y la red se afinan para que la red mande */
+  .goals-row .goal-wrap{margin:0 2px 6px;padding-top:6px;}
+  .goals-row .goal-frame{padding:6px;}
+  .goals-row .goal-post.top{height:6px;}
+  .goals-row .goal-post.left,
+  .goals-row .goal-post.right{width:6px;}
+  .goals-row .goal-net{margin:6px 6px 0;padding:2px;}
+  .goals-row .goal-support{width:20px;height:11px;bottom:-6px;}
+  .goals-row .goal-cell .marks{gap:3px;}
+  .goals-row .mark-chip{font-size:9.5px;padding:1px 4px;}
+  .goals-row .flash{font-size:15px;}
+  .goals-row .goal-actions{flex-direction:column;gap:6px;margin-top:8px;}
+  .goals-row .goal-actions button{padding:9px 4px;font-size:12px;}
+  /* en cuanto hay sitio se separan las dos porterías y se recupera el ancho */
+  @media (min-width:560px){
+    main.live-main{padding-left:20px;padding-right:20px;}
+    .live-main .goals-row{gap:28px;}
+    .goals-row .goal-title{font-size:14px;}
+    .goals-row .goal-sub,
+    .goals-row .goal-tally{font-size:11.5px;}
+    .goals-row .goal-actions{flex-direction:row;}
+    .goals-row .mark-chip{font-size:11px;padding:1px 6px;}
+  }
+
+  /* ---- media pista para elegir la zona de lanzamiento ---- */
+  .modal-sub{
+    font-size:11.5px;
+    color:var(--muted);
+    margin:-8px 0 12px;
+    line-height:1.4;
+  }
+  .court{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    grid-template-rows:repeat(3,1fr);
+    gap:6px;
+    aspect-ratio:5/3.6;
+    padding:6px;
+    background:rgba(255,255,255,0.03);
+    border:1px solid var(--line);
+    border-bottom:none;
+    border-radius:10px 10px 0 0;
+  }
+  .court-zone{
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:8px;
+    font-family:'Oswald',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:0.02em;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    transition:background .12s, border-color .12s;
+  }
+  .court-zone:hover{border-color:var(--gold);color:var(--gold);}
+  .court-zone:active{background:var(--gold);border-color:var(--gold);color:#241A05;}
+  .court-goal{
+    height:9px;
+    width:46%;
+    margin:0 auto;
+    border-radius:0 0 3px 3px;
+    background-image:repeating-linear-gradient(to right, #CC2F26 0 8px, #F7F6F2 8px 16px);
+    box-shadow:0 1px 2px rgba(0,0,0,0.4);
+  }
+  .court-caption{
+    text-align:center;
+    font-size:10.5px;
+    color:var(--muted);
+    margin:5px 0 14px;
+  }
+
+  /* ---- interruptor de "preguntar zona de lanzamiento" ---- */
+  .origin-toggle{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--muted);
+    border-radius:var(--radius);
+    padding:9px 12px;
+    margin-bottom:16px;
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    text-align:left;
+    cursor:pointer;
+  }
+  .origin-toggle .dot{
+    width:30px;
+    height:17px;
+    border-radius:10px;
+    background:var(--line);
+    position:relative;
+    flex-shrink:0;
+    transition:background .15s;
+  }
+  .origin-toggle .dot::after{
+    content:'';
+    position:absolute;
+    top:2px;
+    left:2px;
+    width:13px;
+    height:13px;
+    border-radius:50%;
+    background:var(--muted);
+    transition:transform .15s, background .15s;
+  }
+  .origin-toggle.on{color:var(--text);border-color:var(--goal);}
+  .origin-toggle.on .dot{background:var(--goal-dim);}
+  .origin-toggle.on .dot::after{transform:translateX(13px);background:var(--goal);}

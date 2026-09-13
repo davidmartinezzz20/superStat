@@ -1,5 +1,5 @@
 {
-  "name": "balonmano-stats",
+  "name": "superstat",
   "version": "1.0.0",
   "description": "App web para llevar estadísticas de equipos de balonmano: plantillas, partidos y mapa de tiros por portería.",
   "private": true,
