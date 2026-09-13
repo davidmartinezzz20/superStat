@@ -39,8 +39,10 @@ tablas, activar el login de Google y las URLs de redirección— están en
 **[`docs/supabase.md`](docs/supabase.md)**. En resumen:
 
 1. Ejecutar `supabase/schema.sql` en el editor SQL de Supabase.
-2. Pegar la URL del proyecto y la clave anon en `js/config.js`.
-3. Configurar el proveedor de Google siguiendo la guía.
+2. Pegar la URL del proyecto, la clave anon y el ID de cliente de Google en
+   `js/config.js`.
+3. Configurar el proveedor de Google siguiendo la guía: el ID de cliente va
+   también en Supabase, y los orígenes desde los que se abre la app, en Google.
 
 ## Cómo ejecutarlo
 

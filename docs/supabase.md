@@ -30,9 +30,15 @@ No sigas hasta que las cuatro estén bien.
 ```js
 window.SUPERSTAT_CONFIG = {
   SUPABASE_URL: 'https://TUREFERENCIA.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOi...'
+  SUPABASE_ANON_KEY: 'eyJhbGciOi...',
+  GOOGLE_CLIENT_ID: '...apps.googleusercontent.com'   // sale del paso 3.2
 };
 ```
+
+La **URL va sin ruta**: `https://TUREFERENCIA.supabase.co`, no el endpoint REST
+`.../rest/v1/` que enseña la consola en algunos sitios. `supabase-js` le añade
+él solo `/rest/v1` para los datos y `/auth/v1` para la sesión; con la ruta
+puesta, las peticiones acaban en `/rest/v1/rest/v1/...` y no encuentran nada.
 
 Esas dos claves se publican en el repositorio a propósito: viajan dentro del
 JavaScript que descarga cualquiera, así que no son un secreto. Lo que protege
@@ -60,18 +66,23 @@ los datos son las políticas RLS del paso 1.
 
 1. **APIs y servicios → Credenciales → Crear credenciales → ID de cliente de OAuth**.
 2. Tipo: **Aplicación web**.
-3. **Orígenes autorizados de JavaScript** — añade los sitios desde los que se
-   abre la app:
+3. **Orígenes autorizados de JavaScript** — los sitios desde los que se abre la
+   app. Esto es lo que de verdad tiene que estar bien, porque el botón de Google
+   se dibuja en la propia página y es ella quien pide el token:
    - `https://TU-APP.vercel.app`
    - `http://localhost:5173` (para probar en tu ordenador)
-4. **URI de redirección autorizados** — aquí va **Supabase**, no tu app. Esta es
-   la que más gente pone mal:
+
+   Van sin barra final y sin ruta: el origen, nada más.
+4. **URI de redirección autorizados** — añade igualmente el callback de Supabase:
 
    ```
    https://TUREFERENCIA.supabase.co/auth/v1/callback
    ```
 
-5. Guarda y copia el **ID de cliente** y el **secreto de cliente**.
+   La app ya no pasa por ahí para entrar con Google, pero Google lo pide para
+   dar por completa la configuración y no estorba tenerlo.
+5. Guarda y copia el **ID de cliente** y el **secreto de cliente**. El ID va en
+   dos sitios: en `js/config.js` (paso 2) y en Supabase (paso 4).
 
 ---
 
@@ -79,6 +90,11 @@ los datos son las políticas RLS del paso 1.
 
 1. Supabase → **Authentication → Providers → Google**: actívalo y pega el ID de
    cliente y el secreto del paso anterior. Guarda.
+
+   El **ID de cliente** tiene que estar registrado aquí sí o sí: es contra esta
+   lista contra la que Supabase valida el token que le manda la app. El secreto
+   no hace falta para este flujo —el token lo da Google en el navegador—, pero
+   tampoco molesta dejarlo puesto.
 2. Supabase → **Authentication → URL Configuration**:
    - **Site URL**: `https://TU-APP.vercel.app`
    - **Redirect URLs**: añade una línea por cada sitio desde el que se entra.
@@ -112,8 +128,39 @@ los datos son las políticas RLS del paso 1.
 
 | Síntoma | Causa casi siempre |
 |---|---|
-| Google vuelve a la app y sigue sin sesión | La URL no está en *Redirect URLs* (paso 4.2) |
-| `redirect_uri_mismatch` de Google | Falta el `/auth/v1/callback` de Supabase (paso 3.2.4) |
+| No sale el botón de Google, sale un aviso | Falta `GOOGLE_CLIENT_ID` en `js/config.js` (paso 2) |
+| El botón sale pero no hace nada, y la consola habla del origen | El sitio no está en *Orígenes autorizados* (paso 3.2.3) |
+| `Passed nonce and nonce in id_token...` | El ID de cliente no está registrado en Supabase (paso 4.1) |
+| Google pone el dominio y no "SuperStat" | La marca no está verificada — ver más abajo |
 | Entra pero no aparece nada y no guarda | RLS mal, o falta ejecutar `schema.sql` |
 | "Falta configurar Supabase" en pantalla | `js/config.js` está vacío |
 | Acceso denegado al entrar con Google | Tu correo no está en *Usuarios de prueba* (paso 3.1.4) |
+
+---
+
+## Lo que Google escribe en su pantalla
+
+Al entrar con Google sale un "Ir a ..." que no controlamos nosotros: lo pinta
+Google a partir del cliente de OAuth. Y **mientras la marca no esté verificada,
+Google enseña el dominio en vez del nombre de la app**. Es su comportamiento por
+defecto, no un fallo de configuración: rellenar el nombre `SuperStat` en la
+pantalla de consentimiento (paso 3.1.3) no basta por sí solo.
+
+Antes ponía `TUREFERENCIA.supabase.co`, porque quien pedía el token era el
+callback de Supabase. Ahora el botón lo dibuja Google Identity Services dentro de
+la propia página y el token se pide desde el origen de la app, así que lo que
+sale es **tu dominio**. Eso ya no se puede mejorar sin verificar la marca.
+
+Para llegar al "Ir a SuperStat" hacen falta dos cosas, y la primera es la que
+atasca:
+
+1. **Un dominio tuyo.** Google solo verifica marcas sobre dominios cuya
+   propiedad puedas demostrar en Search Console. Un subdominio de `vercel.app`
+   no suele valer, porque es un sufijo público y no es tuyo.
+2. **Verificar la marca** en Google Cloud → *Google Auth Platform → Branding*:
+   nombre, logo, página de inicio, política de privacidad y términos, todo en ese
+   dominio, y la app publicada en *Producción*. Google lo revisa y puede tardar
+   varios días.
+
+Mientras tanto la pantalla dirá el dominio de la app, que es lo esperable y
+además es lo que le permite a la gente comprobar que no la están engañando.

@@ -68,13 +68,22 @@
         auth: {
           async getSession(){ return { data:{ session: SERVER.session }, error:null }; },
           onAuthStateChange(cb){ authListeners.push(cb); return { data:{ subscription:{ unsubscribe(){} } } }; },
-          async signInWithOAuth(){
-            try{ netCheck(); }catch(e){ return { error:e }; }
-            // el OAuth real redirige; aquí se da la sesión por buena al vuelo
-            SERVER.session = { user: { id:'user-google', email:'david@gmail.com',
-                                       user_metadata:{ name:'David' } } };
+          async signInWithIdToken({ token, nonce }){
+            try{ netCheck(); }catch(e){ return { data:null, error:e }; }
+            // Supabase recibe el nonce sin resumir y comprueba que corresponde
+            // al que se le dio a Google. Mandarle el mismo a los dos es el fallo
+            // clásico de este flujo, así que aquí se rechaza igual que allí.
+            const esperado = (window.__GOOGLE__ || {}).nonce;
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(nonce || ''));
+            const hex = Array.from(new Uint8Array(buf), x => x.toString(16).padStart(2,'0')).join('');
+            if(!esperado || hex !== esperado){
+              return { data:null, error:new Error('Passed nonce and nonce in id_token should either both exist or not.') };
+            }
+            const payload = JSON.parse(atob(String(token).split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+            SERVER.session = { user: { id:'user-google', email:payload.email,
+                                       user_metadata:{ name:payload.name } } };
             save(); emit('SIGNED_IN');
-            return { error:null };
+            return { data:{ user:SERVER.session.user, session:SERVER.session }, error:null };
           },
           async signInWithPassword({ email, password }){
             try{ netCheck(); }catch(e){ return { data:null, error:e }; }

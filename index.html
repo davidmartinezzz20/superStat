@@ -14,6 +14,13 @@
 <!-- Cliente de Supabase, con versión fijada a propósito: así una publicación
      nueva de la librería no puede cambiar lo que se ejecuta en el móvil. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.js"></script>
+
+<!-- Google Identity Services: dibuja el botón de "Entrar con Google" en esta
+     misma página. Es la única dependencia sin versión fijada, porque Google
+     sirve una sola URL y no publica versiones; a cambio, el login deja de pasar
+     por el callback de Supabase y Google anuncia el dominio de la app. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+
 <script src="js/config.js"></script>
 <script src="js/db.js"></script>
 <script src="js/store.js"></script>
