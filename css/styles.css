@@ -557,11 +557,153 @@
     border:1px solid var(--out);
     color:#FFD9D4;
   }
+  .btn-post{
+    background:transparent;
+    border:1px solid var(--gold);
+    color:var(--gold);
+  }
   .btn-undo{
     background:transparent;
     border:1px solid var(--line);
     color:var(--muted);
   }
+
+  /* ---- reloj del partido ---- */
+  .clock-bar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:8px 10px;
+    margin-bottom:16px;
+  }
+  .clock-play{
+    flex:none;
+    width:38px;height:38px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:50%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--text);
+    cursor:pointer;
+  }
+  .clock-play svg{width:18px;height:18px;}
+  .clock-play.on{background:var(--goal-dim);border-color:var(--goal);color:#B7F0DE;}
+  .clock-read{flex:1;min-width:0;}
+  /* tabular-nums: sin esto los dígitos bailan de ancho y el reloj tiembla */
+  .clock-time{
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:-0.02em;
+    font-variant-numeric:tabular-nums;
+  }
+  .clock-period{font-size:11.5px;color:var(--muted);}
+  .clock-half{
+    flex:none;
+    font-size:12px;
+    font-weight:600;
+    padding:9px 12px;
+    border-radius:var(--radius-pill);
+    background:var(--panel-2);
+    border:1px solid var(--gold);
+    color:var(--gold);
+    cursor:pointer;
+  }
+  .clock-half.done{
+    border-color:var(--line);
+    color:var(--muted);
+    cursor:default;
+  }
+
+  /* ---- fichas de jugador (portería y pista) ---- */
+  .chip-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .court-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--muted);
+    border-radius:var(--radius-pill);
+    padding:6px 11px 6px 6px;
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  .court-chip.on{
+    background:var(--goal-dim);
+    border-color:var(--goal);
+    color:#DDF5EC;
+  }
+  .court-chip .dorsal-mini{flex:none;}
+
+  /* ---- botones de evento ---- */
+  /* Flex y no rejilla fija: los botones se reparten la fila entera sean los que
+     sean, así que quitar o añadir uno del panel no deja un hueco suelto ni
+     obliga a tocar el número de columnas. */
+  .event-pad{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .event-btn{
+    /* base 0 y todos con el mismo crecimiento: se reparten la fila a partes
+       iguales sean los que sean, en vez de que el último se quede solo en una
+       fila estirado. El min-width es lo único que los hace bajar de línea, y es
+       el ancho con el que "2 minutos" todavía se lee. */
+    flex:1 1 0;
+    min-width:52px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+    padding:9px 3px;
+    border-radius:var(--radius);
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text);
+    cursor:pointer;
+    transition:transform .1s;
+  }
+  .event-btn:active{transform:scale(0.96);}
+  .event-btn .ev-short{font-size:14px;font-weight:700;letter-spacing:-0.02em;}
+  .event-btn .ev-name{font-size:9.5px;color:var(--muted);line-height:1.15;text-align:center;}
+  .event-btn.tone-good .ev-short{color:var(--goal);}
+  .event-btn.tone-bad  .ev-short{color:var(--out);}
+  .event-btn.tone-warn .ev-short{color:var(--gold);}
+
+  /* ---- partido a medias, en el panel ---- */
+  .resume-card{
+    background:linear-gradient(180deg, rgba(217,24,43,0.18), var(--panel));
+    border:1px solid var(--brand);
+    border-radius:var(--radius-lg);
+    padding:14px;
+    margin-bottom:14px;
+  }
+  .resume-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .resume-live{
+    font-size:10.5px;
+    font-weight:700;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--brand-2);
+  }
+  .resume-score{font-size:20px;font-weight:700;letter-spacing:-0.02em;}
+  .resume-sub{font-size:12.5px;color:var(--muted);margin-top:4px;}
+  .resume-actions{display:flex;gap:8px;margin-top:12px;}
+  .resume-actions button{flex:1;}
+  button.slim{padding:10px 12px;font-size:13px;}
   .hint-text{
     font-size:11.5px;
     color:var(--muted);
@@ -783,8 +925,13 @@
   .goals-row .goal-cell .marks{gap:3px;}
   .goals-row .mark-chip{font-size:9.5px;padding:1px 4px;}
   .goals-row .flash{font-size:15px;}
-  .goals-row .goal-actions{flex-direction:column;gap:6px;margin-top:8px;}
+  /* Con dos porterías en paralelo no caben tres botones en fila: "Fuera" y
+     "Palo" se reparten una línea y "Deshacer" se queda con la de abajo. */
+  .goals-row .goal-actions{flex-wrap:wrap;gap:6px;margin-top:8px;}
   .goals-row .goal-actions button{padding:9px 4px;font-size:12px;}
+  .goals-row .btn-out,
+  .goals-row .btn-post{flex:1 1 calc(50% - 3px);}
+  .goals-row .btn-undo{flex:1 1 100%;}
   /* en cuanto hay sitio se separan las dos porterías y se recupera el ancho */
   @media (min-width:560px){
     main.live-main{padding-left:20px;padding-right:20px;}
@@ -792,7 +939,10 @@
     .goals-row .goal-title{font-size:14px;}
     .goals-row .goal-sub,
     .goals-row .goal-tally{font-size:11.5px;}
-    .goals-row .goal-actions{flex-direction:row;}
+    .goals-row .goal-actions{flex-wrap:nowrap;}
+    .goals-row .btn-out,
+    .goals-row .btn-post,
+    .goals-row .btn-undo{flex:1 1 auto;}
     .goals-row .mark-chip{font-size:11px;padding:1px 6px;}
   }
 
@@ -843,6 +993,154 @@
   }
   .court-legend .dot-goal{background:#1F9D75;}
   .court-legend .dot-save{background:#3D7FC4;}
+  .court-legend .dot-out{background:var(--out);}
+
+  /* ---- filtros del mapa de tiros ---- */
+  .filter-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:10px;
+  }
+  .filter-chip{
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--muted);
+    border-radius:var(--radius-pill);
+    padding:6px 13px;
+    font-size:12px;
+    cursor:pointer;
+  }
+  .filter-chip.on{
+    background:var(--panel-2);
+    border-color:var(--gold);
+    color:var(--gold);
+  }
+  .filter-select{
+    width:100%;
+    background:var(--panel);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:var(--radius);
+    padding:9px 11px;
+    font-size:13px;
+    font-family:var(--font);
+  }
+
+  /* ---- cruce zona de lanzamiento × portería ---- */
+  .cross-wrap{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:12px;
+  }
+  .cross-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:6px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .cross-row:last-child{border-bottom:none;}
+  .cross-name{
+    flex:1;
+    min-width:0;
+    font-size:12.5px;
+    line-height:1.2;
+  }
+  .cross-name small{
+    display:block;
+    font-size:10.5px;
+    color:var(--muted);
+  }
+  .cross-grid{
+    flex:none;
+    display:grid;
+    grid-template-columns:repeat(3,26px);
+    grid-template-rows:repeat(3,20px);
+    gap:2px;
+  }
+  .cross-cell{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:9px;
+    font-weight:600;
+    border-radius:3px;
+    color:#DDF5EC;
+    background:rgba(51,161,127,var(--fill,0));
+    border:1px solid var(--line);
+  }
+  .cross-cell.empty{color:transparent;}
+
+  /* ---- evolución del marcador ---- */
+  .timeline-card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:12px;
+    margin-bottom:6px;
+  }
+  .timeline-svg{
+    display:block;
+    width:100%;
+    height:70px;
+    overflow:visible;
+  }
+  /* vector-effect: el viewBox se estira a lo ancho, y sin esto el trazo se
+     estira con él y la línea sale gorda en horizontal y fina en vertical */
+  .tl-line{
+    fill:none;
+    stroke-width:1.6;
+    stroke-linejoin:round;
+    vector-effect:non-scaling-stroke;
+  }
+  .tl-line.up{stroke:var(--goal);}
+  .tl-line.down{stroke:var(--out);}
+  .tl-zero{stroke:rgba(255,255,255,0.22);stroke-width:1;vector-effect:non-scaling-stroke;}
+  .tl-half{stroke:var(--gold);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke;}
+  .timeline-foot{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    gap:10px;
+    font-size:11px;
+    color:var(--muted);
+    margin-top:6px;
+  }
+  .timeline-foot .tl-range{flex:none;white-space:nowrap;}
+  .timeline-foot span:last-child{text-align:right;}
+
+  /* ---- ficha de partido: editar y compartir ---- */
+  .export-row{display:flex;gap:8px;}
+  .export-row button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .export-row button svg{width:15px;height:15px;}
+  .edit-card{margin-top:14px;}
+  .edit-card .field{margin-bottom:12px;}
+  button.danger{
+    width:100%;
+    margin-top:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:7px;
+    background:var(--out-dim);
+    border:1px solid var(--out);
+    color:#FFD9D4;
+    border-radius:var(--radius-pill);
+    font-weight:600;
+    cursor:pointer;
+  }
+  button.danger svg{width:15px;height:15px;}
+  .stat-list-row .count.good{color:var(--goal);}
+  .stat-list-row .count.bad{color:var(--out);}
+  .stat-list-row .count small{font-weight:400;color:var(--muted);font-size:10.5px;}
+  .stat-list-row small.who{
+    display:block;
+    font-size:10.5px;
+    color:var(--muted);
+    margin-top:2px;
+  }
 
   /* ---- interruptor de "preguntar zona de lanzamiento" ---- */
   .origin-toggle{
