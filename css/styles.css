@@ -613,51 +613,46 @@
     margin:-8px 0 12px;
     line-height:1.4;
   }
-  .court{
-    display:grid;
-    grid-template-columns:repeat(5,1fr);
-    grid-template-rows:repeat(3,1fr);
-    gap:6px;
-    aspect-ratio:5/3.6;
-    padding:6px;
-    background:rgba(255,255,255,0.03);
-    border:1px solid var(--line);
-    border-bottom:none;
-    border-radius:10px 10px 0 0;
+  /* la pista se dibuja en SVG a escala; el aspect-ratio tiene que coincidir
+     exactamente con el viewBox o el punto tocado no cae donde toca */
+  .court-svg{
+    display:block;
+    width:100%;
+    aspect-ratio:20.5 / 16.35;
+    margin:0 0 12px;
+    overflow:visible;
   }
-  .court-zone{
-    background:var(--panel-2);
-    border:1px solid var(--line);
-    color:var(--text);
-    border-radius:8px;
-    font-family:'Oswald',sans-serif;
-    font-size:12.5px;
-    font-weight:600;
-    letter-spacing:0.02em;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    cursor:pointer;
-    user-select:none;
+  .court-svg.interactive{
+    cursor:crosshair;
+    touch-action:manipulation;
     -webkit-tap-highlight-color:transparent;
-    transition:background .12s, border-color .12s;
   }
-  .court-zone:hover{border-color:var(--gold);color:var(--gold);}
-  .court-zone:active{background:var(--gold);border-color:var(--gold);color:#241A05;}
-  .court-goal{
-    height:9px;
-    width:46%;
-    margin:0 auto;
-    border-radius:0 0 3px 3px;
-    background-image:repeating-linear-gradient(to right, #CC2F26 0 8px, #F7F6F2 8px 16px);
-    box-shadow:0 1px 2px rgba(0,0,0,0.4);
-  }
-  .court-caption{
-    text-align:center;
-    font-size:10.5px;
+  .court-area{fill:rgba(255,255,255,0.16);}
+  .court-border{fill:none;stroke:#17222F;stroke-width:0.22;}
+  .court-line{fill:none;stroke:#17222F;stroke-width:0.15;}
+  .court-line.dashed{stroke-dasharray:0.5 0.4;}
+  .court-mark{stroke:#17222F;stroke-width:0.15;}
+  .court-goal-frame{fill:none;stroke-width:0.26;}
+  .shot-dot{stroke:rgba(255,255,255,0.9);stroke-width:0.09;}
+  .shot-dot.goal{fill:#1F9D75;}
+  .shot-dot.save{fill:#3D7FC4;}
+  .court-legend{
+    display:flex;
+    justify-content:center;
+    gap:18px;
+    font-size:11.5px;
     color:var(--muted);
-    margin:5px 0 14px;
+    margin:-4px 0 4px;
   }
+  .court-legend i{
+    display:inline-block;
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    margin-right:5px;
+  }
+  .court-legend .dot-goal{background:#1F9D75;}
+  .court-legend .dot-save{background:#3D7FC4;}
 
   /* ---- interruptor de "preguntar zona de lanzamiento" ---- */
   .origin-toggle{

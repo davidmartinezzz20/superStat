@@ -17,14 +17,15 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
   - "Deshacer" por si te equivocas durante el partido.
   - Al marcar un gol a favor se pregunta qué jugador ha tirado; al marcar
     una parada propia se pregunta qué portero ha sido.
-  - **Zona de lanzamiento**: con un toque sobre una media pista dibujada se
-    marca desde dónde se lanzó (extremos, laterales, central, pivote o
-    7 metros). Se puede apagar con el interruptor de la propia pantalla si
-    prefieres registrar más rápido.
+  - **Zona de lanzamiento**: con un toque sobre una media pista dibujada a
+    escala (área de 6 m, línea de 9 m, marcas de 7 y 4 m) se marca el punto
+    exacto desde el que se lanzó. Se puede apagar con el interruptor de la
+    propia pantalla si prefieres registrar más rápido.
 - Ficha de cada partido con el resultado, goles/paradas/fuera por lado,
-  % de efectividad, mapa de calor por zona, goleadores del partido,
-  paradas por portero y el reparto de tiros por zona de la pista, tanto
-  los nuestros como los del rival.
+  % de efectividad, mapa de calor por zona de portería, goleadores del
+  partido, paradas por portero y un **mapa de tiros sobre la pista** con un
+  punto por lanzamiento, más su reparto por zona, tanto de los nuestros
+  como de los del rival.
 - Historial de partidos anteriores por equipo.
 
 ## Cómo ejecutarlo
