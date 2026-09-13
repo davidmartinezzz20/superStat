@@ -2,14 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- viewport-fit=cover: la barra inferior flotante se apoya en el área segura
+     del iPhone, así que la página tiene que llegar hasta el borde. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#08090B">
 <title>SuperStat — Estadísticas de balonmano</title>
 <!-- El icono es el mismo cuadro del logo, en línea como data URI: sin carpeta
      de imágenes ni una petición más, en la línea de "sin build" del proyecto.
      Si se toca el dibujo de brandLogo(), hay que tocarlo aquí también. -->
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23D9182B'/><rect x='6.5' y='17' width='5' height='8' rx='1.4' fill='%23fff'/><rect x='13.5' y='12.5' width='5' height='12.5' rx='1.4' fill='%23fff'/><rect x='20.5' y='7' width='5' height='18' rx='1.4' fill='%23fff'/></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Sin fuentes de CDN: la tipografía es la del sistema (San Francisco en los
+     aparatos de Apple), que además se ve igual sin conexión. -->
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>

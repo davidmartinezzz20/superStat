@@ -211,10 +211,118 @@
     `;
   }
 
+  // Iconos de la interfaz, dibujados a mano como SVG en línea por lo mismo que
+  // el logo: no hace falta traer una librería para cuatro trazos. Todos usan
+  // currentColor, así que el color lo manda el CSS del botón que los contiene.
+  const ICONS = {
+    back:  '<path d="M15 5 8 12l7 7"/>',
+    home:  '<path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+    list:  '<rect x="4" y="5" width="16" height="15" rx="2.5"/><path d="M4 9.5h16M9 3.5v3M15 3.5v3M8 14h3"/>',
+    user:  '<circle cx="12" cy="8.5" r="3.7"/><path d="M4.6 20a7.4 7.4 0 0 1 14.8 0"/>',
+    plus:  '<path d="M12 5.5v13M5.5 12h13"/>'
+  };
+
+  function icon(name){
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"
+      aria-hidden="true">${ICONS[name] || ''}</svg>`;
+  }
+
+  // Cabecera de tres huecos con el logo siempre en el del medio. Sustituye a
+  // las cabeceras que cada pantalla escribía a mano; los ids de los botones son
+  // los de siempre, así attachHandlers() no se entera del cambio.
+  function topbar(o){
+    const opt = o || {};
+    const side = (html) => html || '';
+    return `
+      <header class="topbar">
+        <div class="slot left">${side(opt.left)}</div>
+        ${brandLogo()}
+        <div class="slot right">${side(opt.right)}</div>
+      </header>
+    `;
+  }
+
+  function backBtn(id, label){
+    return `<button class="back-btn" id="${id}" aria-label="${esc(label)}" title="${esc(label)}">${icon('back')}</button>`;
+  }
+
+  // El nombre de la pantalla ya no cabe en la cabecera: va dentro del contenido
+  // como título grande, que es como lo resuelve iOS.
+  function pageTitle(title, sub){
+    return `<h1 class="page-title">${esc(title)}${sub ? `<small>${esc(sub)}</small>` : ''}</h1>`;
+  }
+
+  // ---------- tarjetas con color ----------
+  // Ningún color se guarda: el de un equipo sale de su nombre y el de un
+  // partido, del resultado. Así las listas tienen color sin pedirle al usuario
+  // que elija ninguno, y dos dispositivos pintan lo mismo sin sincronizar nada.
+  const TEAM_TINTS = [
+    { solid:'#D9182B', wash:'rgba(217,24,43,0.40)' },
+    { solid:'#33A17F', wash:'rgba(51,161,127,0.40)' },
+    { solid:'#4C8FD6', wash:'rgba(76,143,214,0.40)' },
+    { solid:'#E8B84B', wash:'rgba(232,184,75,0.34)' }
+  ];
+
+  function teamTint(name){
+    let h = 0;
+    for(let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return TEAM_TINTS[h % TEAM_TINTS.length];
+  }
+
+  function initials(name){
+    return name.trim().split(/\s+/).slice(0,2).map(w => w[0] || '').join('').toUpperCase();
+  }
+
+  const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+  // '2026-09-13' → '13 sep'. Si viniera algo raro, se devuelve tal cual.
+  function shortDate(iso){
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+    if(!m) return iso || '';
+    return `${parseInt(m[3],10)} ${MONTHS[parseInt(m[2],10) - 1] || ''}`;
+  }
+
+  function teamCardHtml(t){
+    const tint = teamTint(t.name);
+    return `
+      <button class="tint-card team-card" data-team="${t.id}"
+              style="--tint:${tint.wash};--tint-solid:${tint.solid};">
+        <span class="team-badge">${esc(initials(t.name))}</span>
+        <span class="team-text">
+          <span class="team-name">${esc(t.name)}</span>
+          <span class="team-meta">${t.players.length} jugador${t.players.length===1?'':'es'}</span>
+        </span>
+        <span class="chev">${icon('back')}</span>
+      </button>
+    `;
+  }
+
+  function matchCardHtml(team, m){
+    const gf = m.shotsRival.filter(s=>s.type==='goal').length;
+    const ga = m.shotsOwn.filter(s=>s.type==='goal').length;
+    const res = gf > ga ? 'win' : (gf < ga ? 'loss' : 'draw');
+    const tint = res === 'win'  ? { solid:'#33A17F', wash:'rgba(51,161,127,0.40)', tag:'Victoria' }
+               : res === 'loss' ? { solid:'#C1443A', wash:'rgba(193,68,58,0.40)',  tag:'Derrota' }
+               :                  { solid:'#8A8F98', wash:'rgba(138,143,152,0.28)', tag:'Empate' };
+    return `
+      <button class="tint-card match-card" data-match="${m.id}"
+              style="--tint:${tint.wash};--tint-solid:${tint.solid};">
+        <span class="side">${esc(team.name)}</span>
+        <span class="mid">
+          <span class="tag">${tint.tag}</span>
+          <span class="score">${gf} – ${ga}</span>
+          <span class="when">${esc(shortDate(m.date))}</span>
+        </span>
+        <span class="side away">${esc(m.rival)}</span>
+      </button>
+    `;
+  }
+
   function onStoreChange(){
     // Repintar entero solo donde no puede haber un formulario a medias: en la
     // pantalla de equipo se estaría escribiendo un jugador y se perdería.
-    if(state.screen === 'dashboard' || state.screen === 'matchList'){
+    if(state.screen === 'dashboard' || state.screen === 'matchList' || state.screen === 'account'){
       render();
       return;
     }
@@ -239,9 +347,9 @@
 
   function renderMigrate(){
     return `
-      <header class="topbar"><div class="title">${brandLogo()}</div></header>
+      ${topbar()}
       <main>
-        <div class="section-label">Datos de este navegador</div>
+        ${pageTitle('Datos de este navegador')}
         <div class="card">
           <p style="margin:0 0 10px;font-size:14px;line-height:1.5;">
             Este navegador tiene equipos y partidos guardados de antes de que
@@ -290,7 +398,7 @@
     // Las pantallas de datos se releen del store en cada pintada: así lo que
     // llega de otro dispositivo aparece sin tener que recordar refrescarlo.
     if(state.user){
-      if(state.screen === 'dashboard' || state.screen === 'team') reloadTeams();
+      if(state.screen === 'dashboard' || state.screen === 'team' || state.screen === 'account') reloadTeams();
       if(state.screen === 'matchList' || state.screen === 'matchDetail'){
         reloadTeams();
         reloadMatches();
@@ -305,10 +413,39 @@
     else if(state.screen === 'newMatchSetup') html = renderNewMatchSetup();
     else if(state.screen === 'liveMatch') html = renderLiveMatch();
     else if(state.screen === 'migrate') html = renderMigrate();
+    else if(state.screen === 'account') html = renderAccount();
     else html = '<div class="loading-msg">Cargando…</div>';
-    app.className = 'screen-' + state.screen; // el partido en vivo necesita más ancho
-    app.innerHTML = html;
+    // La barra inferior la pone aquí el render y no cada pantalla, para que
+    // añadir una vista nueva no obligue a acordarse de ella.
+    const withNav = NAV_SCREENS.indexOf(state.screen) !== -1;
+    app.className = 'screen-' + state.screen + (withNav ? ' has-nav' : '');
+    app.innerHTML = html + (withNav ? bottomNav() : '');
     attachHandlers();
+  }
+
+  // Pantallas que llevan barra inferior. Fuera quedan la entrada, la migración,
+  // los formularios y el partido en vivo, donde taparía lo que se está tocando.
+  const NAV_SCREENS = ['dashboard','team','matchList','matchDetail','account'];
+
+  function bottomNav(){
+    const s = state.screen;
+    const tab = s === 'account' ? 'account'
+              : (s === 'matchList' || s === 'matchDetail') ? 'matches'
+              : 'home';
+    const btn = (id, name, ic, label) => `
+      <button class="nav-btn${tab === name ? ' on' : ''}" id="${id}">
+        ${icon(ic)}<span>${label}</span>
+      </button>`;
+    return `
+      <nav class="bottom-nav">
+        ${btn('tab-home','home','home','Equipos')}
+        ${btn('tab-matches','matches','list','Partidos')}
+        ${btn('tab-account','account','user','Cuenta')}
+        <button class="nav-add" id="tab-add" aria-label="Nuevo partido" title="Nuevo partido">
+          ${icon('plus')}
+        </button>
+      </nav>
+    `;
   }
 
   // ---------- AUTH ----------
@@ -426,25 +563,17 @@
 
   // ---------- DASHBOARD ----------
   function renderDashboard(){
-    const teamsHtml = state.teams.length ? state.teams.map(t => `
-      <div class="card clickable" data-team="${t.id}">
-        <div class="card-title">${esc(t.name)}</div>
-        <div class="card-sub">${t.players.length} jugador${t.players.length===1?'':'es'}</div>
-      </div>
-    `).join('') : `
+    const teamsHtml = state.teams.length ? state.teams.map(teamCardHtml).join('') : `
       <div class="empty-state">
         <div class="big-num">Aún no tienes ningún equipo</div>
         Crea tu primer equipo para empezar a registrar partidos.
       </div>
     `;
     return `
-      <header class="topbar">
-        <div class="title">${brandLogo()} <small>${esc(userLabel())}</small></div>
-        <button class="back-btn" id="logout-btn">Salir</button>
-      </header>
+      ${topbar({ right:`<button class="back-btn" id="to-account" aria-label="Cuenta" title="Cuenta">${icon('user')}</button>` })}
       <main>
+        ${pageTitle('Equipos')}
         ${syncBanner()}
-        <div class="section-label">Tus equipos</div>
         ${teamsHtml}
         <div class="section-label">Nuevo equipo</div>
         <div class="field">
@@ -452,6 +581,36 @@
           <input id="new-team-name" type="text" maxlength="80" placeholder="Ej. CB Sabadell">
         </div>
         <button class="primary" id="create-team-btn">Crear equipo</button>
+      </main>
+    `;
+  }
+
+  // ---------- CUENTA ----------
+  // Vive aquí lo que antes colgaba de la cabecera del panel: quién eres, cómo
+  // va la sincronización y el botón de salir.
+  function renderAccount(){
+    const label = userLabel();
+    const teams = state.teams.length;
+    return `
+      ${topbar({ left: backBtn('to-dashboard','Equipos') })}
+      <main>
+        ${pageTitle('Cuenta')}
+        <div class="account-head">
+          <div class="account-avatar">${esc(initials(label || '?'))}</div>
+          <div>
+            <div class="account-name">${esc(label)}</div>
+            <div class="account-sub">${teams} equipo${teams===1?'':'s'} en esta cuenta</div>
+          </div>
+        </div>
+        <div class="section-label">Sincronización</div>
+        ${syncBanner() || `
+          <div class="card">
+            <div class="card-title">Todo al día</div>
+            <div class="card-sub">Tus datos están guardados en la nube y en este dispositivo.</div>
+          </div>
+        `}
+        <div class="section-label">Sesión</div>
+        <button class="secondary" id="logout-btn">Salir de la cuenta</button>
       </main>
     `;
   }
@@ -491,11 +650,9 @@
     `).join('') : `<div class="empty-state" style="padding:20px 0;">Sin jugadores todavía.</div>`;
 
     return `
-      <header class="topbar">
-        <div class="title">${esc(team.name)}</div>
-        <button class="back-btn" id="to-dashboard">Equipos</button>
-      </header>
+      ${topbar({ left: backBtn('to-dashboard','Equipos') })}
       <main>
+        ${pageTitle(team.name, `${players.length} jugador${players.length===1?'':'es'} en plantilla`)}
         <div class="section-label">Plantilla</div>
         <div class="card">${rows}</div>
 
@@ -562,24 +719,14 @@
   function renderMatchList(){
     const team = currentTeam();
     const list = [...state.matches].sort((a,b)=> b.date.localeCompare(a.date));
-    const rows = list.length ? list.map(m => {
-      const gf = m.shotsRival.filter(s=>s.type==='goal').length;
-      const ga = m.shotsOwn.filter(s=>s.type==='goal').length;
-      return `
-        <div class="card clickable" data-match="${m.id}">
-          <div class="card-title">${esc(team.name)} ${gf} — ${ga} ${esc(m.rival)}</div>
-          <div class="card-sub">${esc(m.date)}</div>
-        </div>
-      `;
-    }).join('') : `<div class="empty-state">Todavía no hay partidos guardados.</div>`;
+    const rows = list.length
+      ? list.map(m => matchCardHtml(team, m)).join('')
+      : `<div class="empty-state">Todavía no hay partidos guardados.</div>`;
 
     return `
-      <header class="topbar">
-        <div class="title">Partidos</div>
-        <button class="back-btn" id="to-team">${esc(team.name)}</button>
-      </header>
+      ${topbar({ left: backBtn('to-team', team.name) })}
       <main>
-        <span class="team-pill">${esc(team.name)}</span>
+        ${pageTitle('Partidos', team.name)}
         ${rows}
       </main>
     `;
@@ -691,17 +838,12 @@
     const effO = totalOwnShots ? Math.round((sv_o/totalOwnShots)*100) : 0;
 
     return `
-      <header class="topbar">
-        <div class="title">${esc(m.rival)}</div>
-        <button class="back-btn" id="to-matches">Partidos</button>
-      </header>
+      ${topbar({ left: backBtn('to-matches','Partidos') })}
       <main>
-        <div class="card" style="text-align:center;">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">${esc(m.date)}</div>
-          <div style="font-family:'Oswald',sans-serif;font-size:32px;font-weight:700;">
-            ${gf} — ${ga}
-          </div>
-          <div style="font-size:12.5px;color:var(--muted);margin-top:4px;">${esc(team.name)} vs ${esc(m.rival)}</div>
+        ${pageTitle('vs ' + m.rival, shortDate(m.date))}
+        <div class="card score-hero">
+          <div class="score-hero-num">${gf} – ${ga}</div>
+          <div class="score-hero-lbl">${esc(team.name)} · ${esc(m.rival)}</div>
         </div>
 
         <div class="section-label">Nuestros disparos (portería rival)</div>
@@ -743,12 +885,9 @@
   function renderNewMatchSetup(){
     const team = currentTeam();
     return `
-      <header class="topbar">
-        <div class="title">Nuevo partido</div>
-        <button class="back-btn" id="to-team">Cancelar</button>
-      </header>
+      ${topbar({ left: backBtn('to-team','Cancelar') })}
       <main>
-        <span class="team-pill">${esc(team.name)}</span>
+        ${pageTitle('Nuevo partido', team.name)}
         <div class="field">
           <label for="rival-name">Nombre del equipo rival</label>
           <input id="rival-name" type="text" maxlength="80" placeholder="Ej. BM Granollers">
@@ -826,8 +965,6 @@
               <div class="goal-grid" data-grid="${side}">${cells}</div>
             </div>
           </div>
-          <div class="goal-support left"></div>
-          <div class="goal-support right"></div>
           <div class="goal-ground"></div>
         </div>
         <div class="goal-actions">
@@ -896,10 +1033,7 @@
     const gf = d.shotsRival.filter(s=>s.type==='goal').length;
     const ga = d.shotsOwn.filter(s=>s.type==='goal').length;
     return `
-      <header class="topbar">
-        <div class="title">${esc(team.name)} vs ${esc(d.rival)}</div>
-        <button class="back-btn" id="finish-match-btn">Guardar</button>
-      </header>
+      ${topbar({ right:`<button class="back-btn wide" id="finish-match-btn">Guardar</button>` })}
       <main class="live-main">
         <div class="scoreboard">
           <div class="score-box"><div class="num" style="color:var(--goal)">${gf}</div><div class="lbl">${esc(team.name)}</div></div>
@@ -1052,6 +1186,24 @@
     });
 
     bind('to-dashboard','click', () => { state.screen='dashboard'; state.formError=''; render(); });
+    bind('to-account','click', () => { state.screen='account'; render(); });
+
+    // barra inferior. "Partidos" y "+" necesitan un equipo elegido: si no lo
+    // hay, llevan al panel en vez de dejar la pantalla a medias.
+    bind('tab-home','click', () => { state.screen='dashboard'; state.formError=''; render(); });
+    bind('tab-account','click', () => { state.screen='account'; render(); });
+    bind('tab-matches','click', () => {
+      if(!state.currentTeamId){ state.screen='dashboard'; render(); toast('Elige primero un equipo'); return; }
+      reloadMatches();
+      state.screen='matchList';
+      render();
+    });
+    bind('tab-add','click', () => {
+      if(!state.currentTeamId){ state.screen='dashboard'; render(); toast('Elige primero un equipo'); return; }
+      state.formError='';
+      state.screen='newMatchSetup';
+      render();
+    });
     bind('add-player-btn','click', handleAddPlayer);
     app.querySelectorAll('[data-del-player]').forEach(el => {
       el.addEventListener('click', () => handleDeletePlayer(el.getAttribute('data-del-player')));
