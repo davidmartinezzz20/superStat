@@ -49,6 +49,23 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
 - Historial de partidos anteriores por equipo, y se pueden **editar o borrar**.
 - **Exportar** un partido en CSV o compartirlo como imagen resumen.
 
+## Android y iOS
+
+Además de la web, el proyecto se empaqueta como app nativa con Capacitor: el
+mismo código, sin un segundo proyecto que mantener.
+
+```bash
+npm install
+npx cap add android     # y/o: npx cap add ios, solo en macOS
+npm run assets          # iconos y splash de cada plataforma
+npm run android         # abre Android Studio  (npm run ios para Xcode)
+```
+
+Los pasos completos —el ID de cliente de Google por plataforma, firmar el AAB y
+lo que pide cada tienda— están en **[`docs/movil.md`](docs/movil.md)**. iOS solo
+se puede compilar desde macOS; mientras tanto, en iPhone la app se instala desde
+Safari con *Añadir a pantalla de inicio*.
+
 ## Puesta a punto
 
 Hace falta un proyecto de Supabase (gratis). Los pasos completos —crear las
@@ -91,15 +108,20 @@ ofrece importarlos la primera vez que entras con tu cuenta.
 ```
 index.html             esqueleto de la página
 css/styles.css         estilos
-js/config.js           URL y clave anon de Supabase
+js/config.js           URL y clave anon de Supabase, y los ID de Google
 js/db.js               sesión, login y sincronización con Supabase
 js/store.js            espejo local, cola de cambios y fusión
+js/native.js           puente con la app de Android/iOS
 js/app.js              pantallas y lógica de la app
+vendor/                supabase-js y capacitor-core, copiados sin tocar
 sw.js                  caché del shell, para abrir sin cobertura
 manifest.webmanifest   instalación en la pantalla de inicio
-icons/                 iconos de la app
-tools/make-icons.js    genera esos iconos desde el dibujo de la marca
+capacitor.config.json  configuración de las apps nativas
+icons/  assets/        iconos de la web y materia prima de los de las apps
+tools/make-icons.js    genera todo eso desde el dibujo de la marca
+tools/build-www.js     junta lo que se empaqueta dentro de la app
 supabase/schema.sql    tablas, migraciones y políticas de seguridad
 docs/supabase.md       puesta a punto paso a paso
+docs/movil.md          compilar y publicar en Google Play y la App Store
 test/                  pruebas con Playwright
 ```

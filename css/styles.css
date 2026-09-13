@@ -996,6 +996,28 @@
   .court-legend .dot-out{background:var(--out);}
 
   /* ---- filtros del mapa de tiros ---- */
+  /* El botón de Google de la app de móvil. En la web lo dibuja el propio
+     Google; aquí hay que pintarlo nosotros, siguiendo sus normas de marca:
+     fondo blanco, su logo de cuatro colores y el texto en gris oscuro. */
+  .google-native-btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    width:100%;
+    background:#FFFFFF;
+    border:1px solid #DADCE0;
+    color:#1F1F1F;
+    border-radius:var(--radius-pill);
+    padding:12px 16px;
+    font-family:var(--font);
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .google-native-btn:active{background:#F1F3F4;}
+  .google-native-btn svg{flex:none;}
+
   .filter-row{
     display:flex;
     flex-wrap:wrap;

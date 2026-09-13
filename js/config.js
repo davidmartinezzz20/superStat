@@ -15,9 +15,17 @@
 // además porque el botón de Google lo dibuja esta página, no el callback de
 // Supabase: así Google anuncia el dominio de la app y no el del proyecto. El
 // secreto de cliente NO va aquí, solo en Supabase.
+//
+// GOOGLE_CLIENT_ID_IOS solo lo usa la app de iPhone: allí el sistema pide el
+// token con el cliente "iOS" de Google Cloud, creado con el bundle id de la
+// app, aunque quien valida el token siga siendo el cliente web de arriba. En
+// Android no hace falta ninguno más aquí: su cliente se reconoce por la huella
+// SHA-1 con la que se firma el APK, no por nada escrito en el código. Déjalo
+// vacío mientras no publiques en iOS; está explicado en docs/movil.md.
 
 window.SUPERSTAT_CONFIG = {
   SUPABASE_URL: 'https://cqjpexlgjqyzdjkcdwpw.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxanBleGxnanF5emRqa2Nkd3B3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyNzYwMTIsImV4cCI6MjEwNDg1MjAxMn0.pmgU4Z3PpEjfEe7aEUxW8AFLsarru_R98CcG0dXZ0cY',
-  GOOGLE_CLIENT_ID: '749407066281-h4trcuskeo8a60ljl7dg1579pm7aq81k.apps.googleusercontent.com'
+  GOOGLE_CLIENT_ID: '749407066281-h4trcuskeo8a60ljl7dg1579pm7aq81k.apps.googleusercontent.com',
+  GOOGLE_CLIENT_ID_IOS: ''
 };

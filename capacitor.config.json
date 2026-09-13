@@ -1,0 +1,24 @@
+{
+  "appId": "com.superstat.balonmano",
+  "appName": "SuperStat",
+  "webDir": "www",
+  "backgroundColor": "#08090B",
+  "android": {
+    "backgroundColor": "#08090B"
+  },
+  "ios": {
+    "backgroundColor": "#08090B",
+    "contentInset": "never"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 500,
+      "launchAutoHide": true,
+      "backgroundColor": "#08090B",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": false
+    }
+  }
+}

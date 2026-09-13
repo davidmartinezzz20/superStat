@@ -30,10 +30,22 @@ Ya no vale abrir `index.html` a pelo con `file://`: el botón de Google solo
 funciona desde un origen declarado en Google Cloud, y el nonce se calcula con
 `crypto.subtle`, que solo existe en contexto seguro (https o localhost).
 
-La app es una PWA: `sw.js` guarda el HTML, el CSS, los tres scripts y
-`supabase-js`, así que abre sin cobertura y se puede instalar en la pantalla de
+La app es una PWA: `sw.js` guarda el HTML, el CSS, los scripts y las librerías
+de `vendor/`, así que abre sin cobertura y se puede instalar en la pantalla de
 inicio. **Si tocas cualquier archivo del shell, sube `VERSION` en `sw.js`**, o
 los navegadores que ya tengan la caché vieja seguirán sirviéndola.
+
+La misma web se empaqueta además como app de **Android y iOS** con Capacitor.
+No hay un segundo código: las apps abren un WebView con estos mismos archivos
+dentro del aparato. Lo que cambia está aislado en `js/native.js`, y compilar y
+publicar está en `docs/movil.md`.
+
+**Nada de lo que hace falta para arrancar puede venir de fuera.** Por eso
+`supabase-js` y `capacitor-core` están copiados en `vendor/` en vez de traerse
+de un CDN: con un CDN de por medio, ni la app ni la web abren la primera vez sin
+cobertura, que es justo el caso para el que está hecha. Hay una prueba que lo
+vigila. La excepción es el script de Google, que solo hace falta para entrar y
+no para usar la app.
 
 ## Estructura
 
@@ -50,11 +62,22 @@ los navegadores que ya tengan la caché vieja seguirán sirviéndola.
   puerta de entrada a los datos para el resto de la app.
 - `js/app.js` — toda la lógica de pantalla: una single-page app hecha a mano
   con `render()` que reconstruye `#app` según `state.screen`, sin frameworks.
+- `js/native.js` — puente con Android e iOS: las tres cosas que un WebView no
+  sabe hacer (entrar con Google, descargar un archivo y compartir). En el
+  navegador se aparta y no hace nada.
+- `vendor/` — librerías de terceros copiadas sin tocar, para no depender de un
+  CDN. Tiene su propio README con cómo actualizarlas.
 - `supabase/schema.sql` — tablas, índices, migraciones y políticas RLS.
 - `sw.js` — service worker: guarda el shell para poder abrir sin cobertura.
 - `manifest.webmanifest` e `icons/` — instalación en la pantalla de inicio.
-- `tools/make-icons.js` — genera los iconos PNG desde el dibujo de la marca.
+- `capacitor.config.json` y `assets/` — configuración de las apps nativas y la
+  materia prima de sus iconos.
+- `tools/make-icons.js` — genera los iconos de todo, web y apps, desde el
+  dibujo de la marca.
+- `tools/build-www.js` — arma `www/` con lo que se empaqueta dentro de la app.
+  **Si añades un archivo a la web, hay que añadirlo a su lista**, o no entrará.
 - `docs/supabase.md` — puesta a punto de Supabase y de Google.
+- `docs/movil.md` — compilar y publicar en Google Play y la App Store.
 
 ## Modelo de datos
 
@@ -219,10 +242,16 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   Apple y la nativa en el resto). No hay fuentes de CDN y no conviene volver a
   meterlas: la app tiene que verse igual sin conexión. Los titulares se marcan
   con peso y `letter-spacing` negativo, no con otra familia.
-- Dependencias externas: solo `supabase-js` y Google Identity Services,
-  cargadas por CDN en `index.html`. `supabase-js` va con la versión fijada; GIS
-  es la excepción, porque Google sirve una sola URL y no publica versiones. No
-  añadir más sin motivo fuerte, y seguir sin build ni framework.
+- Dependencias externas: `supabase-js` y `capacitor-core`, copiadas en
+  `vendor/` con la versión en el nombre, y Google Identity Services, que es lo
+  único que sigue viniendo de fuera porque Google sirve una sola URL y no
+  publica versiones (y solo hace falta para entrar). No añadir más sin motivo
+  fuerte, y seguir sin build ni framework.
+- Los plugins de Capacitor se instalan con npm para que el proyecto nativo
+  incluya su código Java y Swift, pero desde el JavaScript **no se importan**:
+  son módulos ESM y aquí no hay bundler. Se les habla con
+  `capacitorExports.registerPlugin(nombre)`, y eso está encapsulado en
+  `plugin()` dentro de `js/native.js`. Si añades un plugin, se usa igual.
 - Entrar con Google no usa `signInWithOAuth`: el botón lo dibuja GIS en la propia
   página y el id_token se cambia por sesión con `signInWithIdToken`. Se hizo así
   porque el rodeo por el callback de Supabase hacía que Google anunciara

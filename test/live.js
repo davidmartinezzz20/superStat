@@ -28,7 +28,9 @@ async function nuevaPagina(browser){
   await ctx.addInitScript({ content: STUB + '\n' + GSTUB });
   const page = await ctx.newPage();
   page.on('pageerror', e => { fallos++; console.log('  FALLA error en página: ' + e.message); });
-  await page.route('**/supabase-js*/**', r => r.fulfill({ contentType:'application/javascript', body:'' }));
+  // supabase-js ya no viene de un CDN sino de vendor/: se sirve vacío para que
+  // no pise al doble que addInitScript acaba de dejar en window.supabase.
+  await page.route('**/vendor/supabase-js-*.js', r => r.fulfill({ contentType:'application/javascript', body:'' }));
   await page.route('**/gsi/client*', r => r.fulfill({ contentType:'application/javascript', body:'' }));
   await page.route('**/js/config.js', r => r.fulfill({ contentType:'application/javascript',
     body:"window.SUPERSTAT_CONFIG={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon-test',GOOGLE_CLIENT_ID:'cliente-de-prueba.apps.googleusercontent.com'};" }));
@@ -302,7 +304,21 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
   console.log('\n10. La app abre sin cobertura (service worker)');
   const swCtx = await browser.newContext({ viewport:{ width:390, height:844 } });
   const swPage = await swCtx.newPage();
+  // Nada de lo que hace falta para arrancar puede venir de fuera: con un CDN de
+  // por medio, ni la app de móvil ni la web abren la primera vez sin cobertura.
+  const fuera = [];
+  swPage.on('request', r => {
+    const h = new URL(r.url()).host;
+    if(h !== 'localhost:5173' && !h.startsWith('localhost')) fuera.push(h);
+  });
   await swPage.goto(BASE);
+  await swPage.waitForTimeout(500);
+  check('no se pide ningún script a un CDN para arrancar',
+        fuera.filter(h => h.includes('jsdelivr') || h.includes('unpkg')).length === 0,
+        fuera.join(' '));
+  check('en el navegador el puente nativo se aparta',
+        await swPage.evaluate(() => Boolean(window.Native) && Native.isNative() === false
+                                    && Native.platform() === 'web'));
   const activo = await swPage.evaluate(async () => {
     const reg = await navigator.serviceWorker.ready;
     return Boolean(reg.active);
