@@ -129,6 +129,11 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   zona de lanzamiento, las dos o ninguna). Se resuelve con la lista
   `pendingShot.steps` y `advancePending()`: si añades otra pregunta, mete un
   paso más en esa lista en vez de encadenar modales.
+- La marca (el cuadro rojo con las barras más el wordmark) se pinta con
+  `brandLogo()`, nunca escribiendo "SuperStat" a mano en una vista nueva. Su
+  SVG va sin `<defs>` a propósito: así se puede repetir en la misma página sin
+  sufijar ids, que es lo que sí necesita `courtSvg()`. El mismo dibujo está
+  duplicado como favicon en `index.html`; si cambia uno, cambia el otro.
 - Los textos de la interfaz están en español; mantener ese idioma en nuevos
   textos visibles para el usuario. Los errores que devuelve Supabase vienen en
   inglés: traducirlos en `authErrorText()`.

@@ -190,6 +190,27 @@
     `;
   }
 
+  // La marca, en un solo sitio para no volver a escribirla a mano en cada
+  // pantalla. El SVG va en línea y sin <defs> a propósito: así la misma marca
+  // se puede pintar varias veces en la página sin sufijar ids, que es lo que
+  // sí necesita courtSvg() por sus patrones. El tamaño lo pone el CSS según
+  // dónde esté (banner o topbar), por eso no se pasa por parámetro. El cuadro
+  // va como aria-hidden: el nombre ya lo dice el texto de al lado, y con
+  // <title> un lector de pantalla leería "SuperStat" dos veces.
+  function brandLogo(){
+    return `
+      <span class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <rect class="tile" x="0" y="0" width="32" height="32" rx="7"/>
+          <rect class="bar" x="6.5" y="17" width="5" height="8" rx="1.4"/>
+          <rect class="bar" x="13.5" y="12.5" width="5" height="12.5" rx="1.4"/>
+          <rect class="bar" x="20.5" y="7" width="5" height="18" rx="1.4"/>
+        </svg>
+        <span class="brand-word">Super<i>Stat</i></span>
+      </span>
+    `;
+  }
+
   function onStoreChange(){
     // Repintar entero solo donde no puede haber un formulario a medias: en la
     // pantalla de equipo se estaría escribiendo un jugador y se perdería.
@@ -218,7 +239,7 @@
 
   function renderMigrate(){
     return `
-      <header class="topbar"><div class="title">🤾 SuperStat</div></header>
+      <header class="topbar"><div class="title">${brandLogo()}</div></header>
       <main>
         <div class="section-label">Datos de este navegador</div>
         <div class="card">
@@ -295,7 +316,7 @@
     const isLogin = state.authMode === 'login';
     if(!DB.isConfigured()){
       return `
-        <header class="topbar"><div class="title">🤾 SuperStat</div></header>
+        <div class="brand-banner">${brandLogo()}</div>
         <main>
           <div class="error-msg">
             Falta configurar Supabase. Rellena <code>js/config.js</code> con la URL
@@ -306,16 +327,13 @@
       `;
     }
     return `
-      <header class="topbar">
-        <div class="title">🤾 SuperStat</div>
-      </header>
+      <div class="brand-banner">
+        ${brandLogo()}
+        <p class="brand-tagline">
+          Estadísticas de partidos de balonmano, equipo a equipo, tiro a tiro.
+        </p>
+      </div>
       <main>
-        <div class="field" style="margin-bottom:26px;">
-          <p style="color:var(--muted);font-size:13.5px;line-height:1.5;margin:0;">
-            Estadísticas de partidos de balonmano, equipo a equipo, tiro a tiro.
-          </p>
-        </div>
-
         <div class="google-slot" id="google-slot"></div>
         <div class="auth-divider"><span>o con tu correo</span></div>
 
@@ -421,7 +439,7 @@
     `;
     return `
       <header class="topbar">
-        <div class="title">🤾 SuperStat <small>${esc(userLabel())}</small></div>
+        <div class="title">${brandLogo()} <small>${esc(userLabel())}</small></div>
         <button class="back-btn" id="logout-btn">Salir</button>
       </header>
       <main>
