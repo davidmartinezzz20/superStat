@@ -73,6 +73,12 @@ no para usar la app.
   no puede hacer: con la clave anon y RLS se marcan las filas propias, pero al
   usuario no se le toca. Se despliega aparte del esquema (`docs/supabase.md`) y,
   sin desplegar, el botón de *Cuenta* da error.
+- `supabase/config.toml` — lo justo para que la CLI sepa a qué proyecto
+  desplegar esa función, y para que su `verify_jwt = false` viaje en el
+  repositorio en vez de en un ajuste del panel: con la comprobación del token en
+  la puerta de enlace, el preflight de CORS —que va sin `Authorization`— se
+  rechaza y el borrado falla con el mismo error que si no estuviera desplegada.
+  Quien comprueba el token es la propia función, así que no se pierde nada.
 - `sw.js` — service worker: guarda el shell para poder abrir sin cobertura.
 - `manifest.webmanifest` e `icons/` — instalación en la pantalla de inicio.
 - `capacitor.config.json` y `assets/` — configuración de las apps nativas y la

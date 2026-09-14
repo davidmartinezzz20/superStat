@@ -321,6 +321,20 @@ async function altaEquipo(page, nombre, jugadores){
         await b.page.evaluate(() => Object.keys(localStorage).some(k => k.indexOf('hb:cache:') === 0)));
   await setOffline(b.page, false);
 
+  // Y con la función sin desplegar tampoco se borra nada. Es el otro camino por
+  // el que la petición se queda sin respuesta, y el aviso no puede ser el de
+  // "sin conexión": lo que le queda al usuario aquí es pedirlo por correo.
+  await b.page.evaluate(() => { window.__SIN_FUNCION__ = true; });
+  await b.page.fill('#delete-account-word', 'BORRAR');
+  await b.page.click('#delete-account-confirm');
+  await b.page.waitForTimeout(300);
+  check('sin la función desplegada avisa y no borra nada',
+        (await b.page.textContent('.error-msg')).includes('servicio de borrado') &&
+        await b.page.evaluate(() => Object.keys(window.__SERVER__.rows.teams).length) === 1 &&
+        await b.page.evaluate(() => Object.keys(localStorage).some(k => k.indexOf('hb:cache:') === 0)),
+        await b.page.textContent('.error-msg'));
+  await b.page.evaluate(() => { window.__SIN_FUNCION__ = false; });
+
   // Y no basta con darle al botón: hay que escribir la palabra.
   await b.page.fill('#delete-account-word', 'si');
   await b.page.click('#delete-account-confirm');

@@ -72,8 +72,11 @@
         functions: {
           async invoke(nombre){
             try{ netCheck(); }catch(e){ return { data:null, error:e }; }
-            if(nombre !== 'borrar-cuenta'){
-              return { data:null, error:new Error('función no desplegada: ' + nombre) };
+            // Sin desplegar, la función no existe y el navegador se queda sin
+            // respuesta que leer: supabase-js lo da con este mensaje exacto, y
+            // copiarlo es lo que permite probar cómo lo traduce la app.
+            if(nombre !== 'borrar-cuenta' || window.__SIN_FUNCION__){
+              return { data:null, error:new Error('Failed to send a request to the Edge Function') };
             }
             if(!SERVER.session) return { data:null, error:new Error('sin-sesion') };
             const uid = SERVER.session.user.id;

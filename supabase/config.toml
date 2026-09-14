@@ -1,0 +1,30 @@
+# Lo mínimo que la CLI de Supabase necesita para desplegar la Edge Function.
+#
+# No es el archivo entero que genera `supabase init`: ahí va además la
+# configuración del entorno local (puertos de Postgres, Studio, correo de
+# pruebas...) y aquí no se usa nada de eso. El proyecto no tiene entorno local:
+# el esquema se pega a mano en el editor SQL (docs/supabase.md) y esto solo
+# existe para que `supabase link` y `supabase functions deploy` sepan a qué
+# proyecto apuntan.
+#
+# `project_id` es la referencia del proyecto, la misma que va en la URL de
+# js/config.js. Es pública, como la clave anon: lo que separa los datos de un
+# usuario de los de otro son las políticas RLS, no que esto se sepa.
+project_id = "cqjpexlgjqyzdjkcdwpw"
+
+# Por qué la comprobación del token NO la hace la puerta de enlace de Supabase.
+#
+# Con `verify_jwt = true` (lo de serie), Supabase valida la cabecera
+# Authorization antes de arrancar la función. El problema es el preflight: la
+# llamada lleva cabeceras que no son simples, así que el navegador manda antes un
+# OPTIONS —y ese va siempre sin Authorization—. Si la puerta lo rechaza, devuelve
+# un 401 sin cabeceras CORS, el navegador descarta la respuesta y lo que llega a
+# la app es "Failed to send a request to the Edge Function": el mismo error que
+# si la función no estuviera desplegada, y sin pista de por dónde buscar.
+#
+# Esto no afloja nada, porque la comprobación que importa no está aquí: la
+# función exige el Bearer y resuelve al usuario con auth.getUser(token) (ver
+# functions/borrar-cuenta/index.ts), y sin token válido devuelve 401 y no borra
+# nada. De quién es la cuenta lo sigue diciendo el token, nunca quien llama.
+[functions.borrar-cuenta]
+verify_jwt = false
