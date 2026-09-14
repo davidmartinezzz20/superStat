@@ -2455,6 +2455,13 @@
     state.pendingShot = null;
     saveDraft();
     render();
+    // El destello va después del render, colgado del DOM que el usuario está
+    // viendo. No es adorno: los tiros que no preguntan nada —el rival a nuestra
+    // portería con el portero ya fijado y el punto de pista apagado— se
+    // registran al toque, y sin esto lo único que cambia en pantalla es el
+    // contador pequeño de la casilla. La zona es la guarda buena: es null
+    // exactamente cuando el tiro no fue a puerta.
+    if(entry.zone !== null) flashCell(side, entry.zone, type);
   }
 
   function undoLast(side){
