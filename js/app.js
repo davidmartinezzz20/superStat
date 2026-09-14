@@ -618,6 +618,12 @@
     if(m.includes('password should be at least')) return 'La contraseña es demasiado corta: mínimo 6 caracteres.';
     if(m.includes('unable to validate email')) return 'Ese correo no parece válido.';
     if(m.includes('email not confirmed')) return 'Tienes que confirmar el correo antes de entrar. Mira tu bandeja.';
+    // Así llama supabase-js a que la petición a la Edge Function no llegó a
+    // tener respuesta: no existe, o el navegador la descartó por CORS. Es
+    // distinto de que la función responda un error, y por eso tiene su propio
+    // texto: al usuario le queda la vía del correo, que es la que promete
+    // privacidad.html, y en la consola queda la pista de desplegarla (db.js).
+    if(m.includes('edge function')) return 'No se ha podido contactar con el servicio de borrado. Revisa la conexión; si sigue igual, puedes pedir el borrado por correo desde la política de privacidad.';
     if(m.includes('failed to fetch') || m.includes('network')) return 'Sin conexión con el servidor. Revisa la red.';
     return 'No se ha podido completar: ' + (e && e.message ? e.message : 'error desconocido');
   }

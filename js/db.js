@@ -196,7 +196,17 @@ window.DB = (function(){
     const c = init();
     if(!c) throw new Error('Supabase no está configurado.');
     const { data, error } = await c.functions.invoke('borrar-cuenta', { method:'POST' });
-    if(error) throw error;
+    if(error){
+      // "Failed to send a request to the Edge Function" quiere decir que el
+      // fetch no llegó a tener respuesta, y eso casi siempre es que la función
+      // no está desplegada en el proyecto. La pantalla no puede decir esto
+      // —quien la lee no es quien despliega—, así que va a la consola.
+      const m = (error.message || '').toLowerCase();
+      if(m.includes('edge function')){
+        console.warn('borrar-cuenta no responde. ¿Está desplegada? Ver docs/supabase.md, paso 5.', error);
+      }
+      throw error;
+    }
     return data;
   }
 

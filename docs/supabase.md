@@ -148,33 +148,54 @@ los datos son las políticas RLS del paso 1.
 
 La app deja borrar la cuenta entera desde *Cuenta → Borrar la cuenta*, y eso lo
 hace una Edge Function: `supabase/functions/borrar-cuenta`. **Sin desplegarla,
-el botón está pero da error** («No se ha podido completar»), porque la función
-no existe todavía en el proyecto.
+el botón está pero da error** («No se ha podido contactar con el servicio de
+borrado»), porque la función no existe todavía en el proyecto: el navegador se
+queda sin respuesta que leer.
 
 Por qué no lo hace la app sola: con la clave anon y RLS se pueden marcar como
 borradas las filas propias, pero no se puede tocar `auth.users`. Mientras esa
 fila viva, la cuenta existe y se puede volver a entrar con ella. Hace falta la
 clave de servicio, y esa no puede estar en el navegador.
 
-1. Instala la CLI de Supabase, si no la tienes:
+Hay dos caminos y basta con uno.
 
-   ```bash
-   npm install -g supabase
-   ```
-2. Entra y enlaza el proyecto (la *referencia* sale de la URL del panel):
+### Con la CLI, desde la raíz del repositorio
 
-   ```bash
-   supabase login
-   supabase link --project-ref <referencia>
-   ```
-3. Despliega:
+```bash
+npx supabase login
+npx supabase link --project-ref <referencia>     # la referencia sale de la URL del panel
+npx supabase functions deploy borrar-cuenta
+```
 
-   ```bash
-   supabase functions deploy borrar-cuenta
-   ```
+Con `npx` no hace falta instalar nada global. El enlace y la configuración de la
+función salen de `supabase/config.toml`, que ya está en el repositorio.
+
+### Desde el panel, sin instalar nada
+
+Supabase → **Edge Functions → Deploy a new function → Via Editor**, con el
+nombre `borrar-cuenta`, pegando el contenido de
+`supabase/functions/borrar-cuenta/index.ts`. Después, en los ajustes de esa
+función, **desactiva *Verify JWT*** (ver más abajo por qué).
 
 No hay que declarar ningún secreto: `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`
 las pone Supabase en el entorno de la función.
+
+### Por qué *Verify JWT* va desactivado
+
+Es la parte que sorprende, y está en `supabase/config.toml` para que no dependa
+de acordarse: `verify_jwt = false`.
+
+`verify_jwt` solo dice si **la puerta de enlace** de Supabase comprueba el token
+antes de arrancar la función. La llamada de la app lleva cabeceras que no son
+simples, así que el navegador manda antes un `OPTIONS` de preflight, y ese va
+siempre sin `Authorization`. Si la puerta lo rechaza, responde un 401 sin
+cabeceras CORS, el navegador descarta la respuesta y a la app le llega el mismo
+«no se ha podido contactar» que si la función no estuviera desplegada.
+
+**No afloja nada**, porque la comprobación que importa no está ahí: la función
+exige el `Bearer`, resuelve al usuario con `auth.getUser(token)` y devuelve 401
+sin token válido. De quién es la cuenta lo sigue diciendo el token y nunca quien
+llama.
 
 Para comprobarlo, y esto **hay que hacerlo a mano contra el proyecto de verdad**
 —como el aislamiento de RLS—: crea una cuenta de usar y tirar, mete un equipo,
@@ -204,7 +225,7 @@ Play frente a la vía por correo.
 | `Passed nonce and nonce in id_token...` | El ID de cliente no está registrado en Supabase (paso 4.1) |
 | Google pone el dominio y no "SuperStat" | La marca no está verificada — ver más abajo |
 | Entra pero no aparece nada y no guarda | RLS mal, o falta ejecutar `schema.sql` |
-| «No se ha podido completar» al borrar la cuenta | Falta desplegar la Edge Function (paso 5) |
+| «No se ha podido contactar con el servicio de borrado» | La Edge Function no está desplegada, o lo está con *Verify JWT* activado (paso 5) |
 | "Falta configurar Supabase" en pantalla | `js/config.js` está vacío |
 | Acceso denegado al entrar con Google | Tu correo no está en *Usuarios de prueba* (paso 3.1.4) |
 
