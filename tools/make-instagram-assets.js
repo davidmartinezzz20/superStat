@@ -154,8 +154,6 @@ const ESTILO = `
         line-height:1.06; }
     .pie{ font-size:34px; font-weight:500; color:${GRIS}; letter-spacing:-0.4px;
           line-height:1.32; margin-top:34px; }
-    .url{ font-size:27px; font-weight:600; color:${GRIS}; letter-spacing:0.2px;
-          margin-top:56px; }
 
     /* Lámina de captura: rótulo arriba y el móvil debajo, centrado. */
     .rotulo{ font-size:40px; font-weight:700; letter-spacing:-1.2px; margin-top:40px; }
@@ -184,7 +182,6 @@ function portadaHtml(post){
       <div class="bloque">
         <h1>${post.titulo.map(esc).join('<br>')}</h1>
         <div class="pie">${esc(post.pie)}</div>
-        <div class="url">super-stat.vercel.app</div>
       </div>
     </div>
   `;
