@@ -5,7 +5,7 @@
 // Se ejecutan igual que las de sincronización:
 //   python3 -m http.server 5173 &
 //   node test/live.js
-const { chromium, LANZAR, BASE_URL, servidorListo } = require('./requiere-playwright.js');
+const { chromium, LANZAR, CONTEXTO, BASE_URL, servidorListo } = require('./requiere-playwright.js');
 const fs = require('fs');
 const STUB = fs.readFileSync(__dirname + '/supabase-stub.js', 'utf8');
 const GSTUB = fs.readFileSync(__dirname + '/google-stub.js', 'utf8');
@@ -22,7 +22,7 @@ async function nuevaPagina(browser){
   // El service worker se bloquea en las pruebas: si sirviera el shell desde su
   // caché, se saltaría los page.route() con los que se sustituyen el CDN y la
   // configuración, y las pruebas dejarían de probar lo que creen.
-  const ctx = await browser.newContext({ viewport:{ width:390, height:844 }, serviceWorkers:'block', acceptDownloads:true });
+  const ctx = await browser.newContext(Object.assign({}, CONTEXTO, { viewport:{ width:390, height:844 }, serviceWorkers:'block', acceptDownloads:true }));
   await ctx.addInitScript({ content: STUB + '\n' + GSTUB });
   const page = await ctx.newPage();
   page.on('pageerror', e => { fallos++; console.log('  FALLA error en página: ' + e.message); });
@@ -458,7 +458,7 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
   // dobles ni rutas interceptadas, porque lo que se comprueba es que el HTML,
   // el CSS y los scripts salen de la caché y no de la red.
   console.log('\n12. La app abre sin cobertura (service worker)');
-  const swCtx = await browser.newContext({ viewport:{ width:390, height:844 } });
+  const swCtx = await browser.newContext(Object.assign({}, CONTEXTO, { viewport:{ width:390, height:844 } }));
   // La única ruta que sí se intercepta aquí, y va en el contexto y no en la
   // página: el service worker se guarda el shell con sus propias peticiones, y
   // esas no pasan por page.route(). Sin esto la prueba cargaría el config.js

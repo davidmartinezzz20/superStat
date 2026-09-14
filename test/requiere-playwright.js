@@ -39,6 +39,16 @@ const LANZAR = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIU
 // La app se sirve tal cual, sin build, así que las pruebas necesitan algo
 // sirviéndola. No se arranca desde aquí a propósito: un servidor por suite
 // pelearía por el puerto con el que ya esté levantado.
+// La app es bilingüe y elige idioma por el del navegador (ver js/i18n.js). Un
+// Chromium recién lanzado dice que habla inglés, así que sin esto las pruebas
+// buscarían "Guardar" en una app que pone "Save" y fallarían sin motivo.
+//
+// Se le dice que es un navegador en español, que es lo que asumen las
+// aserciones. Va aquí y no en cada suite por lo mismo que lo demás: para que
+// una prueba nueva no se pueda olvidar. Una prueba que quiera ver la app en
+// inglés abre la página con ?lang=en, que manda sobre esto.
+const CONTEXTO = { locale: 'es-ES' };
+
 async function servidorListo(){
   try{
     const res = await fetch(BASE_URL + '/index.html');
@@ -53,4 +63,4 @@ async function servidorListo(){
   }
 }
 
-module.exports = { chromium: playwright.chromium, LANZAR, BASE_URL, servidorListo };
+module.exports = { chromium: playwright.chromium, LANZAR, CONTEXTO, BASE_URL, servidorListo };

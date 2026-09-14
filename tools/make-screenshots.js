@@ -1,6 +1,7 @@
-// Genera las capturas de pantalla de la ficha de Google Play.
+// Genera las capturas de pantalla de la ficha de Google Play y de Instagram.
 //
-//   node tools/make-screenshots.js
+//   node tools/make-screenshots.js                 → play/capturas/    (español)
+//   IDIOMA=en node tools/make-screenshots.js       → play/capturas-en/ (inglés)
 //   CHROMIUM_PATH=/ruta/al/chromium node tools/make-screenshots.js
 //
 // Deja ocho PNG de 1080×1920 en play/capturas/, que es el tamaño que recomienda
@@ -25,7 +26,20 @@ const fs = require('fs');
 const path = require('path');
 
 const RAIZ = path.join(__dirname, '..');
-const DEST = path.join(RAIZ, 'play', 'capturas');
+
+// La app es bilingüe, así que las capturas también: las castellanas son las que
+// sube Play y las inglesas, las de la cuenta de Instagram en inglés
+// (docs/instagram.md). Es el mismo partido inventado con la misma semilla; lo
+// único que cambia es el idioma con el que se abre la página.
+//
+// La variable se llama IDIOMA y no LANG a propósito: LANG ya significa otra
+// cosa en cualquier terminal de Unix y pisarla sería pedir un disgusto.
+const IDIOMA = process.env.IDIOMA || 'es';
+if(IDIOMA !== 'es' && IDIOMA !== 'en'){
+  console.error('IDIOMA tiene que ser es o en, no "' + IDIOMA + '"');
+  process.exit(1);
+}
+const DEST = path.join(RAIZ, 'play', IDIOMA === 'es' ? 'capturas' : 'capturas-en');
 const STUB  = fs.readFileSync(path.join(RAIZ, 'test', 'supabase-stub.js'), 'utf8');
 const GSTUB = fs.readFileSync(path.join(RAIZ, 'test', 'google-stub.js'), 'utf8');
 const { rutasDePrueba } = require(path.join(RAIZ, 'test', 'rutas.js'));
@@ -165,7 +179,7 @@ async function nuevaPagina(browser, base){
     viewport:{ width:ANCHO, height:ALTO },
     deviceScaleFactor: ESCALA,
     serviceWorkers:'block',
-    locale:'es-ES'
+    locale: IDIOMA === 'es' ? 'es-ES' : 'en-GB'
   });
   await ctx.addInitScript({ content: STUB + '\n' + GSTUB + '\n' + RELOJ_RAPIDO });
   const page = await ctx.newPage();
@@ -176,7 +190,10 @@ async function nuevaPagina(browser, base){
   await rutasDePrueba(page,
     "window.SUPERSTAT_CONFIG={SUPABASE_URL:'https://demo.supabase.co'," +
     "SUPABASE_ANON_KEY:'anon-demo',GOOGLE_CLIENT_ID:'demo.apps.googleusercontent.com'};");
-  await page.goto(base + '/index.html');
+  // El idioma va en la URL y no solo en el `locale` del contexto: ?lang manda
+  // sobre todo lo demás en js/i18n.js, así que la captura sale en el idioma que
+  // se pide aunque el navegador diga otra cosa.
+  await page.goto(base + '/index.html?lang=' + IDIOMA);
   return { ctx, page };
 }
 
@@ -319,7 +336,7 @@ async function captura(page, nombre, selector){
   // El partido que sale en las capturas: 28-25, con su reparto de paradas y
   // fallos. Las dos capturas del directo se hacen a media faena, con el
   // marcador ya puesto pero el partido sin terminar.
-  await jugarPartido(page, 'BM Granollers', {
+  await jugarPartido(page, 'CE Granollers', {
     golesNuestros:28, paradasRival:9, fueraNuestros:5, palosNuestros:2,
     golesSuyos:25, paradasNuestras:11, fueraSuyos:4,
     eventos:[['steal','9'],['turnover','22'],['exclusion','7'],['steal','5'],
@@ -377,7 +394,7 @@ async function captura(page, nombre, selector){
 
   // Fechas distintas, para que la lista y la temporada parezcan una temporada
   // y no tres partidos del mismo día.
-  const FECHAS = { 'BM Granollers':'2026-04-13', 'Handbol Terrassa':'2026-04-27', 'BM La Roca':'2026-05-11' };
+  const FECHAS = { 'CE Granollers':'2026-04-13', 'Handbol Terrassa':'2026-04-27', 'BM La Roca':'2026-05-11' };
   await page.click('#to-matches');
   await page.waitForSelector('[data-match]');
   for(const [rival, fecha] of Object.entries(FECHAS)){
@@ -404,5 +421,5 @@ async function captura(page, nombre, selector){
   await ctx.close();
   await browser.close();
   srv.close();
-  console.log('\nListas en play/capturas/');
+  console.log('\nListas en ' + path.relative(RAIZ, DEST) + '/');
 })();

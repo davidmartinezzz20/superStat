@@ -30,6 +30,7 @@ const COPIAR = [
   'js/db.js',
   'js/store.js',
   'js/native.js',
+  'js/i18n.js',
   'js/app.js',
   'icons/icon-192.png',
   'icons/icon-512.png',

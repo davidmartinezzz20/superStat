@@ -30,36 +30,47 @@
     deleteAccountBusy: false
   };
 
+  // Atajo para los textos. Todo lo que se enseña sale de js/i18n.js: en las
+  // plantillas de este archivo no debe quedar ni una palabra escrita a mano.
+  const t = I18N.t;
+
+  // Las posiciones **son un dato**, no un texto: se guardan así en la base y
+  // keepersOf() compara con 'Portero'. La lista son ids en castellano y
+  // positionName() es lo único que traduce, al pintarlos. Traducirlos como dato
+  // partiría la plantilla en dos según el idioma que tuviera la app ese día.
   const POSITIONS = ['Portero','Lateral izquierdo','Central','Lateral derecho','Extremo izquierdo','Extremo derecho','Pivote'];
+  const GOALKEEPER = 'Portero';
+
+  function positionName(id){ return t('position.' + id); }
 
   // Los botones del registro rápido, en el orden en que salen en pantalla.
   // Quitar uno de aquí lo quita del panel y nada más: lo que ya estuviera
   // anotado con ese tipo se sigue guardando, leyendo y contando.
+  //
+  // El `id` es lo que viaja a la base y no cambia con el idioma; el nombre y el
+  // código corto de la chapa salen del diccionario (PE/RO en español, TO/ST en
+  // inglés), porque son texto y no dato.
   const EVENT_TYPES = [
-    { id:'turnover',  name:'Pérdida',      short:'PE', tone:'bad'  },
-    { id:'steal',     name:'Robo',         short:'RO', tone:'good' },
-    { id:'exclusion', name:'2 minutos',    short:'2′', tone:'bad'  },
-    { id:'yellow',    name:'Amarilla',     short:'TA', tone:'warn' },
-    { id:'red',       name:'Roja',         short:'TR', tone:'bad'  }
+    { id:'turnover',  tone:'bad'  },
+    { id:'steal',     tone:'good' },
+    { id:'exclusion', tone:'bad'  },
+    { id:'yellow',    tone:'warn' },
+    { id:'red',       tone:'bad'  }
   ];
 
-  // Nombre de cada tipo y orden en el que se listan en las estadísticas. Tiene
-  // más entradas que botones tiene el panel a propósito: la base acepta todas
-  // (ver el check de `events` en schema.sql), así que un partido anotado con una
-  // versión anterior de la app —o desde otro dispositivo que aún no se haya
+  // Orden en el que se listan los tipos en las estadísticas. Tiene más entradas
+  // que botones tiene el panel a propósito: la base acepta todas (ver el check
+  // de `events` en schema.sql), así que un partido anotado con una versión
+  // anterior de la app —o desde otro dispositivo que aún no se haya
   // actualizado— tiene que poder enseñarse con su nombre y no como un código.
-  const EVENT_NAME = {
-    turnover:  'Pérdida',
-    steal:     'Robo',
-    exclusion: '2 minutos',
-    yellow:    'Amarilla',
-    red:       'Roja',
-    assist:    'Asistencia',
-    block:     'Blocaje',
-    foul7m:    '7 m provocado'
-  };
+  const EVENT_ORDER = ['turnover','steal','exclusion','yellow','red','assist','block','foul7m'];
 
-  const EVENT_ORDER = Object.keys(EVENT_NAME);
+  // Un tipo que no conozca ninguna de las dos listas se enseña con su propio
+  // código antes que en blanco: la base acepta más de los que hay aquí.
+  function eventName(id){
+    return EVENT_ORDER.indexOf(id) === -1 && id !== 'in' && id !== 'out'
+      ? id : t('event.' + id);
+  }
 
   // Los tipos que de verdad aparecen en unos datos, en el orden de arriba. Se
   // recorre lo anotado y no la lista de botones, para que quitar un botón no
@@ -88,15 +99,11 @@
 
   // Zonas con las que se agrupan los lanzamientos en las estadísticas. El punto
   // exacto es lo que se guarda; la zona se deduce de él al mostrar los datos.
-  const ORIGINS = [
-    { id:'EI',  name:'Extremo izquierdo' },
-    { id:'LI',  name:'Lateral izquierdo' },
-    { id:'CE',  name:'Central' },
-    { id:'LD',  name:'Lateral derecho' },
-    { id:'ED',  name:'Extremo derecho' },
-    { id:'PIV', name:'Pivote' },
-    { id:'7M',  name:'7 metros' }
-  ];
+  // Igual que las posiciones: el id es lo que se recalcula desde el punto y lo
+  // que se escribe en el CSV; el nombre se traduce solo al enseñarlo.
+  const ORIGINS = ['EI','LI','CE','LD','ED','PIV','7M'];
+
+  function originName(id){ return t('origin.' + id); }
 
   function zoneFromPoint(p){
     if(!p) return null;
@@ -143,7 +150,7 @@
       <svg class="court-svg${o.interactive ? ' interactive' : ''}"
            viewBox="${COURT_VB.x} ${COURT_VB.y} ${COURT_VB.w} ${COURT_VB.h}"
            ${o.interactive ? 'data-court="1"' : 'role="img"'}>
-        <title>Media pista de balonmano</title>
+        <title>${esc(t('court.title'))}</title>
         <defs>
           <pattern id="parquet-${id}" width="1.15" height="4" patternUnits="userSpaceOnUse">
             <rect width="1.15" height="4" fill="#AC8455"/>
@@ -234,11 +241,11 @@
 
   // ---------- toast ----------
   function toast(msg){
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(()=>t.remove(), 2200);
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 2200);
   }
 
   // ---------- sesión y sincronización ----------
@@ -247,16 +254,8 @@
     const u = state.user;
     if(!u) return '';
     const meta = u.user_metadata || {};
-    return meta.name || meta.full_name || u.email || 'mi cuenta';
+    return meta.name || meta.full_name || u.email || t('common.myAccount');
   }
-
-  const SYNC_TEXT = {
-    syncing: 'Sincronizando…',
-    pending: 'Cambios pendientes de subir',
-    offline: 'Sin conexión: se guarda aquí y se sube al volver',
-    error:   'No se ha podido sincronizar. Se reintentará solo.',
-    local:   'Supabase sin configurar: los datos solo están en este dispositivo'
-  };
 
   // Solo aparece cuando hay algo que contar: si todo está al día, estorba.
   function syncBanner(){
@@ -266,11 +265,11 @@
     // llevas anotado que todavía no está a salvo en ningún otro sitio.
     const n = Store.pendingCount();
     const extra = n && (st === 'pending' || st === 'offline' || st === 'error')
-      ? ` · ${n} sin subir` : '';
+      ? t('sync.pendingCount', { n }) : '';
     return `
       <button class="sync-banner st-${st}" id="sync-banner">
         <span class="sync-dot"></span>
-        ${esc(SYNC_TEXT[st] || '')}${extra}
+        ${esc(t('sync.' + st) + extra)}
       </button>
     `;
   }
@@ -364,24 +363,27 @@
     return name.trim().split(/\s+/).slice(0,2).map(w => w[0] || '').join('').toUpperCase();
   }
 
-  const MONTHS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-
-  // '2026-09-13' → '13 sep'. Si viniera algo raro, se devuelve tal cual.
+  // '2026-09-13' → '13 sep' en español y 'Sep 13' en inglés: cambia el mes y
+  // también el orden, que es lo que hace date.short una plantilla y no una
+  // concatenación. Si viniera algo raro, se devuelve tal cual.
   function shortDate(iso){
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
     if(!m) return iso || '';
-    return `${parseInt(m[3],10)} ${MONTHS[parseInt(m[2],10) - 1] || ''}`;
+    return t('date.short', {
+      d: parseInt(m[3], 10),
+      mes: t('month.' + parseInt(m[2], 10))
+    });
   }
 
-  function teamCardHtml(t){
-    const tint = teamTint(t.name);
+  function teamCardHtml(team){
+    const tint = teamTint(team.name);
     return `
-      <button class="tint-card team-card" data-team="${t.id}"
+      <button class="tint-card team-card" data-team="${team.id}"
               style="--tint:${tint.wash};--tint-solid:${tint.solid};">
-        <span class="team-badge">${esc(initials(t.name))}</span>
+        <span class="team-badge">${esc(initials(team.name))}</span>
         <span class="team-text">
-          <span class="team-name">${esc(t.name)}</span>
-          <span class="team-meta">${t.players.length} jugador${t.players.length===1?'':'es'}</span>
+          <span class="team-name">${esc(team.name)}</span>
+          <span class="team-meta">${esc(t('team.playerCount', { n: team.players.length }))}</span>
         </span>
         <span class="chev">${icon('back')}</span>
       </button>
@@ -392,15 +394,15 @@
     const gf = m.shotsRival.filter(s=>s.type==='goal').length;
     const ga = m.shotsOwn.filter(s=>s.type==='goal').length;
     const res = gf > ga ? 'win' : (gf < ga ? 'loss' : 'draw');
-    const tint = res === 'win'  ? { solid:'#33A17F', wash:'rgba(51,161,127,0.40)', tag:'Victoria' }
-               : res === 'loss' ? { solid:'#C1443A', wash:'rgba(193,68,58,0.40)',  tag:'Derrota' }
-               :                  { solid:'#8A8F98', wash:'rgba(138,143,152,0.28)', tag:'Empate' };
+    const tint = res === 'win'  ? { solid:'#33A17F', wash:'rgba(51,161,127,0.40)', tag:t('result.win') }
+               : res === 'loss' ? { solid:'#C1443A', wash:'rgba(193,68,58,0.40)',  tag:t('result.loss') }
+               :                  { solid:'#8A8F98', wash:'rgba(138,143,152,0.28)', tag:t('result.draw') };
     return `
       <button class="tint-card match-card" data-match="${m.id}"
               style="--tint:${tint.wash};--tint-solid:${tint.solid};">
         <span class="side">${esc(team.name)}</span>
         <span class="mid">
-          <span class="tag">${tint.tag}</span>
+          <span class="tag">${esc(tint.tag)}</span>
           <span class="score">${gf} – ${ga}</span>
           <span class="when">${esc(shortDate(m.date))}</span>
         </span>
@@ -439,21 +441,19 @@
     return `
       ${topbar()}
       <main>
-        ${pageTitle('Datos de este navegador')}
+        ${pageTitle(t('migrate.title'))}
         <div class="card">
           <p style="margin:0 0 10px;font-size:14px;line-height:1.5;">
-            Este navegador tiene equipos y partidos guardados de antes de que
-            hubiera cuentas. ¿Los quieres pasar a la tuya?
+            ${esc(t('migrate.body'))}
           </p>
           <p style="margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;">
-            Se copian, no se borran. Si dices que no, se quedan donde están y no
-            se vuelve a preguntar.
+            ${esc(t('migrate.note'))}
           </p>
         </div>
         <div style="height:14px;"></div>
-        <button class="primary" id="migrate-yes">Importar a mi cuenta</button>
+        <button class="primary" id="migrate-yes">${esc(t('migrate.yes'))}</button>
         <div style="height:10px;"></div>
-        <button class="secondary" id="migrate-no">No, empezar de cero</button>
+        <button class="secondary" id="migrate-no">${esc(t('migrate.no'))}</button>
       </main>
     `;
   }
@@ -472,7 +472,7 @@
     // es lo que hace un móvil cuando cambias de aplicación. No se entra solo en
     // él: se ofrece desde el panel, por si lo que quería era otra cosa.
     const saved = Store.loadDraft();
-    state.draft = saved && state.teams.some(t => t.id === saved.teamId) ? saved : null;
+    state.draft = saved && state.teams.some(tm => tm.id === saved.teamId) ? saved : null;
     if(!state.draft) Store.clearDraft();
     state.screen = Store.hasLegacyData() ? 'migrate' : 'dashboard';
     render();
@@ -520,7 +520,7 @@
     else if(state.screen === 'liveMatch') html = renderLiveMatch();
     else if(state.screen === 'migrate') html = renderMigrate();
     else if(state.screen === 'account') html = renderAccount();
-    else html = '<div class="loading-msg">Cargando…</div>';
+    else html = `<div class="loading-msg">${esc(t('common.loading'))}</div>`;
     // La barra inferior la pone aquí el render y no cada pantalla, para que
     // añadir una vista nueva no obligue a acordarse de ella.
     const withNav = NAV_SCREENS.indexOf(state.screen) !== -1;
@@ -544,10 +544,10 @@
       </button>`;
     return `
       <nav class="bottom-nav">
-        ${btn('tab-home','home','home','Equipos')}
-        ${btn('tab-matches','matches','list','Partidos')}
-        ${btn('tab-account','account','user','Cuenta')}
-        <button class="nav-add" id="tab-add" aria-label="Nuevo partido" title="Nuevo partido">
+        ${btn('tab-home','home','home',esc(t('nav.teams')))}
+        ${btn('tab-matches','matches','list',esc(t('nav.matches')))}
+        ${btn('tab-account','account','user',esc(t('nav.account')))}
+        <button class="nav-add" id="tab-add" aria-label="${esc(t('nav.newMatch'))}" title="${esc(t('nav.newMatch'))}">
           ${icon('plus')}
         </button>
       </nav>
@@ -561,71 +561,71 @@
       return `
         <div class="brand-banner">${brandLogo()}</div>
         <main>
-          <div class="error-msg">
-            Falta configurar Supabase. Rellena <code>js/config.js</code> con la URL
-            del proyecto y la clave anon (Project Settings → API).
-          </div>
-          <div class="hint-text">Mientras tanto no se puede entrar ni guardar nada.</div>
+          <div class="error-msg">${t('auth.noConfig')}</div>
+          <div class="hint-text">${esc(t('auth.noConfigHint'))}</div>
         </main>
       `;
     }
+    const submit = isLogin ? t('auth.login') : t('auth.register');
     return `
       <div class="brand-banner">
         ${brandLogo()}
-        <p class="brand-tagline">
-          Estadísticas de partidos de balonmano, equipo a equipo, tiro a tiro.
-        </p>
+        <p class="brand-tagline">${esc(t('app.tagline'))}</p>
       </div>
       <main>
         <div class="google-slot" id="google-slot"></div>
-        <div class="auth-divider"><span>o con tu correo</span></div>
+        <div class="auth-divider"><span>${esc(t('auth.orEmail'))}</span></div>
 
-        <h2 style="font-size:19px;margin-bottom:16px;">${isLogin ? 'Entrar' : 'Crear cuenta'}</h2>
+        <h2 style="font-size:19px;margin-bottom:16px;">${esc(submit)}</h2>
         <div class="field">
-          <label for="auth-user">Correo electrónico</label>
-          <input id="auth-user" type="email" autocomplete="email" placeholder="tu@correo.com">
+          <label for="auth-user">${esc(t('auth.email'))}</label>
+          <input id="auth-user" type="email" autocomplete="email" placeholder="${esc(t('auth.emailHint'))}">
         </div>
         <div class="field">
-          <label for="auth-pass">Contraseña</label>
+          <label for="auth-pass">${esc(t('auth.password'))}</label>
           <input id="auth-pass" type="password" autocomplete="${isLogin ? 'current-password' : 'new-password'}" placeholder="••••••••">
         </div>
         ${state.authError ? `<div class="error-msg">${esc(state.authError)}</div>` : ''}
         ${state.authNotice ? `<div class="notice-msg">${esc(state.authNotice)}</div>` : ''}
         <button class="primary" id="auth-submit" ${state.authBusy ? 'disabled' : ''}>
-          ${state.authBusy ? 'Un momento…' : (isLogin ? 'Entrar' : 'Crear cuenta')}
+          ${esc(state.authBusy ? t('common.wait') : submit)}
         </button>
         <div style="text-align:center;margin-top:14px;">
-          <button class="link-btn" id="auth-toggle">${isLogin ? '¿No tienes cuenta? Crea una' : '¿Ya tienes cuenta? Entra'}</button>
+          <button class="link-btn" id="auth-toggle">${esc(isLogin ? t('auth.toRegister') : t('auth.toLogin'))}</button>
         </div>
       </main>
-      <footer class="note">Tus datos se guardan en tu cuenta y se sincronizan entre tus dispositivos.</footer>
+      <footer class="note">${esc(t('auth.footer'))}</footer>
     `;
   }
 
-  // Los mensajes de Supabase vienen en inglés; se traducen los habituales.
+  // Los mensajes de Supabase vienen siempre en inglés, los lea quien los lea, y
+  // no son para enseñárselos a nadie tal cual ("invalid login credentials"). Se
+  // reconocen por su texto original y se cambian por uno nuestro, que sí tiene
+  // los dos idiomas.
   function authErrorText(e){
     const m = (e && e.message ? e.message : String(e)).toLowerCase();
     // Lo que puede fallar solo en la app de móvil. Cancelar el diálogo de
     // Google llega como error y no lo es: no se enseña nada.
     if(m.includes('cancel') || m.includes('12501') || m.includes('user_cancel')) return '';
-    if(m.includes('google-sin-token')) return 'Google no ha devuelto la sesión. Inténtalo otra vez.';
-    if(m.includes('sin-plataforma-nativa')) return 'Ahora mismo no se puede entrar con Google.';
-    if(m.includes('10:') || m.includes('developer_error')){
-      return 'La app no está dada de alta en Google con esta firma. Revisa el ID de cliente y la huella SHA-1.';
-    }
-    if(m.includes('invalid login credentials')) return 'Correo o contraseña incorrectos.';
-    if(m.includes('user already registered')) return 'Ya existe una cuenta con ese correo. Entra en vez de crearla.';
-    if(m.includes('password should be at least')) return 'La contraseña es demasiado corta: mínimo 6 caracteres.';
-    if(m.includes('unable to validate email')) return 'Ese correo no parece válido.';
-    if(m.includes('email not confirmed')) return 'Tienes que confirmar el correo antes de entrar. Mira tu bandeja.';
+    if(m.includes('google-sin-token')) return t('authError.googleNoToken');
+    if(m.includes('sin-plataforma-nativa')) return t('authError.googleOff');
+    if(m.includes('10:') || m.includes('developer_error')) return t('authError.googleSign');
+    if(m.includes('invalid login credentials')) return t('authError.badLogin');
+    if(m.includes('user already registered')) return t('authError.alreadyUser');
+    if(m.includes('password should be at least')) return t('authError.shortPassword');
+    if(m.includes('unable to validate email')) return t('authError.badEmail');
+    if(m.includes('email not confirmed')) return t('authError.notConfirmed');
     // Así llama supabase-js a que la petición a la Edge Function no llegó a
     // tener respuesta: no existe, o el navegador la descartó por CORS. Es
     // distinto de que la función responda un error, y por eso tiene su propio
     // texto: al usuario le queda la vía del correo, que es la que promete
     // privacidad.html, y en la consola queda la pista de desplegarla (db.js).
-    if(m.includes('edge function')) return 'No se ha podido contactar con el servicio de borrado. Revisa la conexión; si sigue igual, puedes pedir el borrado por correo desde la política de privacidad.';
-    if(m.includes('failed to fetch') || m.includes('network')) return 'Sin conexión con el servidor. Revisa la red.';
-    return 'No se ha podido completar: ' + (e && e.message ? e.message : 'error desconocido');
+    if(m.includes('edge function')) return t('authError.edgeFunction');
+    if(m.includes('failed to fetch') || m.includes('network')) return t('authError.network');
+    // El de último recurso lleva dentro el mensaje original de Supabase, en
+    // inglés: no hay forma de traducir lo que todavía no se ha visto nunca, y
+    // es lo que hace falta para dar el aviso por bueno.
+    return t('authError.generic', { msg: (e && e.message) ? e.message : t('authError.unknown') });
   }
 
   // El botón de Google.
@@ -649,7 +649,7 @@
             <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/>
             <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.9 11.42 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
           </svg>
-          <span>Entrar con Google</span>
+          <span>${esc(t('auth.googleBtn'))}</span>
         </button>
       `;
       const btn = document.getElementById('google-native');
@@ -680,17 +680,17 @@
 
   function googleUnavailableText(e){
     const m = (e && e.message) || '';
-    if(m === 'falta-client-id')     return 'Para entrar con Google falta el ID de cliente en js/config.js.';
-    if(m === 'sin-contexto-seguro') return 'Entrar con Google necesita https (o localhost).';
-    if(m === 'google-no-carga')     return 'No se ha podido cargar el botón de Google. Comprueba la conexión.';
-    return 'Ahora mismo no se puede entrar con Google.';
+    if(m === 'falta-client-id')     return t('google.noClientId');
+    if(m === 'sin-contexto-seguro') return t('google.noSecureContext');
+    if(m === 'google-no-carga')     return t('google.notLoaded');
+    return t('authError.googleOff');
   }
 
   async function handleAuthSubmit(){
     if(state.authBusy) return;
     const email = document.getElementById('auth-user').value.trim();
     const pass = document.getElementById('auth-pass').value;
-    if(!email || !pass){ state.authError = 'Escribe tu correo y la contraseña.'; render(); return; }
+    if(!email || !pass){ state.authError = t('auth.needBoth'); render(); return; }
     state.authError = '';
     state.authNotice = '';
     state.authBusy = true;
@@ -703,7 +703,7 @@
         if(res.needsConfirmation){
           state.authBusy = false;
           state.authMode = 'login';
-          state.authNotice = 'Cuenta creada. Confirma el correo que te hemos enviado y entra.';
+          state.authNotice = t('auth.confirmSent');
           render();
           return;
         }
@@ -721,23 +721,23 @@
   function renderDashboard(){
     const teamsHtml = state.teams.length ? state.teams.map(teamCardHtml).join('') : `
       <div class="empty-state">
-        <div class="big-num">Aún no tienes ningún equipo</div>
-        Crea tu primer equipo para empezar a registrar partidos.
+        <div class="big-num">${esc(t('dashboard.empty'))}</div>
+        ${esc(t('dashboard.emptyHint'))}
       </div>
     `;
     return `
-      ${topbar({ right:`<button class="back-btn" id="to-account" aria-label="Cuenta" title="Cuenta">${icon('user')}</button>` })}
+      ${topbar({ right:`<button class="back-btn" id="to-account" aria-label="${esc(t('nav.account'))}" title="${esc(t('nav.account'))}">${icon('user')}</button>` })}
       <main>
-        ${pageTitle('Equipos')}
+        ${pageTitle(t('dashboard.title'))}
         ${syncBanner()}
         ${resumeCardHtml()}
         ${teamsHtml}
-        <div class="section-label">Nuevo equipo</div>
+        <div class="section-label">${esc(t('dashboard.newTeam'))}</div>
         <div class="field">
-          <label for="new-team-name">Nombre del equipo</label>
-          <input id="new-team-name" type="text" maxlength="80" placeholder="Ej. CB Sabadell">
+          <label for="new-team-name">${esc(t('dashboard.teamName'))}</label>
+          <input id="new-team-name" type="text" maxlength="80" placeholder="${esc(t('dashboard.teamHint'))}">
         </div>
-        <button class="primary" id="create-team-btn">Crear equipo</button>
+        <button class="primary" id="create-team-btn">${esc(t('dashboard.create'))}</button>
       </main>
     `;
   }
@@ -749,20 +749,20 @@
     if(!d || state.screen !== 'dashboard') return '';
     const gf = d.shotsRival.filter(s => s.type === 'goal').length;
     const ga = d.shotsOwn.filter(s => s.type === 'goal').length;
-    const team = state.teams.find(t => t.id === d.teamId);
+    const team = state.teams.find(tm => tm.id === d.teamId);
     return `
       <div class="resume-card">
         <div class="resume-head">
-          <span class="resume-live">Sin guardar</span>
+          <span class="resume-live">${esc(t('resume.unsaved'))}</span>
           <span class="resume-score">${gf} – ${ga}</span>
         </div>
         <div class="resume-sub">
-          ${esc((team && team.name) || 'Tu equipo')} · ${esc(d.rival)} ·
-          ${d.period === 1 ? '1ª' : '2ª'} parte, ${clockText(d)}
+          ${esc((team && team.name) || t('common.yourTeam'))} · ${esc(d.rival)} ·
+          ${esc(t('live.half', { n: d.period }))}, ${clockText(d)}
         </div>
         <div class="resume-actions">
-          <button class="primary slim" id="resume-match">Seguir con el partido</button>
-          <button class="secondary slim" id="drop-match">Descartar</button>
+          <button class="primary slim" id="resume-match">${esc(t('resume.continue'))}</button>
+          <button class="secondary slim" id="drop-match">${esc(t('resume.drop'))}</button>
         </div>
       </div>
     `;
@@ -775,29 +775,51 @@
     const label = userLabel();
     const teams = state.teams.length;
     return `
-      ${topbar({ left: backBtn('to-dashboard','Equipos') })}
+      ${topbar({ left: backBtn('to-dashboard', t('nav.teams')) })}
       <main>
-        ${pageTitle('Cuenta')}
+        ${pageTitle(t('account.title'))}
         <div class="account-head">
           <div class="account-avatar">${esc(initials(label || '?'))}</div>
           <div>
             <div class="account-name">${esc(label)}</div>
-            <div class="account-sub">${teams} equipo${teams===1?'':'s'} en esta cuenta</div>
+            <div class="account-sub">${esc(t('account.teams', { n: teams }))}</div>
           </div>
         </div>
-        <div class="section-label">Sincronización</div>
+        <div class="section-label">${esc(t('account.sync'))}</div>
         ${syncBanner() || `
           <div class="card">
-            <div class="card-title">Todo al día</div>
-            <div class="card-sub">Tus datos están guardados en la nube y en este dispositivo.</div>
+            <div class="card-title">${esc(t('account.allGood'))}</div>
+            <div class="card-sub">${esc(t('account.allGoodSub'))}</div>
           </div>
         `}
-        <div class="section-label">Sesión</div>
-        <button class="secondary" id="logout-btn">Salir de la cuenta</button>
+        <div class="section-label">
+          ${esc(t('account.language'))}
+          <small>${esc(t('account.languageSub'))}</small>
+        </div>
+        ${languageHtml()}
+        <div class="section-label">${esc(t('account.session'))}</div>
+        <button class="secondary" id="logout-btn">${esc(t('account.logout'))}</button>
 
-        <div class="section-label">Borrar la cuenta</div>
+        <div class="section-label">${esc(t('account.deleteTitle'))}</div>
         ${deleteAccountHtml()}
       </main>
+    `;
+  }
+
+  // El idioma es del aparato y no de la cuenta (lo guarda Store en su propia
+  // clave, sin userId), así que vive aquí junto a lo demás que es de este
+  // dispositivo y no se sincroniza. Se pintan las dos opciones como chips, del
+  // mismo modo que los filtros del mapa, para no meter un <select> más.
+  function languageHtml(){
+    const actual = I18N.lang();
+    return `
+      <div class="chip-row">
+        ${I18N.LANGS.map(code => `
+          <button class="filter-chip${code === actual ? ' on' : ''}" data-lang="${code}">
+            ${esc(I18N.langName(code))}
+          </button>
+        `).join('')}
+      </div>
     `;
   }
 
@@ -809,28 +831,26 @@
     if(!state.deletingAccount){
       return `
         <div class="card">
-          <div class="card-sub">Se borran la cuenta y todo lo suyo: equipos,
-          plantillas, partidos, tiros y eventos, en este dispositivo y en la
-          nube. No se puede deshacer.</div>
-          <button class="danger slim" id="delete-account">${icon('trash')} Borrar mi cuenta</button>
+          <div class="card-sub">${esc(t('account.deleteSub'))}</div>
+          <button class="danger slim" id="delete-account">${icon('trash')} ${esc(t('account.deleteBtn'))}</button>
         </div>
       `;
     }
+    const palabra = t('account.deleteWord');
     return `
       <div class="card edit-card">
-        <div class="card-title">Esto no se puede deshacer</div>
-        <div class="card-sub">Escribe <strong>BORRAR</strong> para confirmar que
-        quieres eliminar la cuenta y todo lo que guarda.</div>
+        <div class="card-title">${esc(t('account.deleteNoUndo'))}</div>
+        <div class="card-sub">${t('account.deleteAsk', { palabra: esc(palabra) })}</div>
         <div class="field">
-          <label for="delete-account-word">Confirmación</label>
-          <input id="delete-account-word" type="text" autocomplete="off" placeholder="BORRAR">
+          <label for="delete-account-word">${esc(t('account.deleteLabel'))}</label>
+          <input id="delete-account-word" type="text" autocomplete="off" placeholder="${esc(palabra)}">
         </div>
         ${state.deleteAccountError ? `<div class="error-msg">${esc(state.deleteAccountError)}</div>` : ''}
         <div class="export-row">
           <button class="danger slim" id="delete-account-confirm" ${state.deleteAccountBusy ? 'disabled' : ''}>
-            ${state.deleteAccountBusy ? 'Borrando…' : 'Borrar la cuenta'}
+            ${esc(state.deleteAccountBusy ? t('account.deleting') : t('account.deleteGo'))}
           </button>
-          <button class="secondary slim" id="delete-account-cancel">Cancelar</button>
+          <button class="secondary slim" id="delete-account-cancel">${esc(t('common.cancel'))}</button>
         </div>
       </div>
     `;
@@ -842,9 +862,13 @@
   // hubiera sin subir.
   async function handleDeleteAccount(){
     const campo = document.getElementById('delete-account-word');
-    const palabra = (campo ? campo.value : '').trim().toUpperCase();
-    if(palabra !== 'BORRAR'){
-      state.deleteAccountError = 'Escribe BORRAR para confirmar.';
+    const escrito = (campo ? campo.value : '').trim().toUpperCase();
+    // La palabra depende del idioma —BORRAR o DELETE— y es la misma que se pide
+    // en pantalla, así que se compara con la del diccionario y no con una
+    // escrita aquí: con dos copias, cambiar una dejaría el botón inservible.
+    const palabra = t('account.deleteWord');
+    if(escrito !== palabra.toUpperCase()){
+      state.deleteAccountError = t('account.deleteType', { palabra });
       render();
       return;
     }
@@ -855,21 +879,21 @@
       await DB.deleteAccount();
     }catch(e){
       state.deleteAccountBusy = false;
-      state.deleteAccountError = authErrorText(e) || 'No se ha podido borrar la cuenta.';
+      state.deleteAccountError = authErrorText(e) || t('account.deleteFailed');
       render();
       return;
     }
     Store.wipeLocal();
     await DB.signOut();
     leaveApp();
-    toast('Cuenta borrada');
+    toast(t('account.deleted'));
   }
 
   async function handleCreateTeam(){
     const name = document.getElementById('new-team-name').value.trim();
     if(!name) return;
     if(name.length > 80){
-      state.formError = 'El nombre del equipo es demasiado largo (máximo 80).';
+      state.formError = t('dashboard.nameTooLong');
       render();
       return;
     }
@@ -881,7 +905,7 @@
   }
 
   function currentTeam(){
-    return state.teams.find(t => t.id === state.currentTeamId);
+    return state.teams.find(tm => tm.id === state.currentTeamId);
   }
 
   // ---------- TEAM / ROSTER ----------
@@ -893,12 +917,12 @@
         <div class="dorsal-badge">${esc(p.dorsal)}</div>
         <div class="player-info">
           <div class="player-name">${esc(p.name)}</div>
-          <div class="player-pos">${esc(p.position)}</div>
+          <div class="player-pos">${esc(positionName(p.position))}</div>
         </div>
-        <button class="icon-btn" data-edit-player="${p.id}" title="Editar">${icon('pencil')}</button>
-        <button class="icon-btn" data-del-player="${p.id}" title="Eliminar">✕</button>
+        <button class="icon-btn" data-edit-player="${p.id}" title="${esc(t('common.edit'))}">${icon('pencil')}</button>
+        <button class="icon-btn" data-del-player="${p.id}" title="${esc(t('common.delete'))}">✕</button>
       </div>
-    `).join('') : `<div class="empty-state" style="padding:20px 0;">Sin jugadores todavía.</div>`;
+    `).join('') : `<div class="empty-state" style="padding:20px 0;">${esc(t('team.noPlayers'))}</div>`;
 
     // El mismo formulario da de alta y corrige: con editingPlayerId puesto llega
     // relleno y guarda sobre la misma fila, que es lo que conserva el historial
@@ -908,51 +932,50 @@
       : null;
 
     return `
-      ${topbar({ left: backBtn('to-dashboard','Equipos') })}
+      ${topbar({ left: backBtn('to-dashboard', t('nav.teams')) })}
       <main>
-        ${pageTitle(team.name, `${players.length} jugador${players.length===1?'':'es'} en plantilla`)}
-        <div class="section-label">Plantilla</div>
+        ${pageTitle(team.name, t('team.rosterCount', { n: players.length }))}
+        <div class="section-label">${esc(t('team.roster'))}</div>
         <div class="card">${rows}</div>
 
-        <div class="section-label">${editando ? 'Editar jugador' : 'Nuevo jugador'}</div>
+        <div class="section-label">${esc(editando ? t('team.editPlayer') : t('team.newPlayer'))}</div>
         <div class="row">
           <div class="field" style="flex:2;">
-            <label for="p-name">Nombre</label>
-            <input id="p-name" type="text" maxlength="80" placeholder="Nombre del jugador"
+            <label for="p-name">${esc(t('team.name'))}</label>
+            <input id="p-name" type="text" maxlength="80" placeholder="${esc(t('team.nameHint'))}"
                    value="${editando ? esc(editando.name) : ''}">
           </div>
           <div class="field" style="flex:1;">
-            <label for="p-dorsal">Dorsal</label>
+            <label for="p-dorsal">${esc(t('team.dorsal'))}</label>
             <input id="p-dorsal" type="number" min="0" max="99" placeholder="7"
                    value="${editando ? esc(editando.dorsal) : ''}">
           </div>
         </div>
         <div class="field">
-          <label for="p-pos">Posición</label>
+          <label for="p-pos">${esc(t('team.position'))}</label>
           <select id="p-pos">
-            ${POSITIONS.map(p=>`<option value="${p}"${editando && editando.position === p ? ' selected' : ''}>${p}</option>`).join('')}
+            ${POSITIONS.map(p=>`<option value="${esc(p)}"${editando && editando.position === p ? ' selected' : ''}>${esc(positionName(p))}</option>`).join('')}
           </select>
         </div>
         ${state.formError ? `<div class="error-msg">${esc(state.formError)}</div>` : ''}
         ${editando ? `
           <div class="export-row">
-            <button class="primary slim" id="save-player-btn">Guardar cambios</button>
-            <button class="secondary slim" id="cancel-player-btn">Cancelar</button>
+            <button class="primary slim" id="save-player-btn">${esc(t('common.saveChanges'))}</button>
+            <button class="secondary slim" id="cancel-player-btn">${esc(t('common.cancel'))}</button>
           </div>
-        ` : `<button class="secondary" id="add-player-btn">Añadir jugador</button>`}
+        ` : `<button class="secondary" id="add-player-btn">${esc(t('team.addPlayer'))}</button>`}
 
-        <div class="section-label">Partidos</div>
-        <button class="primary" id="new-match-btn">＋ Nuevo partido</button>
+        <div class="section-label">${esc(t('team.matches'))}</div>
+        <button class="primary" id="new-match-btn">${esc(t('team.newMatch'))}</button>
         <div style="height:10px;"></div>
-        <button class="secondary" id="view-matches-btn">Ver estadísticas de partidos anteriores</button>
+        <button class="secondary" id="view-matches-btn">${esc(t('team.viewMatches'))}</button>
         <div style="height:10px;"></div>
-        <button class="secondary" id="view-season-btn">Acumulado de la temporada</button>
+        <button class="secondary" id="view-season-btn">${esc(t('team.viewSeason'))}</button>
 
-        <div class="section-label">Borrar</div>
+        <div class="section-label">${esc(t('team.deleteTitle'))}</div>
         <div class="card">
-          <div class="card-sub">Con el equipo se van su plantilla y todos sus
-          partidos, con todo lo anotado en ellos. No se puede deshacer.</div>
-          <button class="danger slim" id="delete-team">${icon('trash')} Borrar este equipo</button>
+          <div class="card-sub">${esc(t('team.deleteSub'))}</div>
+          <button class="danger slim" id="delete-team">${icon('trash')} ${esc(t('team.deleteBtn'))}</button>
         </div>
       </main>
     `;
@@ -966,12 +989,12 @@
     const dorsalRaw = document.getElementById('p-dorsal').value;
     const position = document.getElementById('p-pos').value;
     const mal = (msg) => { state.formError = msg; render(); return null; };
-    if(!name || dorsalRaw === '') return mal('Escribe nombre y dorsal.');
+    if(!name || dorsalRaw === '') return mal(t('team.needNameDorsal'));
     const dorsal = parseInt(dorsalRaw, 10);
     if(!Number.isInteger(dorsal) || dorsal < 0 || dorsal > 99){
-      return mal('El dorsal tiene que ser un número entre 0 y 99.');
+      return mal(t('team.badDorsal'));
     }
-    if(name.length > 80) return mal('El nombre es demasiado largo (máximo 80 caracteres).');
+    if(name.length > 80) return mal(t('team.nameTooLong'));
     return { name, dorsal, position };
   }
 
@@ -995,7 +1018,7 @@
     state.formError = '';
     reloadTeams();
     render();
-    toast('Jugador actualizado');
+    toast(t('team.playerSaved'));
   }
 
   async function handleDeletePlayer(id){
@@ -1012,8 +1035,7 @@
     const team = currentTeam();
     if(!team) return;
     const n = Store.matches(team.id).length;
-    if(!confirm(`¿Borrar el equipo ${team.name}? Se irán su plantilla y `
-              + `${n} partido${n === 1 ? '' : 's'}, con todo lo anotado. No se puede deshacer.`)) return;
+    if(!confirm(t('team.deleteAsk', { equipo: team.name, n }))) return;
     // Un partido a medias de este equipo se queda sin sitio donde guardarse.
     if(state.draft && state.draft.teamId === team.id){
       state.draft = null;
@@ -1028,7 +1050,7 @@
     reloadTeams();
     state.screen = 'dashboard';
     render();
-    toast('Equipo borrado');
+    toast(t('team.deleted'));
   }
 
   // ---------- MATCH LIST ----------
@@ -1037,13 +1059,13 @@
     const list = [...state.matches].sort((a,b)=> b.date.localeCompare(a.date));
     const rows = list.length
       ? list.map(m => matchCardHtml(team, m)).join('')
-      : `<div class="empty-state">Todavía no hay partidos guardados.</div>`;
+      : `<div class="empty-state">${esc(t('matchList.empty'))}</div>`;
 
     return `
       ${topbar({ left: backBtn('to-team', team.name) })}
       <main>
-        ${pageTitle('Partidos', team.name)}
-        ${list.length ? `<button class="secondary slim" id="to-season">Ver el acumulado de la temporada</button><div style="height:14px;"></div>` : ''}
+        ${pageTitle(t('matchList.title'), team.name)}
+        ${list.length ? `<button class="secondary slim" id="to-season">${esc(t('matchList.season'))}</button><div style="height:14px;"></div>` : ''}
         ${rows}
       </main>
     `;
@@ -1082,17 +1104,15 @@
   }
 
   function playerLabel(team, id){
-    if(id === 'none') return 'Sin especificar';
-    const p = team.players.find(pp => pp.id === id);
-    return p ? `${p.dorsal} · ${p.name}` : 'Sin especificar';
+    const p = id === 'none' ? null : team.players.find(pp => pp.id === id);
+    return p ? `${p.dorsal} · ${p.name}` : t('common.unspecified');
   }
 
   // Versión corta para cuando hay que nombrar a varios en una línea: el dorsal
   // y el nombre de pila, que es como se llaman entre ellos.
   function playerShort(team, id){
-    if(id === 'none') return 'sin asignar';
-    const p = team.players.find(pp => pp.id === id);
-    return p ? `${p.dorsal} ${p.name.split(/\s+/)[0]}` : 'sin asignar';
+    const p = id === 'none' ? null : team.players.find(pp => pp.id === id);
+    return p ? `${p.dorsal} ${p.name.split(/\s+/)[0]}` : t('common.unassigned');
   }
 
   // Todos los lanzamientos de un lado: los que fueron a puerta y los que no.
@@ -1107,14 +1127,14 @@
   // Tiros agrupados por la zona de la pista desde la que se lanzó. Los partidos
   // guardados antes de registrar la zona caen todos en "Sin especificar".
   function originStatsHtml(shots){
-    const rows = ORIGINS.map(o => {
-      const arr = shots.filter(s => shotZone(s) === o.id);
+    const rows = ORIGINS.map(id => {
+      const arr = shots.filter(s => shotZone(s) === id);
       if(arr.length === 0) return '';
       const goals = arr.filter(s => s.type === 'goal').length;
       const pct = Math.round(goals/arr.length*100);
       return `
         <div class="stat-list-row">
-          <span>${esc(o.name)}</span>
+          <span>${esc(originName(id))}</span>
           <span class="count">${goals}/${arr.length} · ${pct}%</span>
         </div>
       `;
@@ -1123,12 +1143,12 @@
     if(unknown){
       rows.push(`
         <div class="stat-list-row">
-          <span>Sin especificar</span>
-          <span class="count">${unknown} tiros</span>
+          <span>${esc(t('common.unspecified'))}</span>
+          <span class="count">${esc(t('stats.shotsUnit', { n: unknown }))}</span>
         </div>
       `);
     }
-    if(rows.length === 0) return `<div class="hint-text">Sin datos todavía.</div>`;
+    if(rows.length === 0) return `<div class="hint-text">${esc(t('common.noData'))}</div>`;
     return rows.join('');
   }
 
@@ -1155,13 +1175,15 @@
     const players = sortedPlayers(team.players);
     return `
       <div class="filter-row">
-        ${hasPeriods ? chip('all','Todo') + chip('1','1ª parte') + chip('2','2ª parte') : ''}
-        <button class="filter-chip${f.heat ? ' on' : ''}" id="toggle-heat">Mapa de calor</button>
+        ${hasPeriods ? chip('all', esc(t('map.all')))
+                     + chip('1', esc(t('map.half', { n:1 })))
+                     + chip('2', esc(t('map.half', { n:2 }))) : ''}
+        <button class="filter-chip${f.heat ? ' on' : ''}" id="toggle-heat">${esc(t('map.heat'))}</button>
       </div>
       ${side === 'rival' && players.length ? `
         <div class="filter-row">
           <select class="filter-select" id="filter-player">
-            <option value="all">Todos los jugadores</option>
+            <option value="all">${esc(t('map.allPlayers'))}</option>
             ${players.map(p => `
               <option value="${p.id}"${f.player === p.id ? ' selected' : ''}>${esc(p.dorsal + ' · ' + p.name)}</option>
             `).join('')}
@@ -1175,8 +1197,8 @@
   function shotMapHtml(shots, id){
     const withPoint = shots.filter(shotPoint);
     if(withPoint.length === 0){
-      return `<div class="hint-text">Ningún lanzamiento con punto registrado${
-        state.mapFilter.period !== 'all' || state.mapFilter.player !== 'all' ? ' con este filtro' : ''}.</div>`;
+      const filtrado = state.mapFilter.period !== 'all' || state.mapFilter.player !== 'all';
+      return `<div class="hint-text">${esc(t(filtrado ? 'map.noPointsFiltered' : 'map.noPoints'))}</div>`;
     }
     const goals = withPoint.filter(s => s.type === 'goal').length;
     const missed = withPoint.filter(s => s.type === 'out' || s.type === 'post').length;
@@ -1185,10 +1207,10 @@
       ${courtSvg({ shots: withPoint, id, heat: state.mapFilter.heat })}
       <div class="court-legend">
         ${state.mapFilter.heat
-          ? `<span>${withPoint.length} lanzamiento${withPoint.length === 1 ? '' : 's'}</span>`
-          : `<span><i class="dot-goal"></i> ${goals} gol${goals === 1 ? '' : 'es'}</span>
-             <span><i class="dot-save"></i> ${saved} parada${saved === 1 ? '' : 's'}</span>
-             ${missed ? `<span><i class="dot-out"></i> ${missed} fuera</span>` : ''}`}
+          ? `<span>${esc(t('map.shots', { n: withPoint.length }))}</span>`
+          : `<span><i class="dot-goal"></i> ${esc(t('map.goals', { n: goals }))}</span>
+             <span><i class="dot-save"></i> ${esc(t('map.saves', { n: saved }))}</span>
+             ${missed ? `<span><i class="dot-out"></i> ${esc(t('map.out', { n: missed }))}</span>` : ''}`}
       </div>
     `;
   }
@@ -1197,13 +1219,9 @@
   // Desde dónde se lanza contra a qué parte de la portería se tira. Es el dato
   // que de verdad se usa para preparar a un portero: "el lateral zurdo siempre
   // busca el palo largo abajo".
-  const ZONE_NAMES = ['arriba izq.','arriba centro','arriba der.',
-                      'media izq.','media centro','media der.',
-                      'abajo izq.','abajo centro','abajo der.'];
-
   function crossMatrixHtml(shots){
-    const rows = ORIGINS.map(o => {
-      const arr = shots.filter(s => shotZone(s) === o.id && s.zone);
+    const rows = ORIGINS.map(id => {
+      const arr = shots.filter(s => shotZone(s) === id && s.zone);
       if(arr.length === 0) return null;
       const cells = [];
       let max = 0;
@@ -1213,19 +1231,19 @@
         cells.push({ z, n: inZone.length, goals });
         if(inZone.length > max) max = inZone.length;
       }
-      return { o, cells, max, total: arr.length };
+      return { id, cells, max, total: arr.length };
     }).filter(Boolean);
-    if(rows.length === 0) return `<div class="hint-text">Hace falta registrar el punto de lanzamiento para cruzarlo con la portería.</div>`;
+    if(rows.length === 0) return `<div class="hint-text">${esc(t('stats.needOrigin'))}</div>`;
     return `
       <div class="cross-wrap">
         ${rows.map(r => `
           <div class="cross-row">
-            <div class="cross-name">${esc(r.o.name)}<small>${r.total}</small></div>
+            <div class="cross-name">${esc(originName(r.id))}<small>${r.total}</small></div>
             <div class="cross-grid">
               ${r.cells.map(c => `
                 <div class="cross-cell${c.n ? '' : ' empty'}"
                      style="--fill:${c.n ? (0.15 + 0.6*(c.n/r.max)).toFixed(2) : 0}"
-                     title="${esc(ZONE_NAMES[c.z-1])}: ${c.goals} de ${c.n}">
+                     title="${esc(t('stats.crossCell', { zona: t('goalZone.' + c.z), goles: c.goals, n: c.n }))}">
                   ${c.n ? c.goals + '/' + c.n : ''}
                 </div>
               `).join('')}
@@ -1233,7 +1251,7 @@
           </div>
         `).join('')}
       </div>
-      <div class="hint-text">Goles / lanzamientos a cada parte de la portería. Cuanto más claro, más se tira ahí.</div>
+      <div class="hint-text">${esc(t('stats.crossLegend'))}</div>
     `;
   }
 
@@ -1260,7 +1278,7 @@
           </div>
         `;
       });
-    if(rows.length === 0) return `<div class="hint-text">Sin tiros a nuestra portería todavía.</div>`;
+    if(rows.length === 0) return `<div class="hint-text">${esc(t('stats.noShotsAtUs'))}</div>`;
     return rows.join('');
   }
 
@@ -1294,7 +1312,7 @@
     const pm = plusMinus(m);
     const ids = Object.keys(pm).sort((a,b) => (pm[b].plus - pm[b].minus) - (pm[a].plus - pm[a].minus));
     if(ids.length === 0){
-      return `<div class="hint-text">Marca quién está en pista durante el partido y aquí sale lo que pasa en el marcador mientras cada uno juega.</div>`;
+      return `<div class="hint-text">${esc(t('stats.needCourtMark'))}</div>`;
     }
     return ids.map(id => {
       const e = pm[id];
@@ -1313,7 +1331,7 @@
   // ---------- eventos ----------
   function eventStatsHtml(team, m){
     const evs = (m.events || []).filter(e => e.type !== 'in' && e.type !== 'out');
-    if(evs.length === 0) return `<div class="hint-text">No se anotó ninguno en este partido.</div>`;
+    if(evs.length === 0) return `<div class="hint-text">${esc(t('stats.noEvents'))}</div>`;
     const porTipo = {};
     evs.forEach(e => { porTipo[e.type] = true; });
     return eventTypesIn(porTipo).map(tipo => {
@@ -1326,7 +1344,7 @@
         .join(', ');
       return `
         <div class="stat-list-row">
-          <span>${esc(EVENT_NAME[tipo] || tipo)}<small class="who">${who}</small></span>
+          <span>${esc(eventName(tipo))}<small class="who">${who}</small></span>
           <span class="count">${arr.length}</span>
         </div>
       `;
@@ -1373,13 +1391,14 @@
     path += ` L ${W} ${y(prev).toFixed(2)}`;
     const halfX = m.halfTime && timed.length ? (m.halfTime/maxMin)*W : null;
     const runText = best.n >= 3
-      ? `Mejor racha: ${best.n} goles seguidos ${best.t > 0 ? 'nuestros' : 'del rival'}${
-          best.from !== null && best.from !== undefined ? ` (min ${best.from}–${best.to})` : ''}`
+      ? t(best.t > 0 ? 'timeline.bestRunUs' : 'timeline.bestRunThem', { n: best.n })
+        + (best.from !== null && best.from !== undefined
+            ? t('timeline.bestRunWhen', { desde: best.from, hasta: best.to }) : '')
       : '';
     return `
       <div class="timeline-card">
         <svg class="timeline-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img">
-          <title>Evolución de la diferencia de goles</title>
+          <title>${esc(t('timeline.title'))}</title>
           <defs>
             <clipPath id="tl-up"><rect x="0" y="0" width="${W}" height="${H/2}"/></clipPath>
             <clipPath id="tl-down"><rect x="0" y="${H/2}" width="${W}" height="${H/2}"/></clipPath>
@@ -1392,19 +1411,22 @@
           <path class="tl-line down" d="${path}" clip-path="url(#tl-down)"/>
         </svg>
         <div class="timeline-foot">
-          <span class="tl-range">${timed.length ? `min 0 – ${maxMin}` : 'gol a gol'}</span>
+          <span class="tl-range">${esc(timed.length ? t('timeline.range', { n: maxMin }) : t('timeline.goalByGoal'))}</span>
           ${runText ? `<span>${esc(runText)}</span>` : ''}
         </div>
       </div>
     `;
   }
 
-  function playerListHtml(team, entries, unit){
-    if(entries.length === 0) return `<div class="hint-text">Sin datos todavía.</div>`;
+  // `unidad` es la clave del diccionario, no la palabra ya montada: la cifra va
+  // dentro del texto ("1 gol" / "3 goles") y quién manda en el singular es la
+  // propia clave. Antes se pasaba la palabra suelta y salía "1 goles".
+  function playerListHtml(team, entries, unidad){
+    if(entries.length === 0) return `<div class="hint-text">${esc(t('common.noData'))}</div>`;
     return entries.map(([id, count]) => `
       <div class="stat-list-row">
         <span>${esc(playerLabel(team, id))}</span>
-        <span class="count">${count} ${unit}</span>
+        <span class="count">${esc(t(unidad, { n: count }))}</span>
       </div>
     `).join('');
   }
@@ -1427,11 +1449,12 @@
     const theirShots = applyMapFilter(attemptsOf(m, 'own'), 'own');
     return `
       ${topbar({
-        left: backBtn('to-matches','Partidos'),
-        right: `<button class="back-btn" id="edit-match" aria-label="Editar partido" title="Editar partido">${icon('pencil')}</button>`
+        left: backBtn('to-matches', t('nav.matches')),
+        right: `<button class="back-btn" id="edit-match" aria-label="${esc(t('match.edit'))}" title="${esc(t('match.edit'))}">${icon('pencil')}</button>`
       })}
       <main>
-        ${pageTitle('vs ' + m.rival, shortDate(m.date) + (m.halfTime !== null ? ` · descanso en el ${m.halfTime}′` : ''))}
+        ${pageTitle(t('match.vs', { rival: m.rival }),
+                    shortDate(m.date) + (m.halfTime !== null ? ' · ' + t('match.halfTimeAt', { n: m.halfTime }) : ''))}
         <div class="card score-hero">
           <div class="score-hero-num">${gf} – ${ga}</div>
           <div class="score-hero-lbl">${esc(team.name)} · ${esc(m.rival)}</div>
@@ -1439,53 +1462,53 @@
         ${state.editingMatch ? editMatchHtml(m) + annotationsHtml(team, m) : ''}
         ${timelineHtml(m)}
 
-        <div class="section-label">Nuestros disparos (portería rival)</div>
+        <div class="section-label">${esc(t('match.ourShots'))}</div>
         <div class="stat-grid">
-          <div class="stat-cell"><div class="num" style="color:var(--goal)">${gf}</div><div class="lbl">Goles</div></div>
-          <div class="stat-cell"><div class="num" style="color:var(--save)">${sv_r}</div><div class="lbl">Parados por el rival</div></div>
-          <div class="stat-cell"><div class="num" style="color:var(--out)">${out_r}</div><div class="lbl">Fuera y palos</div></div>
-          <div class="stat-cell"><div class="num">${effR}%</div><div class="lbl">Efectividad</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--goal)">${gf}</div><div class="lbl">${esc(t('match.goals'))}</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--save)">${sv_r}</div><div class="lbl">${esc(t('match.savedByRival'))}</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--out)">${out_r}</div><div class="lbl">${esc(t('match.outAndPosts'))}</div></div>
+          <div class="stat-cell"><div class="num">${effR}%</div><div class="lbl">${esc(t('match.efficiency'))}</div></div>
         </div>
         ${miniGrid(m.shotsRival)}
 
-        <div class="section-label">Goleadores del partido</div>
-        <div class="card">${playerListHtml(team, groupByPlayer(m.shotsRival, 'goal'), 'goles')}</div>
+        <div class="section-label">${esc(t('match.scorers'))}</div>
+        <div class="card">${playerListHtml(team, groupByPlayer(m.shotsRival, 'goal'), 'match.goalsUnit')}</div>
 
-        <div class="section-label">Desde dónde lanzamos <small>goles / lanzamientos</small></div>
+        <div class="section-label">${esc(t('match.whereWeShoot'))} <small>${esc(t('match.goalsPerShots'))}</small></div>
         ${mapFilterHtml(team, m, 'rival')}
         ${shotMapHtml(ourShots, 'mapRival')}
         <div class="card">${originStatsHtml(ourShots)}</div>
 
-        <div class="section-label">A qué parte de la portería <small>desde cada zona</small></div>
+        <div class="section-label">${esc(t('match.whereInGoal'))} <small>${esc(t('match.fromEachZone'))}</small></div>
         ${crossMatrixHtml(attemptsOf(m, 'rival'))}
 
-        <div class="section-label">Disparos rivales (portería propia)</div>
+        <div class="section-label">${esc(t('match.rivalShots'))}</div>
         <div class="stat-grid">
-          <div class="stat-cell"><div class="num" style="color:var(--out)">${ga}</div><div class="lbl">Goles encajados</div></div>
-          <div class="stat-cell"><div class="num" style="color:var(--save)">${sv_o}</div><div class="lbl">Paradas de tu portero</div></div>
-          <div class="stat-cell"><div class="num">${out_o}</div><div class="lbl">Fuera del rival</div></div>
-          <div class="stat-cell"><div class="num">${effO}%</div><div class="lbl">% Paradas portero</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--out)">${ga}</div><div class="lbl">${esc(t('match.conceded'))}</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--save)">${sv_o}</div><div class="lbl">${esc(t('match.ourSaves'))}</div></div>
+          <div class="stat-cell"><div class="num">${out_o}</div><div class="lbl">${esc(t('match.rivalOut'))}</div></div>
+          <div class="stat-cell"><div class="num">${effO}%</div><div class="lbl">${esc(t('match.savePct'))}</div></div>
         </div>
         ${miniGrid(m.shotsOwn)}
 
-        <div class="section-label">Porteros <small>paradas / tiros recibidos</small></div>
+        <div class="section-label">${esc(t('match.keepers'))} <small>${esc(t('match.savesPerFaced'))}</small></div>
         <div class="card">${keeperStatsHtml(team, m)}</div>
 
-        <div class="section-label">Desde dónde nos lanzan <small>goles / lanzamientos</small></div>
+        <div class="section-label">${esc(t('match.whereTheyShoot'))} <small>${esc(t('match.goalsPerShots'))}</small></div>
         ${mapFilterHtml(team, m, 'own')}
         ${shotMapHtml(theirShots, 'mapOwn')}
         <div class="card">${originStatsHtml(theirShots)}</div>
 
-        <div class="section-label">Más/menos <small>con cada jugador en pista</small></div>
+        <div class="section-label">${esc(t('match.plusMinus'))} <small>${esc(t('match.plusMinusSub'))}</small></div>
         <div class="card">${plusMinusHtml(team, m)}</div>
 
-        <div class="section-label">Otros registros</div>
+        <div class="section-label">${esc(t('match.otherRecords'))}</div>
         <div class="card">${eventStatsHtml(team, m)}</div>
 
-        <div class="section-label">Compartir</div>
+        <div class="section-label">${esc(t('match.share'))}</div>
         <div class="export-row">
-          <button class="secondary slim" id="share-match">${icon('share')} Imagen</button>
-          <button class="secondary slim" id="csv-match">Descargar CSV</button>
+          <button class="secondary slim" id="share-match">${icon('share')} ${esc(t('match.shareImage'))}</button>
+          <button class="secondary slim" id="csv-match">${esc(t('match.downloadCsv'))}</button>
         </div>
       </main>
     `;
@@ -1494,26 +1517,26 @@
   function editMatchHtml(m){
     return `
       <div class="card edit-card">
-        <div class="card-title">Editar partido</div>
+        <div class="card-title">${esc(t('match.edit'))}</div>
         <div class="field">
-          <label for="edit-rival">Rival</label>
+          <label for="edit-rival">${esc(t('match.rival'))}</label>
           <input id="edit-rival" type="text" maxlength="80" value="${esc(m.rival)}">
         </div>
         <div class="field">
-          <label for="edit-date">Fecha</label>
+          <label for="edit-date">${esc(t('match.date'))}</label>
           <input id="edit-date" type="date" value="${esc(m.date)}">
         </div>
         <div class="field">
-          <label for="edit-halftime">Minuto del descanso</label>
-          <input id="edit-halftime" type="number" min="0" max="200" placeholder="Sin marcar"
+          <label for="edit-halftime">${esc(t('match.halfTimeMinute'))}</label>
+          <input id="edit-halftime" type="number" min="0" max="200" placeholder="${esc(t('match.halfTimeEmpty'))}"
                  value="${m.halfTime === null || m.halfTime === undefined ? '' : esc(m.halfTime)}">
         </div>
         ${state.formError ? `<div class="error-msg">${esc(state.formError)}</div>` : ''}
         <div class="export-row">
-          <button class="primary slim" id="save-match-edit">Guardar cambios</button>
-          <button class="secondary slim" id="cancel-match-edit">Cancelar</button>
+          <button class="primary slim" id="save-match-edit">${esc(t('common.saveChanges'))}</button>
+          <button class="secondary slim" id="cancel-match-edit">${esc(t('common.cancel'))}</button>
         </div>
-        <button class="danger slim" id="delete-match">${icon('trash')} Borrar este partido</button>
+        <button class="danger slim" id="delete-match">${icon('trash')} ${esc(t('match.deleteBtn'))}</button>
       </div>
     `;
   }
@@ -1530,14 +1553,9 @@
   // habría que repetir aquí el modal de jugador, el de zona y el punto de la
   // pista, y con dos toques se consigue lo mismo.
 
-  const ANNOTATION_TEXT = {
-    rival: { goal:'Gol', save:'Parada del portero rival', out:'Tiro fuera', post:'Palo' },
-    own:   { goal:'Gol encajado', save:'Parada', out:'Tiro fuera del rival', post:'Palo del rival' }
-  };
-
-  // 'in' y 'out' no están en EVENT_NAME porque no son una estadística, pero aquí
-  // sí se listan: son parte de lo anotado y de ellos sale el más/menos.
-  const COURT_EVENT_NAME = { in:'Entra a pista', out:'Sale de pista' };
+  // 'in' y 'out' no salen en las estadísticas de eventos, pero aquí sí se
+  // listan: son parte de lo anotado y de ellos sale el más/menos. Sus nombres
+  // están en el diccionario junto a los demás (event.in, event.out).
 
   function annotationEntries(m){
     const out = [];
@@ -1553,22 +1571,26 @@
 
   function annotationText(team, e){
     if(e.event){
-      const name = COURT_EVENT_NAME[e.event.type] || EVENT_NAME[e.event.type] || e.event.type;
-      return e.event.player ? `${name} · ${playerShort(team, e.event.player)}` : name;
+      const name = eventName(e.event.type);
+      return e.event.player
+        ? t('annot.withPlayer', { que: name, quien: playerShort(team, e.event.player) })
+        : name;
     }
     const s = e.shot;
-    const base = (ANNOTATION_TEXT[e.side] || {})[s.type] || 'Tiro';
+    const clave = 'annot.' + e.side + '.' + s.type;
+    const base = I18N.DICTS.es[clave] === undefined ? t('annot.shot') : t(clave);
     // De los tiros nuestros interesa quién lanzó; de los del rival, qué portero
     // nuestro lo recibió, que es lo único de los nuestros que hay en ellos.
-    if(e.side === 'rival') return s.player ? `${base} de ${playerShort(team, s.player)}` : base;
-    return s.keeper ? `${base} · portero ${playerShort(team, s.keeper)}` : base;
+    if(e.side === 'rival'){
+      return s.player ? t('annot.by', { que: base, quien: playerShort(team, s.player) }) : base;
+    }
+    return s.keeper ? t('annot.keeper', { que: base, quien: playerShort(team, s.keeper) }) : base;
   }
 
   function annotationWhen(x){
     const min = x.minute, per = x.period;
-    const parte = per ? `${per}ª parte` : '';
-    if(min === null || min === undefined) return parte;
-    return `${min}′${parte ? ' · ' + parte : ''}`;
+    if(min === null || min === undefined) return per ? t('annot.half', { n: per }) : '';
+    return per ? t('annot.minuteHalf', { n: min, parte: per }) : t('annot.minute', { n: min });
   }
 
   function annotationsHtml(team, m){
@@ -1579,12 +1601,12 @@
       return `
         <div class="stat-list-row">
           <span>${esc(annotationText(team, e))}<small class="who">${esc(annotationWhen(dato))}</small></span>
-          <button class="icon-btn" ${attr}="${dato.id}" title="Borrar anotación" aria-label="Borrar anotación">✕</button>
+          <button class="icon-btn" ${attr}="${dato.id}" title="${esc(t('annot.delete'))}" aria-label="${esc(t('annot.delete'))}">✕</button>
         </div>
       `;
-    }).join('') : `<div class="hint-text">Este partido no tiene anotaciones.</div>`;
+    }).join('') : `<div class="hint-text">${esc(t('annot.empty'))}</div>`;
     return `
-      <div class="section-label">Anotaciones <small>en el orden en que se registraron</small></div>
+      <div class="section-label">${esc(t('annot.title'))} <small>${esc(t('annot.titleSub'))}</small></div>
       <div class="card">${rows}</div>
     `;
   }
@@ -1594,19 +1616,19 @@
     else Store.deleteEvent(id);
     reloadMatches();
     render();
-    toast('Anotación borrada');
+    toast(t('annot.deleted'));
   }
 
   function handleSaveMatchEdit(){
     const rival = document.getElementById('edit-rival').value.trim();
     const date = document.getElementById('edit-date').value;
     if(!rival || !date){
-      state.formError = 'Indica el rival y la fecha.';
+      state.formError = t('match.needRivalDate');
       render();
       return;
     }
     if(rival.length > 80){
-      state.formError = 'El nombre del rival es demasiado largo (máximo 80).';
+      state.formError = t('match.rivalTooLong');
       render();
       return;
     }
@@ -1616,7 +1638,7 @@
     const halfRaw = document.getElementById('edit-halftime').value.trim();
     const halfTime = halfRaw === '' ? null : parseInt(halfRaw, 10);
     if(halfTime !== null && (!Number.isInteger(halfTime) || halfTime < 0)){
-      state.formError = 'El minuto del descanso tiene que ser un número de minutos.';
+      state.formError = t('match.badHalfTime');
       render();
       return;
     }
@@ -1625,20 +1647,20 @@
     state.editingMatch = false;
     reloadMatches();
     render();
-    toast('Partido actualizado');
+    toast(t('match.saved'));
   }
 
   function handleDeleteMatch(){
     const m = state.matches.find(mm => mm.id === state.currentMatchId);
     if(!m) return;
-    if(!confirm(`¿Borrar el partido contra ${m.rival}? No se puede deshacer.`)) return;
+    if(!confirm(t('match.deleteAsk', { rival: m.rival }))) return;
     Store.deleteMatch(state.currentMatchId);
     state.editingMatch = false;
     state.currentMatchId = null;
     reloadMatches();
     state.screen = 'matchList';
     render();
-    toast('Partido borrado');
+    toast(t('match.deleted'));
   }
 
   // ---------- TEMPORADA ----------
@@ -1702,17 +1724,16 @@
       return `
         ${topbar({ left: backBtn('to-team', team.name) })}
         <main>
-          ${pageTitle('Temporada', team.name)}
+          ${pageTitle(t('season.title'), team.name)}
           <div class="empty-state">
-            <div class="big-num">Todavía no hay partidos</div>
-            Cuando guardes alguno, aquí se suma todo: goleadores, porteros y
-            desde dónde se tira mejor.
+            <div class="big-num">${esc(t('season.empty'))}</div>
+            ${esc(t('season.emptyHint'))}
           </div>
         </main>
       `;
     }
     const s = seasonStats(team, matches);
-    const per = n => (n / s.played).toFixed(1).replace('.', ',');
+    const per = n => (n / s.played).toFixed(1).replace('.', t('number.decimal'));
     const eff = s.attempts ? Math.round(s.gf/s.attempts*100) : 0;
     const savePct = s.faced ? Math.round(s.saves/s.faced*100) : 0;
 
@@ -1721,34 +1742,34 @@
     const pmIds = Object.keys(s.plus)
       .sort((a,b) => (s.plus[b].plus - s.plus[b].minus) - (s.plus[a].plus - s.plus[a].minus));
 
-    const list = (rows, vacio) => rows.length ? rows.join('') : `<div class="hint-text">${vacio}</div>`;
+    const list = (rows, vacio) => rows.length ? rows.join('') : `<div class="hint-text">${esc(vacio)}</div>`;
 
     return `
       ${topbar({ left: backBtn('to-team', team.name) })}
       <main>
-        ${pageTitle('Temporada', `${team.name} · ${s.played} partido${s.played === 1 ? '' : 's'}`)}
+        ${pageTitle(t('season.title'), `${team.name} · ${t('season.played', { n: s.played })}`)}
 
         <div class="card score-hero">
           <div class="score-hero-num">${s.won}–${s.drawn}–${s.lost}</div>
-          <div class="score-hero-lbl">victorias · empates · derrotas</div>
+          <div class="score-hero-lbl">${esc(t('season.record'))}</div>
         </div>
 
-        <div class="section-label">En total</div>
+        <div class="section-label">${esc(t('season.total'))}</div>
         <div class="stat-grid">
-          <div class="stat-cell"><div class="num" style="color:var(--goal)">${s.gf}</div><div class="lbl">Goles a favor · ${per(s.gf)}/partido</div></div>
-          <div class="stat-cell"><div class="num" style="color:var(--out)">${s.ga}</div><div class="lbl">En contra · ${per(s.ga)}/partido</div></div>
-          <div class="stat-cell"><div class="num">${eff}%</div><div class="lbl">Efectividad en ${s.attempts} lanzamientos</div></div>
-          <div class="stat-cell"><div class="num" style="color:var(--save)">${savePct}%</div><div class="lbl">Paradas en ${s.faced} tiros recibidos</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--goal)">${s.gf}</div><div class="lbl">${esc(t('season.goalsFor', { n: per(s.gf) }))}</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--out)">${s.ga}</div><div class="lbl">${esc(t('season.goalsAgainst', { n: per(s.ga) }))}</div></div>
+          <div class="stat-cell"><div class="num">${eff}%</div><div class="lbl">${esc(t('season.effIn', { n: s.attempts }))}</div></div>
+          <div class="stat-cell"><div class="num" style="color:var(--save)">${savePct}%</div><div class="lbl">${esc(t('season.savesIn', { n: s.faced }))}</div></div>
         </div>
 
-        <div class="section-label">Goleadores <small>toda la temporada</small></div>
+        <div class="section-label">${esc(t('season.scorers'))} <small>${esc(t('season.wholeSeason'))}</small></div>
         <div class="card">${list(scorers.map(id => `
           <div class="stat-list-row">
             <span>${esc(playerLabel(team, id))}</span>
-            <span class="count">${s.scorers[id]} <small>${per(s.scorers[id])}/partido</small></span>
-          </div>`), 'Sin goles asignados a jugador todavía.')}</div>
+            <span class="count">${s.scorers[id]} <small>${esc(t('season.perMatch', { n: per(s.scorers[id]) }))}</small></span>
+          </div>`), t('season.noScorers'))}</div>
 
-        <div class="section-label">Porteros <small>paradas / tiros recibidos</small></div>
+        <div class="section-label">${esc(t('match.keepers'))} <small>${esc(t('match.savesPerFaced'))}</small></div>
         <div class="card">${list(keepers.map(id => {
           const e = s.keepers[id];
           return `
@@ -1756,19 +1777,19 @@
               <span>${esc(playerLabel(team, id))}</span>
               <span class="count">${e.saves}/${e.faced} · ${e.faced ? Math.round(e.saves/e.faced*100) : 0}%</span>
             </div>`;
-        }), 'Sin tiros recibidos todavía.')}</div>
+        }), t('season.noFaced'))}</div>
 
-        <div class="section-label">Desde dónde lanzamos mejor <small>goles / lanzamientos</small></div>
-        <div class="card">${list(ORIGINS.filter(o => s.origins[o.id]).map(o => {
-          const e = s.origins[o.id];
+        <div class="section-label">${esc(t('season.bestZones'))} <small>${esc(t('match.goalsPerShots'))}</small></div>
+        <div class="card">${list(ORIGINS.filter(id => s.origins[id]).map(id => {
+          const e = s.origins[id];
           return `
             <div class="stat-list-row">
-              <span>${esc(o.name)}</span>
+              <span>${esc(originName(id))}</span>
               <span class="count">${e.goals}/${e.n} · ${Math.round(e.goals/e.n*100)}%</span>
             </div>`;
-        }), 'Hace falta registrar el punto de lanzamiento.')}</div>
+        }), t('season.noOrigins'))}</div>
 
-        <div class="section-label">Más/menos acumulado</div>
+        <div class="section-label">${esc(t('season.plusMinus'))}</div>
         <div class="card">${list(pmIds.map(id => {
           const e = s.plus[id], diff = e.plus - e.minus;
           return `
@@ -1778,14 +1799,14 @@
                 ${diff > 0 ? '+' : ''}${diff} <small>${e.plus}·${e.minus}</small>
               </span>
             </div>`;
-        }), 'Marca quién está en pista durante los partidos para verlo aquí.')}</div>
+        }), t('season.noPlusMinus'))}</div>
 
-        <div class="section-label">Otros registros</div>
-        <div class="card">${list(eventTypesIn(s.events).map(t => `
+        <div class="section-label">${esc(t('match.otherRecords'))}</div>
+        <div class="card">${list(eventTypesIn(s.events).map(tipo => `
           <div class="stat-list-row">
-            <span>${esc(EVENT_NAME[t] || t)}</span>
-            <span class="count">${s.events[t]}</span>
-          </div>`), 'No se anotó ninguno todavía.')}</div>
+            <span>${esc(eventName(tipo))}</span>
+            <span class="count">${s.events[tipo]}</span>
+          </div>`), t('season.noEvents'))}</div>
       </main>
     `;
   }
@@ -1802,7 +1823,7 @@
   async function saveBlob(blob, filename){
     if(window.Native && Native.isNative()){
       const ruta = await Native.saveFile(blob, filename);
-      if(ruta){ toast('Guardado en Documentos: ' + filename); return; }
+      if(ruta){ toast(t('share.savedTo', { archivo: filename })); return; }
     }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1813,7 +1834,7 @@
     a.remove();
     // Sin esto el objeto se queda en memoria hasta recargar la página.
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast('Descargado');
+    toast(t('share.downloaded'));
   }
 
   function csvCell(v){
@@ -1823,13 +1844,21 @@
 
   function slug(s){
     return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
-      .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'partido';
+      .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || t('csv.fileName');
   }
 
   function matchCsv(team, m){
     // Punto y coma: es lo que espera un Excel en español, que es donde va a
     // acabar esto.
-    const head = ['tipo','parte','minuto','lado','resultado','zona_porteria','jugador','dorsal','zona_pista','origen_x','origen_y'];
+    //
+    // Las cabeceras y las palabras de las columnas de texto sí se traducen: el
+    // CSV lo abre una persona, no la app, y no se vuelve a leer desde aquí. Lo
+    // que no cambia es la columna `resultado` de los tiros (goal/save/out/post)
+    // ni la zona de pista (EI, LI…), que son los mismos códigos que guarda la
+    // base y lo que hace que dos exportaciones se puedan juntar.
+    const head = ['csv.type','csv.period','csv.minute','csv.side','csv.result',
+                  'csv.goalZone','csv.player','csv.dorsal','csv.courtZone',
+                  'csv.originX','csv.originY'].map(k => t(k));
     const lines = [head.join(';')];
     const nameOf = id => {
       const p = team.players.find(pp => pp.id === id);
@@ -1838,7 +1867,7 @@
     const pushShot = (side, s) => {
       const who = nameOf(side === 'own' ? s.keeper : s.player);
       lines.push([
-        'tiro', s.period, s.minute, side === 'own' ? 'nuestra porteria' : 'porteria rival',
+        t('csv.shot'), s.period, s.minute, t(side === 'own' ? 'csv.ourGoal' : 'csv.rivalGoal'),
         s.type, s.zone, who[0], who[1], shotZone(s) || '',
         s.origin ? s.origin.x : '', s.origin ? s.origin.y : ''
       ].map(csvCell).join(';'));
@@ -1848,7 +1877,7 @@
     (m.events || []).forEach(e => {
       const who = nameOf(e.player);
       lines.push([
-        'evento', e.period, e.minute, '', EVENT_NAME[e.type] || e.type, '',
+        t('csv.event'), e.period, e.minute, '', eventName(e.type), '',
         who[0], who[1], '', '', ''
       ].map(csvCell).join(';'));
     });
@@ -1899,17 +1928,17 @@
     g.fillStyle = '#8A8F98';
     center(`${team.name}  ·  ${m.rival}`, 350);
     font(26, 400);
-    center(shortDate(m.date) + (m.halfTime !== null ? `  ·  descanso en el ${m.halfTime}′` : ''), 392);
+    center(shortDate(m.date) + (m.halfTime !== null ? '  ·  ' + t('match.halfTimeAt', { n: m.halfTime }) : ''), 392);
 
     // cuadro de cifras
     const attempts = attemptsOf(m, 'rival').length;
     const savesOwn = m.shotsOwn.filter(s=>s.type==='save').length;
     const facedOwn = m.shotsOwn.length;
     const cells = [
-      ['Efectividad', attempts ? Math.round(gf/attempts*100) + '%' : '—'],
-      ['Lanzamientos', String(attempts)],
-      ['Paradas', String(savesOwn)],
-      ['% paradas', facedOwn ? Math.round(savesOwn/facedOwn*100) + '%' : '—']
+      [t('share.efficiency'), attempts ? Math.round(gf/attempts*100) + '%' : '—'],
+      [t('share.shots'), String(attempts)],
+      [t('share.saves'), String(savesOwn)],
+      [t('share.savePct'), facedOwn ? Math.round(savesOwn/facedOwn*100) + '%' : '—']
     ];
     cells.forEach((cell, i) => {
       const x = 60 + (i % 2) * 500, y = 480 + Math.floor(i/2) * 150;
@@ -1924,26 +1953,26 @@
     // goleadores
     let y = 810;
     g.fillStyle = '#8A8F98'; font(24, 600);
-    g.fillText('GOLEADORES', 60, y);
+    g.fillText(t('share.scorers'), 60, y);
     y += 46;
     const scorers = groupByPlayer(m.shotsRival, 'goal').slice(0, 7);
     if(scorers.length === 0){
       g.fillStyle = '#8A8F98'; font(28, 400);
-      g.fillText('Sin goles registrados por jugador', 60, y + 10);
+      g.fillText(t('share.noScorers'), 60, y + 10);
     }
     scorers.forEach(entry => {
       g.fillStyle = '#F5F5F7'; font(30, 500);
       g.fillText(playerLabel(team, entry[0]), 60, y);
       g.fillStyle = '#E8B84B'; font(30, 700);
-      const t = entry[1] + (entry[1] === 1 ? ' gol' : ' goles');
-      g.fillText(t, W - 60 - g.measureText(t).width, y);
+      const texto = t('share.goal', { n: entry[1] });
+      g.fillText(texto, W - 60 - g.measureText(texto).width, y);
       g.fillStyle = '#1C1F24';
       g.fillRect(60, y + 16, W - 120, 1);
       y += 62;
     });
 
     g.fillStyle = '#8A8F98'; font(22, 400);
-    center('Hecho con SuperStat', H - 60);
+    center(t('share.madeWith'), H - 60);
     return c;
   }
 
@@ -1963,7 +1992,7 @@
     if(!m) return;
     const canvas = matchSummaryCanvas(team, m);
     const blob = await new Promise(ok => canvas.toBlob(ok, 'image/png'));
-    if(!blob){ toast('No se ha podido generar la imagen'); return; }
+    if(!blob){ toast(t('share.failed')); return; }
     const name = `${slug(team.name)}-${slug(m.rival)}-${m.date}.png`;
     const titulo = `${team.name} – ${m.rival}`;
 
@@ -1996,19 +2025,19 @@
   function renderNewMatchSetup(){
     const team = currentTeam();
     return `
-      ${topbar({ left: backBtn('to-team','Cancelar') })}
+      ${topbar({ left: backBtn('to-team', t('common.cancel')) })}
       <main>
-        ${pageTitle('Nuevo partido', team.name)}
+        ${pageTitle(t('setup.title'), team.name)}
         <div class="field">
-          <label for="rival-name">Nombre del equipo rival</label>
-          <input id="rival-name" type="text" maxlength="80" placeholder="Ej. BM Granollers">
+          <label for="rival-name">${esc(t('setup.rivalName'))}</label>
+          <input id="rival-name" type="text" maxlength="80" placeholder="${esc(t('setup.rivalHint'))}">
         </div>
         <div class="field">
-          <label for="match-date">Fecha</label>
+          <label for="match-date">${esc(t('setup.date'))}</label>
           <input id="match-date" type="date" value="${new Date().toISOString().slice(0,10)}">
         </div>
         ${state.formError ? `<div class="error-msg">${esc(state.formError)}</div>` : ''}
-        <button class="primary" id="start-match-btn">Empezar a registrar tiros</button>
+        <button class="primary" id="start-match-btn">${esc(t('setup.start'))}</button>
       </main>
     `;
   }
@@ -2017,12 +2046,12 @@
     const rival = document.getElementById('rival-name').value.trim();
     const date = document.getElementById('match-date').value;
     if(!rival || !date){
-      state.formError = 'Indica el rival y la fecha.';
+      state.formError = t('match.needRivalDate');
       render();
       return;
     }
     if(rival.length > 80){
-      state.formError = 'El nombre del rival es demasiado largo (máximo 80).';
+      state.formError = t('match.rivalTooLong');
       render();
       return;
     }
@@ -2108,7 +2137,7 @@
     d.clock.since = null;
     saveDraft();
     render();
-    toast(`Fin de la primera parte en el minuto ${d.halfTime}`);
+    toast(t('live.halfEnded', { n: d.halfTime }));
   }
 
   // Cada anotación se queda con el minuto y la parte en que se hizo, y con un
@@ -2147,7 +2176,8 @@
         <div class="goal-header">
           <div class="goal-title">${esc(label)}</div>
           <div class="goal-sub">${esc(sub)}</div>
-          <div class="goal-tally">${goals} G · ${saves} P · ${outs} fuera${posts ? ` · ${posts} palo` : ''}</div>
+          <div class="goal-tally">${esc(t('live.tally', { g: goals, p: saves, f: outs })
+            + (posts ? t('live.tallyPost', { n: posts }) : ''))}</div>
         </div>
         <div class="goal-wrap">
           <div class="goal-frame">
@@ -2161,9 +2191,9 @@
           <div class="goal-ground"></div>
         </div>
         <div class="goal-actions">
-          <button class="btn-out" data-out="${side}">Fuera</button>
-          <button class="btn-post" data-post="${side}">Palo</button>
-          <button class="btn-undo" data-undo="${side}">Deshacer</button>
+          <button class="btn-out" data-out="${side}">${esc(t('live.out'))}</button>
+          <button class="btn-post" data-post="${side}">${esc(t('live.post'))}</button>
+          <button class="btn-undo" data-undo="${side}">${esc(t('live.undo'))}</button>
         </div>
       </div>
     `;
@@ -2176,7 +2206,7 @@
   }
 
   function keepersOf(team){
-    return sortedPlayers(team.players.filter(p => p.position === 'Portero'));
+    return sortedPlayers(team.players.filter(p => p.position === GOALKEEPER));
   }
 
   // Quién hay que preguntar antes de anotar el tiro.
@@ -2198,30 +2228,23 @@
     return side === 'own' && SHOT_ON_TARGET[type] ? 'keeper' : 'shooter';
   }
 
-  const SHOT_TITLE = {
-    goal: '¿Quién ha marcado?',
-    save: '¿Quién ha lanzado?',
-    out:  '¿Quién ha tirado fuera?',
-    post: '¿Quién ha dado en el palo?'
-  };
+  const SHOT_TITLE = { goal:'ask.goal', save:'ask.save', out:'ask.out', post:'ask.post' };
 
   function renderPlayerStep(p){
     const title = p.role === 'keeper'
-      ? '¿Qué portero tenemos en portería?'
-      : (SHOT_TITLE[p.type] || 'Selecciona jugador');
-    const sub = p.role === 'keeper'
-      ? 'Se queda puesto para el resto del partido; puedes cambiarlo cuando entre otro.'
-      : '';
+      ? t('ask.keeper')
+      : t(SHOT_TITLE[p.type] || 'ask.player');
+    const sub = p.role === 'keeper' ? t('ask.keeperSub') : '';
     const btns = p.candidates.map(pl => `
       <button class="modal-player-btn" data-select-player="${pl.id}">
         <span class="dorsal-mini">${pl.dorsal}</span> ${esc(pl.name)}
       </button>
     `).join('');
     return `
-      <div class="modal-title">${title}</div>
-      ${sub ? `<div class="modal-sub">${sub}</div>` : ''}
+      <div class="modal-title">${esc(title)}</div>
+      ${sub ? `<div class="modal-sub">${esc(sub)}</div>` : ''}
       ${btns}
-      <button class="modal-skip-btn" id="skip-player-btn">Sin especificar</button>
+      <button class="modal-skip-btn" id="skip-player-btn">${esc(t('common.unspecified'))}</button>
     `;
   }
 
@@ -2236,11 +2259,11 @@
     return `
       <div class="modal-overlay" id="event-modal">
         <div class="modal-box">
-          <div class="modal-title">${esc(EVENT_NAME[p.type] || '')}</div>
-          <div class="modal-sub">¿De qué jugador?</div>
+          <div class="modal-title">${esc(eventName(p.type))}</div>
+          <div class="modal-sub">${esc(t('ask.whichPlayer'))}</div>
           ${btns}
-          <button class="modal-skip-btn" id="skip-event-player">Sin especificar</button>
-          <button class="modal-cancel-btn" id="cancel-event-btn">Cancelar, no registrar</button>
+          <button class="modal-skip-btn" id="skip-event-player">${esc(t('common.unspecified'))}</button>
+          <button class="modal-cancel-btn" id="cancel-event-btn">${esc(t('common.cancelNoRecord'))}</button>
         </div>
       </div>
     `;
@@ -2250,10 +2273,10 @@
     const team = currentTeam();
     const who = p.side === 'own' ? state.draft.rival : team.name;
     return `
-      <div class="modal-title">¿Desde dónde ha lanzado?</div>
-      <div class="modal-sub">Ataque de ${esc(who)} · toca el punto exacto de la pista</div>
+      <div class="modal-title">${esc(t('ask.origin'))}</div>
+      <div class="modal-sub">${esc(t('ask.originSub', { quien: who }))}</div>
       ${courtSvg({ interactive:true, id:'pick' })}
-      <button class="modal-skip-btn" id="skip-origin-btn">Sin especificar</button>
+      <button class="modal-skip-btn" id="skip-origin-btn">${esc(t('common.unspecified'))}</button>
     `;
   }
 
@@ -2265,7 +2288,7 @@
       <div class="modal-overlay" id="pending-modal">
         <div class="modal-box">
           ${body}
-          <button class="modal-cancel-btn" id="cancel-shot-btn">Cancelar, no registrar</button>
+          <button class="modal-cancel-btn" id="cancel-shot-btn">${esc(t('common.cancelNoRecord'))}</button>
         </div>
       </div>
     `;
@@ -2290,18 +2313,17 @@
     return `
       <div class="clock-bar">
         <button class="clock-play${running ? ' on' : ''}" id="toggle-clock"
-                aria-label="${running ? 'Parar el reloj' : 'Poner el reloj en marcha'}">
+                aria-label="${esc(running ? t('live.clockStop') : t('live.clockStart'))}">
           ${running ? icon('pause') : icon('play')}
         </button>
         <div class="clock-read">
           <div class="clock-time" id="clock-time">${clockText(d)}</div>
-          <div class="clock-period">${d.period === 1 ? '1ª parte' : '2ª parte'}${
-            d.halfTime !== null ? ` · descanso en el ${d.halfTime}′` : ''
-          }</div>
+          <div class="clock-period">${esc(t('live.half', { n: d.period })
+            + (d.halfTime !== null ? ' · ' + t('match.halfTimeAt', { n: d.halfTime }) : ''))}</div>
         </div>
         ${d.period === 1
-          ? `<button class="clock-half" id="end-half-btn">Fin 1ª parte</button>`
-          : `<span class="clock-half done">2ª parte</span>`}
+          ? `<button class="clock-half" id="end-half-btn">${esc(t('live.endFirstHalf'))}</button>`
+          : `<span class="clock-half done">${esc(t('live.half', { n: 2 }))}</span>`}
       </div>
     `;
   }
@@ -2313,48 +2335,56 @@
     const team = currentTeam();
     const d = state.draft;
     const keepers = keepersOf(team);
-    const field = sortedPlayers(team.players.filter(p => p.position !== 'Portero'));
+    const field = sortedPlayers(team.players.filter(p => p.position !== GOALKEEPER));
     const onCount = d.onCourt.length;
     return `
       <div class="section-label">
-        En portería
-        ${d.keeper ? '' : '<small>sin fijar: los goles encajados no tendrán portero</small>'}
+        ${esc(t('live.inGoal'))}
+        ${d.keeper ? '' : `<small>${esc(t('live.keeperUnset'))}</small>`}
       </div>
       <div class="chip-row">
         ${keepers.length
           ? keepers.map(p => playerChip(p, d.keeper === p.id, 'data-keeper')).join('')
-          : '<div class="hint-text">No hay ningún portero en la plantilla.</div>'}
+          : `<div class="hint-text">${esc(t('live.noKeepers'))}</div>`}
       </div>
 
       <div class="section-label">
-        En pista
-        <small>${onCount}/${ON_COURT_MAX}${onCount > ON_COURT_MAX ? ' · te has pasado' : ''}</small>
+        ${esc(t('live.onCourt'))}
+        <small>${onCount}/${ON_COURT_MAX}${onCount > ON_COURT_MAX ? esc(t('live.tooMany')) : ''}</small>
       </div>
       <div class="chip-row">
         ${field.length
           ? field.map(p => playerChip(p, d.onCourt.indexOf(p.id) !== -1, 'data-court-player')).join('')
-          : '<div class="hint-text">No hay jugadores de campo en la plantilla.</div>'}
+          : `<div class="hint-text">${esc(t('live.noFieldPlayers'))}</div>`}
       </div>
-      <div class="hint-text">Toca a quien entra o sale. Con esto sale el más/menos de cada uno.</div>
+      <div class="hint-text">${esc(t('live.courtHint'))}</div>
     `;
+  }
+
+  // "Deshacer pérdida de Marc" / "Undo turnover by Marc". El nombre del evento
+  // va en minúscula porque en mitad de la frase no es un título; en los dos
+  // idiomas se escribe igual, así que basta con bajarlo.
+  function undoEventLabel(ev){
+    const que = eventName(ev.type).toLowerCase();
+    const quien = ev.player ? (playerById(ev.player) || {}).name : null;
+    return quien ? t('live.undoEventOf', { que, quien }) : t('live.undoEvent', { que });
   }
 
   function eventPadHtml(){
     const last = state.draft.events.filter(e => e.type !== 'in' && e.type !== 'out').slice(-1)[0];
     return `
-      <div class="section-label">Registro rápido</div>
+      <div class="section-label">${esc(t('live.quickLog'))}</div>
       <div class="event-pad">
         ${EVENT_TYPES.map(e => `
           <button class="event-btn tone-${e.tone}" data-event="${e.id}">
-            <span class="ev-short">${e.short}</span>
-            <span class="ev-name">${esc(e.name)}</span>
+            <span class="ev-short">${esc(t('eventShort.' + e.id))}</span>
+            <span class="ev-name">${esc(eventName(e.id))}</span>
           </button>
         `).join('')}
       </div>
       ${last ? `
         <button class="secondary slim" id="undo-event-btn">
-          Deshacer ${esc((EVENT_NAME[last.type] || '').toLowerCase())}${
-            last.player ? ' de ' + esc((playerById(last.player) || {}).name || '') : ''}
+          ${esc(undoEventLabel(last))}
         </button>` : ''}
     `;
   }
@@ -2366,7 +2396,7 @@
     const ga = d.shotsOwn.filter(s=>s.type==='goal').length;
     const keeper = d.keeper ? playerById(d.keeper) : null;
     return `
-      ${topbar({ right:`<button class="back-btn wide" id="finish-match-btn">Guardar</button>` })}
+      ${topbar({ right:`<button class="back-btn wide" id="finish-match-btn">${esc(t('live.save'))}</button>` })}
       <main class="live-main">
         <div class="scoreboard">
           <div class="score-box"><div class="num" style="color:var(--goal)">${gf}</div><div class="lbl">${esc(team.name)}</div></div>
@@ -2376,21 +2406,23 @@
         ${clockHtml()}
 
         <div class="goals-row">
-          ${goalGridHtml('own', 'Nuestra portería', keeper ? `para ${keeper.dorsal} ${keeper.name}` : 'tira el rival')}
-          ${goalGridHtml('rival', 'Portería rival', 'tiramos nosotros')}
+          ${goalGridHtml('own', t('live.ourGoal'), keeper
+              ? t('live.keeperIs', { quien: `${keeper.dorsal} ${keeper.name}` })
+              : t('live.rivalShoots'))}
+          ${goalGridHtml('rival', t('live.rivalGoal'), t('live.weShoot'))}
         </div>
-        <div class="hint-text center">1 toque = gol · 2 toques = parada</div>
+        <div class="hint-text center">${esc(t('live.tapHint'))}</div>
 
         ${eventPadHtml()}
         ${lineupHtml()}
 
-        <div class="section-label">Opciones</div>
+        <div class="section-label">${esc(t('live.options'))}</div>
         <button class="origin-toggle ${d.askOrigin ? 'on' : ''}" id="toggle-origin">
           <span class="dot"></span>
-          <span>Preguntar zona de lanzamiento</span>
+          <span>${esc(t('live.askOrigin'))}</span>
         </button>
 
-        <button class="secondary" id="cancel-match-btn">Descartar partido</button>
+        <button class="secondary" id="cancel-match-btn">${esc(t('live.discard'))}</button>
       </main>
       ${renderPendingModal()}
       ${renderEventModal()}
@@ -2549,7 +2581,7 @@
     if(!cell) return;
     const fl = document.createElement('div');
     fl.className = 'flash ' + type;
-    fl.textContent = type === 'goal' ? 'GOL' : 'PARADA';
+    fl.textContent = type === 'goal' ? t('live.flashGoal') : t('live.flashSave');
     cell.appendChild(fl);
     setTimeout(()=> fl.remove(), 500);
   }
@@ -2575,7 +2607,7 @@
     Store.clearDraft();
     reloadMatches();
     state.currentMatchId = matchId;
-    toast(Store.status() === 'synced' ? 'Partido guardado' : 'Partido guardado en este dispositivo');
+    toast(t(Store.status() === 'synced' ? 'live.matchSaved' : 'live.matchSavedHere'));
     state.screen = 'matchDetail';
     render();
   }
@@ -2607,12 +2639,21 @@
       render();
     });
     bind('sync-banner','click', () => Store.sync());
+    // Cambiar de idioma es repintar: no hay ni un texto guardado en el estado,
+    // todos salen de t() en cada render, así que basta con volver a pintar.
+    app.querySelectorAll('[data-lang]').forEach(el => {
+      el.addEventListener('click', () => {
+        I18N.setLang(el.getAttribute('data-lang'));
+        document.title = t('app.title');
+        render();
+      });
+    });
     bind('migrate-yes','click', () => {
       const n = Store.importLegacy();
       reloadTeams();
       state.screen = 'dashboard';
       render();
-      toast(n ? `Importados ${n} partido${n===1?'':'s'}` : 'Datos importados');
+      toast(n ? t('migrate.done', { n }) : t('migrate.doneEmpty'));
     });
     bind('migrate-no','click', () => {
       Store.skipLegacy();
@@ -2626,7 +2667,7 @@
       render();
     });
     bind('drop-match','click', () => {
-      if(!confirm('¿Descartar el partido sin guardar? Se perderá lo anotado.')) return;
+      if(!confirm(t('resume.dropAsk'))) return;
       state.draft = null;
       Store.clearDraft();
       render();
@@ -2650,13 +2691,13 @@
     bind('tab-home','click', () => { state.screen='dashboard'; state.formError=''; render(); });
     bind('tab-account','click', () => { state.screen='account'; render(); });
     bind('tab-matches','click', () => {
-      if(!state.currentTeamId){ state.screen='dashboard'; render(); toast('Elige primero un equipo'); return; }
+      if(!state.currentTeamId){ state.screen='dashboard'; render(); toast(t('nav.pickTeam')); return; }
       reloadMatches();
       state.screen='matchList';
       render();
     });
     bind('tab-add','click', () => {
-      if(!state.currentTeamId){ state.screen='dashboard'; render(); toast('Elige primero un equipo'); return; }
+      if(!state.currentTeamId){ state.screen='dashboard'; render(); toast(t('nav.pickTeam')); return; }
       state.formError='';
       state.screen='newMatchSetup';
       render();
@@ -2804,7 +2845,7 @@
 
     bind('finish-match-btn','click', handleFinishMatch);
     bind('cancel-match-btn','click', () => {
-      if(confirm('¿Descartar este partido? Se perderán los tiros registrados.')){
+      if(confirm(t('live.discardAsk'))){
         state.draft = null;
         Store.clearDraft();
         state.screen = 'team';
@@ -2850,6 +2891,10 @@
 
   // ---------- boot ----------
   (async function boot(){
+    // index.html no puede saber en qué idioma va a arrancar la app: el <title>
+    // y el "Cargando…" del hueco vienen escritos en español y se cambian aquí,
+    // que es el primer momento en que ya está elegido el idioma.
+    document.title = t('app.title');
     state.screen = 'loading';
     render();
 

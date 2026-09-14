@@ -1,4 +1,4 @@
-const { chromium, LANZAR, BASE_URL, servidorListo } = require('./requiere-playwright.js');
+const { chromium, LANZAR, CONTEXTO, BASE_URL, servidorListo } = require('./requiere-playwright.js');
 const fs = require('fs');
 const DIR = require('os').tmpdir();
 const STUB = fs.readFileSync(__dirname + '/supabase-stub.js', 'utf8');
@@ -18,7 +18,7 @@ async function nuevaPagina(browser, serverState){
   // El service worker se bloquea en las pruebas: si sirviera el shell desde su
   // caché, se saltaría los page.route() con los que se sustituyen el CDN y la
   // configuración, y las pruebas dejarían de probar lo que creen.
-  const ctx = await browser.newContext({ viewport:{ width:390, height:844 }, serviceWorkers:'block' });
+  const ctx = await browser.newContext(Object.assign({}, CONTEXTO, { viewport:{ width:390, height:844 }, serviceWorkers:'block' }));
   await ctx.addInitScript({ content:
     (serverState ? 'window.__SERVER__ = ' + JSON.stringify(serverState) + ';' : '') + '\n' + STUB + '\n' + GSTUB
   });
@@ -362,7 +362,7 @@ async function altaEquipo(page, nombre, jugadores){
   // sin config.js relleno la app no deja hacer nada, pero lo dice claro.
   // Se sirve un config.js vacío en vez de confiar en que el del repositorio lo
   // esté: ahí viven las credenciales reales del proyecto.
-  const sc = await browser.newContext();
+  const sc = await browser.newContext(Object.assign({}, CONTEXTO));
   const scp = await sc.newPage();
   await rutasDePrueba(scp, CONFIG_SIN_RELLENAR);
   await scp.goto(BASE);
