@@ -12,7 +12,7 @@
 //
 //   python3 -m http.server 5173 &
 //   node test/nativo.js
-const { chromium, LANZAR, BASE_URL, servidorListo } = require('./requiere-playwright.js');
+const { chromium, LANZAR, CONTEXTO, BASE_URL, servidorListo } = require('./requiere-playwright.js');
 const fs = require('fs');
 const CAPSTUB = fs.readFileSync(__dirname + '/capacitor-stub.js', 'utf8');
 const STUB = fs.readFileSync(__dirname + '/supabase-stub.js', 'utf8');
@@ -30,7 +30,7 @@ function check(nombre, ok, detalle){
 // página: plugin() guarda lo que encuentra la primera vez, y Native.start() se
 // llama nada más arrancar la app.
 async function appNativa(browser, conf){
-  const ctx = await browser.newContext({ viewport:{ width:390, height:844 }, serviceWorkers:'block' });
+  const ctx = await browser.newContext(Object.assign({}, CONTEXTO, { viewport:{ width:390, height:844 }, serviceWorkers:'block' }));
   await ctx.addInitScript({ content:
     'window.__NATIVO_CONF__ = ' + JSON.stringify(conf || {}) + ';\n' +
     CAPSTUB + '\n' + STUB + '\n' + GSTUB

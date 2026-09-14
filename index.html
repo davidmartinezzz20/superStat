@@ -50,6 +50,10 @@
 <script src="js/native.js"></script>
 <script src="js/db.js"></script>
 <script src="js/store.js"></script>
+<!-- Los textos, en español y en inglés. Va después de store.js porque lee de
+     ahí el idioma guardado, y antes de app.js porque app.js ya lo usa al
+     pintar la primera pantalla. -->
+<script src="js/i18n.js"></script>
 <script src="js/app.js"></script>
 
 <!-- El service worker guarda el HTML, el CSS, los scripts y supabase-js, que es

@@ -371,6 +371,33 @@ window.Store = (function(){
 
   function clearDraft(){ saveDraft(null); }
 
+  // ------------------------------------------------------------------ idioma
+  //
+  // El idioma de la interfaz es del **aparato**, no de la cuenta, y por eso su
+  // clave no lleva userId: hace falta para pintar la pantalla de entrada, que
+  // es justo cuando todavía no hay usuario. Tampoco se sube ni se sincroniza:
+  // el mismo usuario puede querer la app en español en el móvil del pabellón y
+  // en inglés en el ordenador de casa.
+  //
+  // Vive aquí y no en i18n.js por la regla de siempre: localStorage se toca en
+  // un solo archivo.
+
+  const LANG_KEY = 'hb:lang';
+
+  function lang(){
+    try{ return localStorage.getItem(LANG_KEY) || null; }
+    catch(e){ return null; }
+  }
+
+  function setLang(code){
+    try{
+      if(code) localStorage.setItem(LANG_KEY, code);
+      else localStorage.removeItem(LANG_KEY);
+    }catch(e){
+      console.error('no se pudo guardar el idioma', e);
+    }
+  }
+
   // ---------------------------------------------------------- sincronización
 
   function groupQueue(upTo){
@@ -540,6 +567,7 @@ window.Store = (function(){
     teams, matches, createTeam, addPlayer, updatePlayer, deletePlayer, deleteTeam,
     saveMatch, updateMatch, deleteMatch, deleteShot, deleteEvent,
     saveDraft, loadDraft, clearDraft,
+    lang, setLang,
     hasLegacyData, importLegacy, skipLegacy
   };
 })();
