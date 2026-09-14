@@ -98,6 +98,12 @@ Recuerda que `privacidad.html` **no entra** en `tools/build-www.js` a propósito
 lo que pide Play es un enlace público en la ficha, no una pantalla más dentro de
 la app.
 
+Y lo que esa segunda URL promete tiene que ser verdad antes de enseñársela a
+Google: el borrado de cuenta desde la app lo hace una Edge Function de Supabase
+que **hay que desplegar aparte** (§5 de [`supabase.md`](supabase.md)). Es un
+comando y se hace en cualquier momento antes del bloque 8.3, pero si se olvida,
+el botón está en la app y da error.
+
 ---
 
 ## 3. Montar el proyecto de Android en tu máquina
@@ -351,10 +357,11 @@ Dos avisos sobre estos formularios:
   que tocan; si algún día la app empieza a recoger otra cosa, hay que volver
   aquí.
 - **Eliminación de la cuenta** es un formulario aparte de la política de
-  privacidad, aunque apunten a la misma página. Google acepta una vía externa
-  (pedirlo por correo, que es lo que hace la política), pero prefiere que se
-  pueda borrar desde dentro de la app; está anotado como pendiente en `play.md`
-  §9 por si algún día lo reclaman.
+  privacidad, aunque apunten a la misma página. Se puede borrar desde dentro de
+  la app (*Cuenta → Borrar la cuenta*), que es lo que Google prefiere, y la
+  política ofrece además la vía por correo. Eso sí: el borrado desde la app lo
+  hace una Edge Function de Supabase y **no funciona hasta desplegarla**
+  (§5 de [`supabase.md`](supabase.md)); hazlo antes de rellenar este formulario.
 
 ---
 

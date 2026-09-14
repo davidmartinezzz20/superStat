@@ -1,13 +1,10 @@
-const { chromium } = require('playwright');
+const { chromium, LANZAR, BASE_URL, servidorListo } = require('./requiere-playwright.js');
 const fs = require('fs');
 const DIR = require('os').tmpdir();
 const STUB = fs.readFileSync(__dirname + '/supabase-stub.js', 'utf8');
 const GSTUB = fs.readFileSync(__dirname + '/google-stub.js', 'utf8');
 const { rutasDePrueba, CONFIG_SIN_RELLENAR } = require('./rutas.js');
-const BASE = 'http://localhost:5173/index.html';
-// Si el Chromium que trae Playwright no está instalado, se le puede pasar uno
-// con CHROMIUM_PATH=/ruta/al/chromium.
-const LANZAR = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {};
+const BASE = BASE_URL + '/index.html';
 
 let fallos = 0, pasadas = 0;
 function check(nombre, ok, detalle){
@@ -66,6 +63,7 @@ async function altaEquipo(page, nombre, jugadores){
 }
 
 (async () => {
+  await servidorListo();
   const browser = await chromium.launch(LANZAR);
 
   // ---------------------------------------------------------------- 1. alta
@@ -295,6 +293,57 @@ async function altaEquipo(page, nombre, jugadores){
         await g.page.$('[data-team]') === null);
   await g.page.screenshot({ path: DIR + '/10-login.png', animations:'disabled' });
   await g.ctx.close();
+
+  // --------------------------------------------- 9. borrar la cuenta entera
+  // privacidad.html promete que la cuenta y todo lo suyo se pueden borrar. Lo
+  // que se comprueba aquí es lo que la hace cierta: que no queda nada, ni en el
+  // servidor ni en este aparato, y que hasta que el servidor no lo confirma no
+  // se toca lo local — si no, un fallo de red dejaría el móvil vacío con la
+  // cuenta todavía viva.
+  console.log('\n9. Borrar la cuenta entera desde la app');
+  const b = await nuevaPagina(browser);
+  await b.page.goto(BASE);
+  await crearCuenta(b.page);
+  await altaEquipo(b.page, 'CB Sabadell', [['Joan Vidal','7','Lateral izquierdo']]);
+  await b.page.click('#to-dashboard');
+  await b.page.click('#tab-account');
+  await b.page.waitForSelector('#delete-account');
+
+  // Sin red no se borra nada: ni la cuenta ni lo de este aparato.
+  await setOffline(b.page, true);
+  await b.page.click('#delete-account');
+  await b.page.fill('#delete-account-word', 'BORRAR');
+  await b.page.click('#delete-account-confirm');
+  await b.page.waitForSelector('.error-msg');
+  check('sin conexión avisa y no borra nada',
+        (await b.page.textContent('.error-msg')).includes('conexión') &&
+        await b.page.evaluate(() => Object.keys(window.__SERVER__.rows.teams).length) === 1 &&
+        await b.page.evaluate(() => Object.keys(localStorage).some(k => k.indexOf('hb:cache:') === 0)));
+  await setOffline(b.page, false);
+
+  // Y no basta con darle al botón: hay que escribir la palabra.
+  await b.page.fill('#delete-account-word', 'si');
+  await b.page.click('#delete-account-confirm');
+  await b.page.waitForTimeout(200);
+  check('hay que escribir BORRAR para confirmar',
+        (await b.page.textContent('.error-msg')).includes('Escribe BORRAR') &&
+        await b.page.evaluate(() => Object.keys(window.__SERVER__.rows.teams).length) === 1);
+
+  await b.page.fill('#delete-account-word', 'borrar');
+  await b.page.click('#delete-account-confirm');
+  await b.page.waitForSelector('#auth-submit', { timeout:10000 });
+  check('al borrar la cuenta se sale a la pantalla de entrada',
+        await b.page.$('#auth-submit') !== null);
+  check('no queda ninguna fila del usuario en el servidor',
+        await b.page.evaluate(() => ['teams','players','matches','shots','events']
+          .every(t => Object.keys(window.__SERVER__.rows[t] || {}).length === 0)),
+        await b.page.evaluate(() => ['teams','players','matches','shots','events']
+          .map(t => t + '=' + Object.keys(window.__SERVER__.rows[t] || {}).length).join(' ')));
+  check('la cuenta en sí también desaparece',
+        await b.page.evaluate(() => Object.keys(window.__SERVER__.users).length) === 0);
+  const restos = await b.page.evaluate(() => Object.keys(localStorage).filter(k => k.indexOf('hb:') === 0));
+  check('no queda nada de la cuenta en este aparato', restos.length === 0, restos.join(', '));
+  await b.ctx.close();
 
   // sin config.js relleno la app no deja hacer nada, pero lo dice claro.
   // Se sirve un config.js vacío en vez de confiar en que el del repositorio lo

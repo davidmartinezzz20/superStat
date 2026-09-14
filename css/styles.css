@@ -409,6 +409,12 @@
     padding:4px 6px;
   }
   .icon-btn:hover{color:var(--out);}
+  /* El de borrar es una ✕ de texto y el de editar un SVG: hay que darle tamaño
+     para que los dos ocupen lo mismo en la fila. */
+  .icon-btn svg{width:17px;height:17px;display:block;}
+  /* El jugador que se está corrigiendo, señalado mientras el formulario de abajo
+     es el suyo. */
+  .player-row.editing{background:var(--panel-2);border-radius:10px;padding-left:8px;padding-right:4px;}
   /* Rótulo de sección al estilo iOS: en versalitas y sin la raya de debajo,
      que sobre negro ensuciaba. */
   .section-label{
@@ -1139,6 +1145,9 @@
   .export-row button svg{width:15px;height:15px;}
   .edit-card{margin-top:14px;}
   .edit-card .field{margin-bottom:12px;}
+  /* Cuando la tarjeta de edición explica algo antes del formulario, el texto
+     necesita aire: si no, la etiqueta del primer campo se le pega. */
+  .edit-card .card-sub{margin-bottom:14px;}
   button.danger{
     width:100%;
     margin-top:10px;
