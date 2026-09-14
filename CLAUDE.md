@@ -126,7 +126,15 @@ Reglas de las que depende que la sincronización sea resoluble:
 
 1. **Los ids se generan en el navegador** (`Store.uuid()`), nunca en la base.
 2. **Los borrados son lógicos** (`deleted_at`). Con borrado físico no se
-   distingue "lo borré" de "aún no lo he subido" y lo borrado reaparece.
+   distingue "lo borré" de "aún no lo he subido" y lo borrado reaparece. Por eso
+   `Store.deleteTeam()` marca fila a fila el equipo, su plantilla, sus partidos
+   y los tiros y eventos de esos partidos: el `on delete cascade` de Postgres
+   solo actúa en un borrado físico, y una fila sin marcar volvería al espejo del
+   siguiente dispositivo que sincronice. La cascada escribe con el volcado
+   diferido y hace un solo `persist()` al final (`flush()`), o un partido con
+   doscientas anotaciones deja el móvil pensando. El borrado definitivo llega a
+   los 90 días, y lo hace la base: `public.purgar_borrados()` programada con
+   `pg_cron` en `supabase/schema.sql`. Es lo que promete `privacidad.html`.
 3. **Gana lo más reciente**, salvo que la fila esté pendiente en la cola: en ese
    caso gana lo local y no se pisa.
 
@@ -237,6 +245,11 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   repintando la pantalla: un `render()` por segundo cerraría el modal abierto y
   se cargaría el punto que se está tocando en la pista. `startClockTick()` se
   vuelve a armar al final de `attachHandlers()`.
+- Corregir un partido guardado es borrar la anotación que sobra y volver a
+  anotarla, no editar la fila: la lista de `annotationsHtml()` sale al abrir el
+  lápiz de la ficha, ordena tiros y eventos por su `ordinal` compartido y cada
+  línea llama a `Store.deleteShot()` o `Store.deleteEvent()`. Editar en sitio
+  obligaría a repetir ahí el modal de jugador, el de zona y el punto de la pista.
 - Las pantallas de estadística no guardan nada de lo que enseñan. Los filtros
   del mapa viven en `state.mapFilter` y el acumulado de temporada se calcula
   sobre el espejo local (`seasonStats()`), no con una consulta aparte: así sale
@@ -290,6 +303,4 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   comprobar a mano contra el proyecto de verdad (ver `docs/supabase.md`), no se
   ha hecho a ciegas junto con el resto.
 - Mostrar iniciales del jugador directamente sobre la casilla de la red.
-- Corregir un tiro suelto de un partido ya guardado (el borrado lógico por tiro
-  ya está en la base y en `Store.deleteShot()`, falta la pantalla).
 - Extender a otros deportes además de balonmano.

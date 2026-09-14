@@ -15,17 +15,31 @@ Ten a mano la **referencia de tu proyecto** de Supabase (el trozo de la URL:
 2. Pega entero el contenido de `supabase/schema.sql` y pulsa **Run**.
 3. Al final verás una tabla de resultados con cinco filas. **Comprueba que las
    cinco tienen `rls_activo = true` y `politicas = 1`.**
+4. Mira también la pestaña de **mensajes**, debajo de esa tabla: tiene que salir
+   un aviso que empieza por `PURGA:` y dice **programada**.
 
-Si alguna sale en `false`, esa tabla está abierta a cualquiera que abra la web.
-No sigas hasta que las cinco estén bien.
+Si alguna fila sale con `rls_activo = false`, esa tabla está abierta a cualquiera
+que abra la web. No sigas hasta que las cinco estén bien.
+
+`PURGA:` es el trabajo que elimina de forma definitiva lo borrado a los 90 días,
+como promete la política de privacidad. Si el aviso dice que `pg_cron` no está
+activado, ve a Supabase → **Database → Extensions**, busca `pg_cron`, actívalo y
+vuelve a ejecutar el archivo entero. Sin eso la app funciona igual, pero lo
+borrado se queda en la base para siempre.
+
+Para comprobar la purga sin esperar tres meses: pon a mano un `deleted_at`
+antiguo en una fila (`update public.teams set deleted_at = now() - interval '100
+days' where id = '…';`) y ejecuta `select public.purgar_borrados(90);`. Devuelve
+cuántas filas ha eliminado.
 
 ### Si ya tenías la base de una versión anterior
 
 Vuelve a pegar y ejecutar el archivo entero, igual que la primera vez. Todo es
 `if exists` / `if not exists`, así que no toca lo que ya hay: crea la tabla
-`events` y añade a `shots` el minuto, la parte, el portero y el borrado lógico.
-Los partidos que ya tengas guardados siguen leyéndose; lo que no se puede es
-inventarles el tiempo, así que salen sin minuto.
+`events`, añade a `shots` el minuto, la parte, el portero y el borrado lógico, y
+programa la purga de lo borrado. Los partidos que ya tengas guardados siguen
+leyéndose; lo que no se puede es inventarles el tiempo, así que salen sin
+minuto.
 
 ---
 

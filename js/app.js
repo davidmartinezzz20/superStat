@@ -841,6 +841,13 @@
         <button class="secondary" id="view-matches-btn">Ver estadísticas de partidos anteriores</button>
         <div style="height:10px;"></div>
         <button class="secondary" id="view-season-btn">Acumulado de la temporada</button>
+
+        <div class="section-label">Borrar</div>
+        <div class="card">
+          <div class="card-sub">Con el equipo se van su plantilla y todos sus
+          partidos, con todo lo anotado en ellos. No se puede deshacer.</div>
+          <button class="danger slim" id="delete-team">${icon('trash')} Borrar este equipo</button>
+        </div>
       </main>
     `;
   }
@@ -875,6 +882,32 @@
     Store.deletePlayer(id);
     reloadTeams();
     render();
+  }
+
+  // Lo que promete la política de privacidad: con el equipo se va todo lo suyo.
+  // El recuento de partidos va en la pregunta a propósito, porque desde esta
+  // pantalla no se ven y es fácil olvidar cuántos hay detrás.
+  function handleDeleteTeam(){
+    const team = currentTeam();
+    if(!team) return;
+    const n = Store.matches(team.id).length;
+    if(!confirm(`¿Borrar el equipo ${team.name}? Se irán su plantilla y `
+              + `${n} partido${n === 1 ? '' : 's'}, con todo lo anotado. No se puede deshacer.`)) return;
+    // Un partido a medias de este equipo se queda sin sitio donde guardarse.
+    if(state.draft && state.draft.teamId === team.id){
+      state.draft = null;
+      Store.clearDraft();
+    }
+    Store.deleteTeam(team.id);
+    state.currentTeamId = null;
+    state.currentMatchId = null;
+    state.matches = [];
+    state.editingMatch = false;
+    state.formError = '';
+    reloadTeams();
+    state.screen = 'dashboard';
+    render();
+    toast('Equipo borrado');
   }
 
   // ---------- MATCH LIST ----------
@@ -1282,7 +1315,7 @@
           <div class="score-hero-num">${gf} – ${ga}</div>
           <div class="score-hero-lbl">${esc(team.name)} · ${esc(m.rival)}</div>
         </div>
-        ${state.editingMatch ? editMatchHtml(m) : ''}
+        ${state.editingMatch ? editMatchHtml(m) + annotationsHtml(team, m) : ''}
         ${timelineHtml(m)}
 
         <div class="section-label">Nuestros disparos (portería rival)</div>
@@ -1357,6 +1390,85 @@
         <button class="danger slim" id="delete-match">${icon('trash')} Borrar este partido</button>
       </div>
     `;
+  }
+
+  // ---------- corregir lo anotado ----------
+  //
+  // Anotando en vivo se cuela un gol del jugador que no era o un tiro de más, y
+  // hasta ahora la única salida era borrar el partido entero y volverlo a meter.
+  // Aquí está todo lo que se registró, en el orden real —tiros y eventos
+  // comparten el ordinal, así que ordenar por él devuelve el partido tal y como
+  // se anotó— y cada anotación se puede quitar.
+  //
+  // Corregir es borrar y volver a anotar. No hay edición de la fila porque
+  // habría que repetir aquí el modal de jugador, el de zona y el punto de la
+  // pista, y con dos toques se consigue lo mismo.
+
+  const ANNOTATION_TEXT = {
+    rival: { goal:'Gol', save:'Parada del portero rival', out:'Tiro fuera', post:'Palo' },
+    own:   { goal:'Gol encajado', save:'Parada', out:'Tiro fuera del rival', post:'Palo del rival' }
+  };
+
+  // 'in' y 'out' no están en EVENT_NAME porque no son una estadística, pero aquí
+  // sí se listan: son parte de lo anotado y de ellos sale el más/menos.
+  const COURT_EVENT_NAME = { in:'Entra a pista', out:'Sale de pista' };
+
+  function annotationEntries(m){
+    const out = [];
+    const add = (list, side) => (list || []).forEach(shot => out.push({ shot, side }));
+    add(m.shotsRival, 'rival');
+    add(m.missRival, 'rival');
+    add(m.shotsOwn, 'own');
+    add(m.missOwn, 'own');
+    (m.events || []).forEach(event => out.push({ event }));
+    const ordinal = e => ((e.shot || e.event).ordinal) || 0;
+    return out.sort((a, b) => ordinal(a) - ordinal(b));
+  }
+
+  function annotationText(team, e){
+    if(e.event){
+      const name = COURT_EVENT_NAME[e.event.type] || EVENT_NAME[e.event.type] || e.event.type;
+      return e.event.player ? `${name} · ${playerShort(team, e.event.player)}` : name;
+    }
+    const s = e.shot;
+    const base = (ANNOTATION_TEXT[e.side] || {})[s.type] || 'Tiro';
+    // De los tiros nuestros interesa quién lanzó; de los del rival, qué portero
+    // nuestro lo recibió, que es lo único de los nuestros que hay en ellos.
+    if(e.side === 'rival') return s.player ? `${base} de ${playerShort(team, s.player)}` : base;
+    return s.keeper ? `${base} · portero ${playerShort(team, s.keeper)}` : base;
+  }
+
+  function annotationWhen(x){
+    const min = x.minute, per = x.period;
+    const parte = per ? `${per}ª parte` : '';
+    if(min === null || min === undefined) return parte;
+    return `${min}′${parte ? ' · ' + parte : ''}`;
+  }
+
+  function annotationsHtml(team, m){
+    const entries = annotationEntries(m);
+    const rows = entries.length ? entries.map(e => {
+      const dato = e.shot || e.event;
+      const attr = e.shot ? 'data-del-shot' : 'data-del-event';
+      return `
+        <div class="stat-list-row">
+          <span>${esc(annotationText(team, e))}<small class="who">${esc(annotationWhen(dato))}</small></span>
+          <button class="icon-btn" ${attr}="${dato.id}" title="Borrar anotación" aria-label="Borrar anotación">✕</button>
+        </div>
+      `;
+    }).join('') : `<div class="hint-text">Este partido no tiene anotaciones.</div>`;
+    return `
+      <div class="section-label">Anotaciones <small>en el orden en que se registraron</small></div>
+      <div class="card">${rows}</div>
+    `;
+  }
+
+  function handleDeleteAnnotation(tipo, id){
+    if(tipo === 'shot') Store.deleteShot(id);
+    else Store.deleteEvent(id);
+    reloadMatches();
+    render();
+    toast('Anotación borrada');
   }
 
   function handleSaveMatchEdit(){
@@ -2396,6 +2508,7 @@
       render();
     });
     bind('add-player-btn','click', handleAddPlayer);
+    bind('delete-team','click', handleDeleteTeam);
     app.querySelectorAll('[data-del-player]').forEach(el => {
       el.addEventListener('click', () => handleDeletePlayer(el.getAttribute('data-del-player')));
     });
@@ -2438,6 +2551,12 @@
       render();
     });
     bind('delete-match','click', handleDeleteMatch);
+    app.querySelectorAll('[data-del-shot]').forEach(el => {
+      el.addEventListener('click', () => handleDeleteAnnotation('shot', el.getAttribute('data-del-shot')));
+    });
+    app.querySelectorAll('[data-del-event]').forEach(el => {
+      el.addEventListener('click', () => handleDeleteAnnotation('event', el.getAttribute('data-del-event')));
+    });
     bind('share-match','click', shareMatchImage);
     bind('csv-match','click', downloadMatchCsv);
 

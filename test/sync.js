@@ -3,6 +3,7 @@ const fs = require('fs');
 const DIR = require('os').tmpdir();
 const STUB = fs.readFileSync(__dirname + '/supabase-stub.js', 'utf8');
 const GSTUB = fs.readFileSync(__dirname + '/google-stub.js', 'utf8');
+const { rutasDePrueba, CONFIG_SIN_RELLENAR } = require('./rutas.js');
 const BASE = 'http://localhost:5173/index.html';
 // Si el Chromium que trae Playwright no está instalado, se le puede pasar uno
 // con CHROMIUM_PATH=/ruta/al/chromium.
@@ -26,14 +27,7 @@ async function nuevaPagina(browser, serverState){
   });
   const page = await ctx.newPage();
   page.on('pageerror', e => { fallos++; console.log('  FALLA error en página: ' + e.message); });
-  // supabase-js ya no viene de un CDN sino de vendor/: se sirve vacío para que
-  // no pise al doble que addInitScript acaba de dejar en window.supabase.
-  await page.route('**/vendor/supabase-js-*.js', r => r.fulfill({ contentType:'application/javascript', body:'' }));
-  // Google Identity Services tampoco es alcanzable: el doble ya está puesto por
-  // addInitScript, así que su script se sirve vacío.
-  await page.route('**/gsi/client*', r => r.fulfill({ contentType:'application/javascript', body:'' }));
-  await page.route('**/js/config.js', r => r.fulfill({ contentType:'application/javascript',
-    body:"window.SUPERSTAT_CONFIG={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon-test',GOOGLE_CLIENT_ID:'cliente-de-prueba.apps.googleusercontent.com'};" }));
+  await rutasDePrueba(page);
   return { ctx, page };
 }
 
@@ -307,10 +301,7 @@ async function altaEquipo(page, nombre, jugadores){
   // esté: ahí viven las credenciales reales del proyecto.
   const sc = await browser.newContext();
   const scp = await sc.newPage();
-  await scp.route('**/supabase-js*/**', r => r.fulfill({ contentType:'application/javascript', body:'' }));
-  await scp.route('**/gsi/client*', r => r.fulfill({ contentType:'application/javascript', body:'' }));
-  await scp.route('**/js/config.js', r => r.fulfill({ contentType:'application/javascript',
-    body:"window.SUPERSTAT_CONFIG={SUPABASE_URL:'',SUPABASE_ANON_KEY:''};" }));
+  await rutasDePrueba(scp, CONFIG_SIN_RELLENAR);
   await scp.goto(BASE);
   await scp.waitForSelector('.error-msg', { timeout:10000 });
   check('avisa de que falta configurar Supabase',

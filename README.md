@@ -47,6 +47,11 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
 - **Acumulado de temporada** por equipo: balance, goleadores, porteros, dónde
   se lanza mejor y más/menos sumando todos los partidos.
 - Historial de partidos anteriores por equipo, y se pueden **editar o borrar**.
+  Anotando en vivo se cuela un gol del jugador que no era: desde la ficha del
+  partido se puede **borrar una anotación suelta** y volver a meterla, sin
+  rehacer el partido entero.
+- Un **equipo se borra desde su pantalla** y con él se van su plantilla y todos
+  sus partidos.
 - **Exportar** un partido en CSV o compartirlo como imagen resumen.
 
 ## Android y iOS

@@ -28,6 +28,7 @@ const RAIZ = path.join(__dirname, '..');
 const DEST = path.join(RAIZ, 'play', 'capturas');
 const STUB  = fs.readFileSync(path.join(RAIZ, 'test', 'supabase-stub.js'), 'utf8');
 const GSTUB = fs.readFileSync(path.join(RAIZ, 'test', 'google-stub.js'), 'utf8');
+const { rutasDePrueba } = require(path.join(RAIZ, 'test', 'rutas.js'));
 const LANZAR = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {};
 
 const ANCHO = 360, ALTO = 640, ESCALA = 3;   // → 1080×1920
@@ -169,10 +170,12 @@ async function nuevaPagina(browser, base){
   await ctx.addInitScript({ content: STUB + '\n' + GSTUB + '\n' + RELOJ_RAPIDO });
   const page = await ctx.newPage();
   page.on('pageerror', e => console.log('  ! error en página: ' + e.message));
-  await page.route('**/vendor/supabase-js-*.js', r => r.fulfill({ contentType:'application/javascript', body:'' }));
-  await page.route('**/gsi/client*', r => r.fulfill({ contentType:'application/javascript', body:'' }));
-  await page.route('**/js/config.js', r => r.fulfill({ contentType:'application/javascript',
-    body:"window.SUPERSTAT_CONFIG={SUPABASE_URL:'https://demo.supabase.co',SUPABASE_ANON_KEY:'anon-demo',GOOGLE_CLIENT_ID:'demo.apps.googleusercontent.com'};" }));
+  // Las mismas rutas que las pruebas, con una configuración de mentira propia:
+  // aquí tampoco puede cargarse el config.js del repositorio, que apunta al
+  // proyecto de verdad.
+  await rutasDePrueba(page,
+    "window.SUPERSTAT_CONFIG={SUPABASE_URL:'https://demo.supabase.co'," +
+    "SUPABASE_ANON_KEY:'anon-demo',GOOGLE_CLIENT_ID:'demo.apps.googleusercontent.com'};");
   await page.goto(base + '/index.html');
   return { ctx, page };
 }

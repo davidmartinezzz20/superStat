@@ -83,22 +83,34 @@ window.Store = (function(){
     queue.push({ seq: ++seq, table, id: row.id, row });
   }
 
-  function write(table, row){
+  // Con diferido=true se escribe en el espejo y se encola, pero no se vuelca ni
+  // se avisa a nadie: lo hace quien manda, al terminar. Es para los borrados en
+  // cascada, donde volcar la caché entera una vez por tiro deja el móvil
+  // pensando varios segundos en un partido con doscientas anotaciones.
+  function write(table, row, diferido){
     row.user_id = userId;
     row.updated_at = now();
     cache[table][row.id] = row;
     enqueue(table, row);
+    if(diferido) return row;
     persist();
     notify();
     sync();               // sin await: la pantalla no espera a la red
     return row;
   }
 
-  function softDelete(table, id){
+  function softDelete(table, id, diferido){
     const row = cache[table][id];
     if(!row) return;
     row.deleted_at = now();
-    write(table, row);
+    write(table, row, diferido);
+  }
+
+  // El cierre de una tanda diferida.
+  function flush(){
+    persist();
+    notify();
+    sync();
   }
 
   // --------------------------------------------------------------- lectura
@@ -214,6 +226,30 @@ window.Store = (function(){
 
   function deletePlayer(playerId){ softDelete('players', playerId); }
 
+  // Borrar un equipo se lleva por delante su plantilla, sus partidos y los
+  // tiros y eventos de esos partidos. Es lo que promete la política de
+  // privacidad, y hay que marcarlo fila a fila: el "on delete cascade" de
+  // Postgres solo actúa en un borrado físico, y aquí nunca se borra así. Una
+  // fila que se quedara sin marcar volvería al espejo de otro dispositivo en la
+  // siguiente sincronización.
+  function deleteTeam(teamId){
+    const enElEquipo = {};
+    Object.values(cache.matches).forEach(m => {
+      if(m.team_id === teamId) enElEquipo[m.id] = true;
+    });
+    const hijos = (tabla) => Object.values(cache[tabla])
+      .filter(r => enElEquipo[r.match_id] && alive(r))
+      .forEach(r => softDelete(tabla, r.id, true));
+    hijos('shots');
+    hijos('events');
+    Object.keys(enElEquipo).forEach(id => softDelete('matches', id, true));
+    Object.values(cache.players)
+      .filter(p => p.team_id === teamId && alive(p))
+      .forEach(p => softDelete('players', p.id, true));
+    softDelete('teams', teamId, true);
+    flush();
+  }
+
   // Un partido terminado se convierte en su fila, una por tiro y una por evento.
   // El ordinal de cada anotación viene del borrador y es único dentro del
   // partido entre tiros y eventos: es lo que permite reconstruir después quién
@@ -272,7 +308,11 @@ window.Store = (function(){
   // leen a través de él, y en la base cuelgan con "on delete cascade".
   function deleteMatch(matchId){ softDelete('matches', matchId); }
 
+  // Corregir un partido guardado es borrar la anotación que sobra y, si hace
+  // falta, volver a anotarla: los dos son borrados lógicos y se sincronizan
+  // como cualquier otro cambio.
   function deleteShot(shotId){ softDelete('shots', shotId); }
+  function deleteEvent(eventId){ softDelete('events', eventId); }
 
   // ------------------------------------------------------ partido a medias
   //
@@ -454,8 +494,8 @@ window.Store = (function(){
 
   return {
     uuid, start, stop, onChange, sync, status, pendingCount,
-    teams, matches, createTeam, addPlayer, deletePlayer,
-    saveMatch, updateMatch, deleteMatch, deleteShot,
+    teams, matches, createTeam, addPlayer, deletePlayer, deleteTeam,
+    saveMatch, updateMatch, deleteMatch, deleteShot, deleteEvent,
     saveDraft, loadDraft, clearDraft,
     hasLegacyData, importLegacy, skipLegacy
   };
