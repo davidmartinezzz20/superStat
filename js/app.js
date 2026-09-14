@@ -19,7 +19,15 @@
     // Filtros del mapa de tiros de la ficha de partido. No se guardan: son una
     // forma de mirar los datos, no un dato.
     mapFilter: { player:'all', period:'all', heat:false },
-    editingMatch: false
+    editingMatch: false,
+    // Jugador que se está corrigiendo en la pantalla de equipo: con él puesto,
+    // el formulario de alta de abajo pasa a ser el de edición.
+    editingPlayerId: null,
+    // Borrar la cuenta se pide dos veces: el botón abre la tarjeta y dentro hay
+    // que escribir BORRAR. No se guarda nada de esto en ninguna parte.
+    deletingAccount: false,
+    deleteAccountError: '',
+    deleteAccountBusy: false
   };
 
   const POSITIONS = ['Portero','Lateral izquierdo','Central','Lateral derecho','Extremo izquierdo','Extremo derecho','Pivote'];
@@ -475,7 +483,9 @@
     state = Object.assign({}, state, {
       screen:'auth', user:null, teams:[], matches:[], currentTeamId:null,
       currentMatchId:null, draft:null, authMode:'login', authError:'',
-      authNotice:'', authBusy:false, formError:'', pendingShot:null
+      authNotice:'', authBusy:false, formError:'', pendingShot:null,
+      editingPlayerId:null, deletingAccount:false, deleteAccountError:'',
+      deleteAccountBusy:false
     });
     render();
   }
@@ -483,6 +493,13 @@
   // ---------- render root ----------
   function render(){
     const app = document.getElementById('app');
+    // Lo que solo tiene sentido dentro de una pantalla se cierra al salir de
+    // ella, en un sitio y no en cada botón que navega.
+    if(state.screen !== 'team') state.editingPlayerId = null;
+    if(state.screen !== 'account'){
+      state.deletingAccount = false;
+      state.deleteAccountError = '';
+    }
     // Las pantallas de datos se releen del store en cada pintada: así lo que
     // llega de otro dispositivo aparece sin tener que recordar refrescarlo.
     if(state.user){
@@ -771,8 +788,75 @@
         `}
         <div class="section-label">Sesión</div>
         <button class="secondary" id="logout-btn">Salir de la cuenta</button>
+
+        <div class="section-label">Borrar la cuenta</div>
+        ${deleteAccountHtml()}
       </main>
     `;
+  }
+
+  // Borrar la cuenta desde dentro de la app, que es lo que promete
+  // privacidad.html y lo que Google prefiere para la ficha de Play. Se pide dos
+  // veces —el botón abre la tarjeta, y dentro hay que escribir BORRAR— porque no
+  // hay vuelta atrás: al terminar no queda nada, ni aquí ni en el servidor.
+  function deleteAccountHtml(){
+    if(!state.deletingAccount){
+      return `
+        <div class="card">
+          <div class="card-sub">Se borran la cuenta y todo lo suyo: equipos,
+          plantillas, partidos, tiros y eventos, en este dispositivo y en la
+          nube. No se puede deshacer.</div>
+          <button class="danger slim" id="delete-account">${icon('trash')} Borrar mi cuenta</button>
+        </div>
+      `;
+    }
+    return `
+      <div class="card edit-card">
+        <div class="card-title">Esto no se puede deshacer</div>
+        <div class="card-sub">Escribe <strong>BORRAR</strong> para confirmar que
+        quieres eliminar la cuenta y todo lo que guarda.</div>
+        <div class="field">
+          <label for="delete-account-word">Confirmación</label>
+          <input id="delete-account-word" type="text" autocomplete="off" placeholder="BORRAR">
+        </div>
+        ${state.deleteAccountError ? `<div class="error-msg">${esc(state.deleteAccountError)}</div>` : ''}
+        <div class="export-row">
+          <button class="danger slim" id="delete-account-confirm" ${state.deleteAccountBusy ? 'disabled' : ''}>
+            ${state.deleteAccountBusy ? 'Borrando…' : 'Borrar la cuenta'}
+          </button>
+          <button class="secondary slim" id="delete-account-cancel">Cancelar</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // El orden importa y no es intercambiable: primero el servidor, y solo si
+  // responde bien se limpia lo local. Al revés, un fallo de red dejaría el
+  // aparato vacío con la cuenta todavía viva y sin forma de recuperar lo que
+  // hubiera sin subir.
+  async function handleDeleteAccount(){
+    const campo = document.getElementById('delete-account-word');
+    const palabra = (campo ? campo.value : '').trim().toUpperCase();
+    if(palabra !== 'BORRAR'){
+      state.deleteAccountError = 'Escribe BORRAR para confirmar.';
+      render();
+      return;
+    }
+    state.deleteAccountBusy = true;
+    state.deleteAccountError = '';
+    render();
+    try{
+      await DB.deleteAccount();
+    }catch(e){
+      state.deleteAccountBusy = false;
+      state.deleteAccountError = authErrorText(e) || 'No se ha podido borrar la cuenta.';
+      render();
+      return;
+    }
+    Store.wipeLocal();
+    await DB.signOut();
+    leaveApp();
+    toast('Cuenta borrada');
   }
 
   async function handleCreateTeam(){
@@ -799,15 +883,23 @@
     const team = currentTeam();
     const players = [...team.players].sort((a,b)=>a.dorsal-b.dorsal);
     const rows = players.length ? players.map(p => `
-      <div class="player-row">
+      <div class="player-row${state.editingPlayerId === p.id ? ' editing' : ''}">
         <div class="dorsal-badge">${esc(p.dorsal)}</div>
         <div class="player-info">
           <div class="player-name">${esc(p.name)}</div>
           <div class="player-pos">${esc(p.position)}</div>
         </div>
+        <button class="icon-btn" data-edit-player="${p.id}" title="Editar">${icon('pencil')}</button>
         <button class="icon-btn" data-del-player="${p.id}" title="Eliminar">✕</button>
       </div>
     `).join('') : `<div class="empty-state" style="padding:20px 0;">Sin jugadores todavía.</div>`;
+
+    // El mismo formulario da de alta y corrige: con editingPlayerId puesto llega
+    // relleno y guarda sobre la misma fila, que es lo que conserva el historial
+    // del jugador. Un modal aparte sería repetir estos tres campos.
+    const editando = state.editingPlayerId
+      ? players.find(p => p.id === state.editingPlayerId)
+      : null;
 
     return `
       ${topbar({ left: backBtn('to-dashboard','Equipos') })}
@@ -816,24 +908,32 @@
         <div class="section-label">Plantilla</div>
         <div class="card">${rows}</div>
 
+        <div class="section-label">${editando ? 'Editar jugador' : 'Nuevo jugador'}</div>
         <div class="row">
           <div class="field" style="flex:2;">
             <label for="p-name">Nombre</label>
-            <input id="p-name" type="text" maxlength="80" placeholder="Nombre del jugador">
+            <input id="p-name" type="text" maxlength="80" placeholder="Nombre del jugador"
+                   value="${editando ? esc(editando.name) : ''}">
           </div>
           <div class="field" style="flex:1;">
             <label for="p-dorsal">Dorsal</label>
-            <input id="p-dorsal" type="number" min="0" max="99" placeholder="7">
+            <input id="p-dorsal" type="number" min="0" max="99" placeholder="7"
+                   value="${editando ? esc(editando.dorsal) : ''}">
           </div>
         </div>
         <div class="field">
           <label for="p-pos">Posición</label>
           <select id="p-pos">
-            ${POSITIONS.map(p=>`<option value="${p}">${p}</option>`).join('')}
+            ${POSITIONS.map(p=>`<option value="${p}"${editando && editando.position === p ? ' selected' : ''}>${p}</option>`).join('')}
           </select>
         </div>
         ${state.formError ? `<div class="error-msg">${esc(state.formError)}</div>` : ''}
-        <button class="secondary" id="add-player-btn">Añadir jugador</button>
+        ${editando ? `
+          <div class="export-row">
+            <button class="primary slim" id="save-player-btn">Guardar cambios</button>
+            <button class="secondary slim" id="cancel-player-btn">Cancelar</button>
+          </div>
+        ` : `<button class="secondary" id="add-player-btn">Añadir jugador</button>`}
 
         <div class="section-label">Partidos</div>
         <button class="primary" id="new-match-btn">＋ Nuevo partido</button>
@@ -852,34 +952,49 @@
     `;
   }
 
-  async function handleAddPlayer(){
+  // Lee y valida los tres campos del formulario de plantilla. Devuelve null si
+  // algo no cuadra, después de dejar el aviso en pantalla: lo usan igual el alta
+  // y la edición, que comparten formulario.
+  function readPlayerForm(){
     const name = document.getElementById('p-name').value.trim();
     const dorsalRaw = document.getElementById('p-dorsal').value;
     const position = document.getElementById('p-pos').value;
-    if(!name || dorsalRaw === ''){
-      state.formError = 'Escribe nombre y dorsal.';
-      render();
-      return;
-    }
+    const mal = (msg) => { state.formError = msg; render(); return null; };
+    if(!name || dorsalRaw === '') return mal('Escribe nombre y dorsal.');
     const dorsal = parseInt(dorsalRaw, 10);
     if(!Number.isInteger(dorsal) || dorsal < 0 || dorsal > 99){
-      state.formError = 'El dorsal tiene que ser un número entre 0 y 99.';
-      render();
-      return;
+      return mal('El dorsal tiene que ser un número entre 0 y 99.');
     }
-    if(name.length > 80){
-      state.formError = 'El nombre es demasiado largo (máximo 80 caracteres).';
-      render();
-      return;
-    }
-    Store.addPlayer(state.currentTeamId, { name, dorsal, position });
+    if(name.length > 80) return mal('El nombre es demasiado largo (máximo 80 caracteres).');
+    return { name, dorsal, position };
+  }
+
+  async function handleAddPlayer(){
+    const player = readPlayerForm();
+    if(!player) return;
+    Store.addPlayer(state.currentTeamId, player);
     state.formError = '';
     reloadTeams();
     render();
   }
 
+  // Corregir un dorsal mal escrito o un nombre no puede costar el historial del
+  // jugador: se guarda sobre su misma fila, con su mismo id, que es el que
+  // llevan dentro todos sus tiros y sus eventos.
+  async function handleSavePlayer(){
+    const player = readPlayerForm();
+    if(!player) return;
+    Store.updatePlayer(state.editingPlayerId, player);
+    state.editingPlayerId = null;
+    state.formError = '';
+    reloadTeams();
+    render();
+    toast('Jugador actualizado');
+  }
+
   async function handleDeletePlayer(id){
     Store.deletePlayer(id);
+    if(state.editingPlayerId === id) state.editingPlayerId = null;
     reloadTeams();
     render();
   }
@@ -1382,6 +1497,11 @@
           <label for="edit-date">Fecha</label>
           <input id="edit-date" type="date" value="${esc(m.date)}">
         </div>
+        <div class="field">
+          <label for="edit-halftime">Minuto del descanso</label>
+          <input id="edit-halftime" type="number" min="0" max="200" placeholder="Sin marcar"
+                 value="${m.halfTime === null || m.halfTime === undefined ? '' : esc(m.halfTime)}">
+        </div>
         ${state.formError ? `<div class="error-msg">${esc(state.formError)}</div>` : ''}
         <div class="export-row">
           <button class="primary slim" id="save-match-edit">Guardar cambios</button>
@@ -1484,7 +1604,17 @@
       render();
       return;
     }
-    Store.updateMatch(state.currentMatchId, { rival, date });
+    // El minuto del descanso se marca con un botón en mitad del partido y es
+    // fácil pulsarlo tarde. Vacío no es el minuto 0: es un partido sin descanso
+    // marcado, y así se guarda.
+    const halfRaw = document.getElementById('edit-halftime').value.trim();
+    const halfTime = halfRaw === '' ? null : parseInt(halfRaw, 10);
+    if(halfTime !== null && (!Number.isInteger(halfTime) || halfTime < 0)){
+      state.formError = 'El minuto del descanso tiene que ser un número de minutos.';
+      render();
+      return;
+    }
+    Store.updateMatch(state.currentMatchId, { rival, date, halfTime });
     state.formError = '';
     state.editingMatch = false;
     reloadMatches();
@@ -2452,6 +2582,17 @@
       render();
     });
     bind('logout-btn','click', async () => { await DB.signOut(); leaveApp(); });
+    bind('delete-account','click', () => {
+      state.deletingAccount = true;
+      state.deleteAccountError = '';
+      render();
+    });
+    bind('delete-account-confirm','click', handleDeleteAccount);
+    bind('delete-account-cancel','click', () => {
+      state.deletingAccount = false;
+      state.deleteAccountError = '';
+      render();
+    });
     bind('sync-banner','click', () => Store.sync());
     bind('migrate-yes','click', () => {
       const n = Store.importLegacy();
@@ -2508,7 +2649,20 @@
       render();
     });
     bind('add-player-btn','click', handleAddPlayer);
+    bind('save-player-btn','click', handleSavePlayer);
+    bind('cancel-player-btn','click', () => {
+      state.editingPlayerId = null;
+      state.formError = '';
+      render();
+    });
     bind('delete-team','click', handleDeleteTeam);
+    app.querySelectorAll('[data-edit-player]').forEach(el => {
+      el.addEventListener('click', () => {
+        state.editingPlayerId = el.getAttribute('data-edit-player');
+        state.formError = '';
+        render();
+      });
+    });
     app.querySelectorAll('[data-del-player]').forEach(el => {
       el.addEventListener('click', () => handleDeletePlayer(el.getAttribute('data-del-player')));
     });

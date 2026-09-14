@@ -183,6 +183,23 @@ window.DB = (function(){
     if(window.Native && Native.isNative()) await Native.googleSignOut();
   }
 
+  // ---------------------------------------------------- borrar la cuenta
+  //
+  // Borrar la cuenta entera no lo puede hacer el navegador: la clave anon no
+  // llega a auth.users, y con RLS solo se pueden tocar las filas propias, no
+  // borrar al usuario. Lo hace una Edge Function con la clave de servicio
+  // (supabase/functions/borrar-cuenta), que además de las cinco tablas borra la
+  // fila de auth.users. Aquí solo se la llama: invoke() le manda el token de la
+  // sesión y es ella quien saca de él de quién es la cuenta, para que nadie
+  // pueda pedir que se borre otra.
+  async function deleteAccount(){
+    const c = init();
+    if(!c) throw new Error('Supabase no está configurado.');
+    const { data, error } = await c.functions.invoke('borrar-cuenta', { method:'POST' });
+    if(error) throw error;
+    return data;
+  }
+
   // ------------------------------------------------------- sincronización
 
   // Trae lo que haya cambiado en el servidor desde la última vez. El corte se
@@ -229,7 +246,7 @@ window.DB = (function(){
   return {
     TABLES, init, isConfigured, currentUser, onAuthChange, cleanAuthUrl,
     renderGoogleButton, signInWithGoogleNative,
-    signInWithPassword, signUpWithPassword, signOut,
+    signInWithPassword, signUpWithPassword, signOut, deleteAccount,
     pull, push
   };
 })();

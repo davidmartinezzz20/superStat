@@ -50,8 +50,14 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
   Anotando en vivo se cuela un gol del jugador que no era: desde la ficha del
   partido se puede **borrar una anotación suelta** y volver a meterla, sin
   rehacer el partido entero.
+- **Corregir sin rehacer**: el nombre, el dorsal y la posición de un jugador se
+  editan sin que pierda su historial —sus goles de antes siguen siendo suyos—, y
+  de un partido guardado se pueden cambiar el rival, la fecha y el minuto del
+  descanso.
 - Un **equipo se borra desde su pantalla** y con él se van su plantilla y todos
   sus partidos.
+- La **cuenta entera se borra desde la app**, en *Cuenta → Borrar la cuenta*:
+  desaparece todo, aquí y en la nube, sin pedirle nada a nadie.
 - **Exportar** un partido en CSV o compartirlo como imagen resumen.
 
 ## Android y iOS
@@ -102,8 +108,8 @@ python3 -m http.server 5173
 Abrir `index.html` con `file://` ya no vale: el login con Google redirige y
 necesita un origen http(s), y el service worker tampoco se registra ahí.
 
-Las pruebas necesitan Playwright y la app servida; están en
-[`test/README.md`](test/README.md).
+Las pruebas (`npm test`) necesitan Playwright y la app servida, y lo dicen con el
+comando exacto si falta alguno; están en [`test/README.md`](test/README.md).
 
 ## Datos
 
@@ -132,6 +138,7 @@ icons/  assets/        iconos de la web y materia prima de los de las apps
 tools/make-icons.js    genera todo eso desde el dibujo de la marca
 tools/build-www.js     junta lo que se empaqueta dentro de la app
 supabase/schema.sql    tablas, migraciones y políticas de seguridad
+supabase/functions/    la Edge Function que borra la cuenta entera
 privacidad.html        política de privacidad (la URL que pide Google Play)
 play/                  icono, cabecera y capturas de la ficha de Play
 tools/make-play-assets.js  genera el icono y la cabecera de la ficha

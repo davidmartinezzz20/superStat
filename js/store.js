@@ -224,6 +224,19 @@ window.Store = (function(){
     return row.id;
   }
 
+  // Corregir un jugador ya dado de alta. Se cambia la fila y no se borra para
+  // crear otra: el id es el que llevan dentro todos sus tiros y sus eventos, así
+  // que rehacerlo le borraría el historial. Es lo que promete la política de
+  // privacidad en el derecho de rectificación.
+  function updatePlayer(playerId, patch){
+    const row = cache.players[playerId];
+    if(!row) return;
+    if(patch.name !== undefined) row.name = patch.name;
+    if(patch.dorsal !== undefined) row.dorsal = patch.dorsal;
+    if(patch.position !== undefined) row.position = patch.position;
+    write('players', row);
+  }
+
   function deletePlayer(playerId){ softDelete('players', playerId); }
 
   // Borrar un equipo se lleva por delante su plantilla, sus partidos y los
@@ -294,13 +307,16 @@ window.Store = (function(){
     return matchId;
   }
 
-  // Corregir un partido ya guardado: de momento el rival y la fecha, que es lo
-  // que se escribe con prisa antes de empezar.
+  // Corregir un partido ya guardado: el rival y la fecha, que son lo que se
+  // escribe con prisa antes de empezar, y el minuto del descanso, que se fija
+  // con un botón en vivo y hasta aquí no había forma de tocar. null es un
+  // partido sin descanso marcado, que no es lo mismo que el minuto 0.
   function updateMatch(matchId, patch){
     const row = cache.matches[matchId];
     if(!row) return;
     if(patch.rival !== undefined) row.rival = patch.rival;
     if(patch.date !== undefined) row.played_on = patch.date;
+    if(patch.halfTime !== undefined) row.half_time_minute = patch.halfTime;
     write('matches', row);
   }
 
@@ -485,6 +501,23 @@ window.Store = (function(){
     lastError = null;
   }
 
+  // No queda rastro de la cuenta en este aparato: el espejo, la cola, el partido
+  // a medias y la marca de la migración. Lo llama el borrado de cuenta, y solo
+  // después de que el servidor haya confirmado: al revés se perdería lo local
+  // con la cuenta todavía viva.
+  function wipeLocal(){
+    if(!userId) return;
+    try{
+      localStorage.removeItem(cacheKey());
+      localStorage.removeItem(queueKey());
+      localStorage.removeItem(draftKey());
+      localStorage.removeItem('hb:migrated:' + userId);
+    }catch(e){
+      console.error('no se pudo limpiar el navegador', e);
+    }
+    stop();
+  }
+
   if(typeof window !== 'undefined'){
     window.addEventListener('online', () => sync());
     document.addEventListener('visibilitychange', () => {
@@ -493,8 +526,8 @@ window.Store = (function(){
   }
 
   return {
-    uuid, start, stop, onChange, sync, status, pendingCount,
-    teams, matches, createTeam, addPlayer, deletePlayer, deleteTeam,
+    uuid, start, stop, wipeLocal, onChange, sync, status, pendingCount,
+    teams, matches, createTeam, addPlayer, updatePlayer, deletePlayer, deleteTeam,
     saveMatch, updateMatch, deleteMatch, deleteShot, deleteEvent,
     saveDraft, loadDraft, clearDraft,
     hasLegacyData, importLegacy, skipLegacy

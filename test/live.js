@@ -5,15 +5,12 @@
 // Se ejecutan igual que las de sincronización:
 //   python3 -m http.server 5173 &
 //   node test/live.js
-const { chromium } = require('playwright');
+const { chromium, LANZAR, BASE_URL, servidorListo } = require('./requiere-playwright.js');
 const fs = require('fs');
 const STUB = fs.readFileSync(__dirname + '/supabase-stub.js', 'utf8');
 const GSTUB = fs.readFileSync(__dirname + '/google-stub.js', 'utf8');
 const { rutasDePrueba, rutaConfig, CONFIG_DE_PRUEBA } = require('./rutas.js');
-const BASE = 'http://localhost:5173/index.html';
-// Si el Chromium que trae Playwright no está instalado, se le puede pasar uno
-// con CHROMIUM_PATH=/ruta/al/chromium.
-const LANZAR = process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {};
+const BASE = BASE_URL + '/index.html';
 
 let fallos = 0, pasadas = 0;
 function check(nombre, ok, detalle){
@@ -80,6 +77,7 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
   .filter(k => k.indexOf('hb:draft:') === 0).map(k => k.slice('hb:draft:'.length))[0])));
 
 (async () => {
+  await servidorListo();
   const browser = await chromium.launch(LANZAR);
   let { ctx, page } = await nuevaPagina(browser);
   await page.goto(BASE);
@@ -264,9 +262,70 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
   check('la temporada cuenta el partido', temporada.includes('1 partido'));
   check('la temporada suma goleadores', /GOLEADORES/i.test(temporada));
 
-  // ------------------------------------------------ 9. editar y borrar
-  console.log('\n9. Editar y borrar un partido guardado');
+  // --------------------------------------------- 9. corregir un jugador
+  // privacidad.html promete, en el derecho de rectificación, que lo que la app
+  // guarda se edita desde la app. Lo que hay que comprobar no es que el nombre
+  // cambie, sino que cambiar no cuesta el historial: el jugador conserva su id,
+  // y con él todos los tiros y eventos que ya llevaban su nombre dentro.
+  console.log('\n9. Corregir un jugador sin perder su historial');
   await page.click('#to-team');
+  await page.waitForSelector('[data-edit-player]');
+  const idJugador = await page.evaluate(() => {
+    const fila = [...document.querySelectorAll('.player-row')]
+      .find(r => r.textContent.includes('Joan Vidal'));
+    return fila.querySelector('[data-edit-player]').getAttribute('data-edit-player');
+  });
+  await page.click(`[data-edit-player="${idJugador}"]`);
+  await page.waitForSelector('#save-player-btn');
+  check('el formulario llega relleno con el jugador',
+        await page.inputValue('#p-name') === 'Joan Vidal' &&
+        await page.inputValue('#p-dorsal') === '7' &&
+        await page.inputValue('#p-pos') === 'Lateral izquierdo');
+  await page.fill('#p-name', 'Joan Vidal Ros');
+  await page.fill('#p-dorsal', '8');
+  await page.selectOption('#p-pos', 'Central');
+  await page.click('#save-player-btn');
+  await page.waitForSelector('#add-player-btn');
+  check('el jugador corregido se ve ya en la plantilla',
+        (await ficha()).includes('Joan Vidal Ros'));
+  check('sigue siendo el mismo jugador, no uno nuevo',
+        await page.evaluate(() => Object.values(window.__SERVER__.rows.players)
+          .filter(p => !p.deleted_at).length) === 4 &&
+        await page.evaluate(id => {
+          const p = window.__SERVER__.rows.players[id];
+          return !!p && !p.deleted_at && p.name === 'Joan Vidal Ros' && Number(p.dorsal) === 8;
+        }, idJugador));
+
+  await page.click('#view-matches-btn');
+  await page.waitForSelector('[data-match]');
+  await page.click('[data-match]');
+  await page.waitForSelector('.score-hero-num');
+  const tras = await ficha();
+  check('sus goles de antes siguen siendo suyos, con el nombre nuevo',
+        /Joan Vidal Ros/.test(tras) && !/Joan Vidal[^ R]/.test(tras.replace(/Joan Vidal Ros/g, '')),
+        tras.match(/Goleadores.{0,80}/));
+  check('el más/menos también lo sigue contando',
+        /Joan Vidal Ros\s*\+1/.test(tras), tras.match(/Más\/menos.{0,120}/));
+
+  // Un dorsal fuera de rango se rechaza igual que en el alta.
+  await page.click('#to-matches');
+  await page.click('#to-team');
+  await page.waitForSelector('[data-edit-player]');
+  await page.click(`[data-edit-player="${idJugador}"]`);
+  await page.waitForSelector('#save-player-btn');
+  await page.fill('#p-dorsal', '140');
+  await page.click('#save-player-btn');
+  await page.waitForSelector('.error-msg');
+  check('un dorsal imposible no se guarda',
+        (await page.textContent('.error-msg')).includes('entre 0 y 99'));
+  await page.click('#cancel-player-btn');
+  await page.waitForSelector('#add-player-btn');
+  check('cancelar deja al jugador como estaba',
+        await page.evaluate(id => Number(window.__SERVER__.rows.players[id].dorsal), idJugador) === 8);
+
+  // ----------------------------------------------- 10. editar y borrar
+  console.log('\n10. Editar y borrar un partido guardado');
+  // Se sigue en la pantalla del equipo, donde terminó el bloque anterior.
   await page.click('#view-matches-btn');
   await page.waitForSelector('[data-match]');
   await page.click('[data-match]');
@@ -277,6 +336,29 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
   await page.click('#save-match-edit');
   await page.waitForTimeout(200);
   check('el rival editado se guarda', (await ficha()).includes('BM Granollers B'));
+
+  // El minuto del descanso se fija con un botón en mitad del partido y es fácil
+  // pulsarlo tarde; hasta ahora era lo único del partido que no se podía tocar.
+  await page.click('#edit-match');
+  await page.waitForSelector('#edit-halftime');
+  await page.fill('#edit-halftime', '31');
+  await page.click('#save-match-edit');
+  await page.waitForTimeout(200);
+  check('el minuto del descanso se puede corregir',
+        (await ficha()).includes('descanso en el 31'), await ficha());
+  await page.click('#edit-match');
+  await page.waitForSelector('#edit-halftime');
+  await page.fill('#edit-halftime', '');
+  await page.click('#save-match-edit');
+  await page.waitForTimeout(200);
+  check('dejarlo vacío es un partido sin descanso marcado, no el minuto 0',
+        !(await ficha()).includes('descanso en el') &&
+        await page.evaluate(() => Object.values(window.__SERVER__.rows.matches)[0].half_time_minute) === null);
+  await page.click('#edit-match');
+  await page.waitForSelector('#edit-halftime');
+  await page.fill('#edit-halftime', '30');
+  await page.click('#save-match-edit');
+  await page.waitForTimeout(200);
 
   // Corregir sin rehacer el partido: el partido tiene cinco anotaciones (gol
   // encajado, parada, palo, un alta de pista y un gol nuestro) y se quita la
@@ -336,12 +418,12 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
           return rows.length === 1 && !!rows[0].deleted_at;
         }));
 
-  // ------------------------------------------------ 10. borrar un equipo
+  // ------------------------------------------------ 11. borrar un equipo
   // La pol\u00edtica de privacidad promete que con el equipo se va su plantilla y
   // todo lo anotado en sus partidos. Aqu\u00ed se comprueba que de verdad se va, y
   // que se va marcado y no desaparecido: un borrado f\u00edsico reaparecer\u00eda en el
   // siguiente dispositivo que sincronice.
-  console.log('\n10. Borrar un equipo entero');
+  console.log('\n11. Borrar un equipo entero');
   await page.click('#to-team');
   await page.waitForSelector('#delete-team');
   page.once('dialog', d => d.accept());
@@ -371,11 +453,11 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
 
   await ctx.close();
 
-  // ------------------------------------------ 11. la app abre sin cobertura
+  // ------------------------------------------ 12. la app abre sin cobertura
   // Aquí sí se deja trabajar al service worker: es justo lo que se prueba. Sin
   // dobles ni rutas interceptadas, porque lo que se comprueba es que el HTML,
   // el CSS y los scripts salen de la caché y no de la red.
-  console.log('\n11. La app abre sin cobertura (service worker)');
+  console.log('\n12. La app abre sin cobertura (service worker)');
   const swCtx = await browser.newContext({ viewport:{ width:390, height:844 } });
   // La única ruta que sí se intercepta aquí, y va en el contexto y no en la
   // página: el service worker se guarda el shell con sus propias peticiones, y

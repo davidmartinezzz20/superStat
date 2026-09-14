@@ -68,6 +68,11 @@ no para usar la app.
 - `vendor/` — librerías de terceros copiadas sin tocar, para no depender de un
   CDN. Tiene su propio README con cómo actualizarlas.
 - `supabase/schema.sql` — tablas, índices, migraciones y políticas RLS.
+- `supabase/functions/borrar-cuenta/` — la única pieza de servidor del proyecto.
+  Borra la cuenta entera, incluida la fila de `auth.users`, que es lo que la app
+  no puede hacer: con la clave anon y RLS se marcan las filas propias, pero al
+  usuario no se le toca. Se despliega aparte del esquema (`docs/supabase.md`) y,
+  sin desplegar, el botón de *Cuenta* da error.
 - `sw.js` — service worker: guarda el shell para poder abrir sin cobertura.
 - `manifest.webmanifest` e `icons/` — instalación en la pantalla de inicio.
 - `capacitor.config.json` y `assets/` — configuración de las apps nativas y la
@@ -86,7 +91,8 @@ no para usar la app.
 - `tools/make-screenshots.js` — genera las capturas: abre la app de verdad con
   los dobles de `test/` detrás, juega un partido inventado con semilla fija y
   fotografía ocho pantallas.
-- `docs/supabase.md` — puesta a punto de Supabase y de Google.
+- `docs/supabase.md` — puesta a punto de Supabase y de Google, y el despliegue
+  de la Edge Function de borrado de cuenta.
 - `docs/movil.md` — compilar y publicar en Google Play y la App Store.
 - `docs/play.md` — la ficha de Play: textos, respuestas de los formularios y la
   cuenta para el revisor.
@@ -263,7 +269,12 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   textos visibles para el usuario. Los errores que devuelve Supabase vienen en
   inglés: traducirlos en `authErrorText()`.
 - `app.js` nunca toca `localStorage` ni Supabase directamente: todo pasa por
-  `Store`. Si necesitas un dato nuevo, expón un método en `store.js`.
+  `Store`. Si necesitas un dato nuevo, expón un método en `store.js`. Por eso
+  limpiar el aparato al borrar la cuenta es `Store.wipeLocal()` y no cuatro
+  `removeItem` en la pantalla.
+- Rectificar es cambiar la fila, no rehacerla: `Store.updatePlayer()` guarda
+  sobre el mismo id porque es el que llevan dentro todos los tiros y eventos de
+  ese jugador. Dar de baja y volver a dar de alta le borraría el historial.
 - `render()` relee los datos del store en las pantallas de lista, así que basta
   con cambiar el store para que la pantalla se entere.
 - La tipografía es la del sistema (`--font`: San Francisco en los aparatos de
@@ -291,6 +302,14 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
 - La marca del logo también está duplicada en `tools/make-icons.js`, que genera
   los PNG del manifest. Si cambia el dibujo hay que tocar `brandLogo()`, el
   favicon de `index.html` y ese archivo, y volver a generar los iconos.
+
+## Al añadir un archivo o una pantalla
+
+Hay tres listas de los mismos archivos que se mantienen a mano —las etiquetas de
+`index.html`, el `SHELL` de `sw.js` y el `COPIAR` de `tools/build-www.js`— y
+olvidarse de una falla en silencio: sin el `SHELL`, la app no abre sin cobertura;
+sin `COPIAR`, el archivo no entra en el binario. `test/archivos.js` las compara,
+así que basta con ejecutarlo (`npm test` ya lo hace primero).
 
 ## Ideas pendientes (mencionadas pero no implementadas)
 

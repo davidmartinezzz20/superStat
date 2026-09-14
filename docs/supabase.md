@@ -144,6 +144,48 @@ los datos son las políticas RLS del paso 1.
 
 ---
 
+## 5. Desplegar el borrado de cuenta
+
+La app deja borrar la cuenta entera desde *Cuenta → Borrar la cuenta*, y eso lo
+hace una Edge Function: `supabase/functions/borrar-cuenta`. **Sin desplegarla,
+el botón está pero da error** («No se ha podido completar»), porque la función
+no existe todavía en el proyecto.
+
+Por qué no lo hace la app sola: con la clave anon y RLS se pueden marcar como
+borradas las filas propias, pero no se puede tocar `auth.users`. Mientras esa
+fila viva, la cuenta existe y se puede volver a entrar con ella. Hace falta la
+clave de servicio, y esa no puede estar en el navegador.
+
+1. Instala la CLI de Supabase, si no la tienes:
+
+   ```bash
+   npm install -g supabase
+   ```
+2. Entra y enlaza el proyecto (la *referencia* sale de la URL del panel):
+
+   ```bash
+   supabase login
+   supabase link --project-ref <referencia>
+   ```
+3. Despliega:
+
+   ```bash
+   supabase functions deploy borrar-cuenta
+   ```
+
+No hay que declarar ningún secreto: `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`
+las pone Supabase en el entorno de la función.
+
+Para comprobarlo, y esto **hay que hacerlo a mano contra el proyecto de verdad**
+—como el aislamiento de RLS—: crea una cuenta de usar y tirar, mete un equipo,
+bórrala desde la app y mira en **Table Editor** que no queda ninguna fila suya,
+y en **Authentication → Users** que el usuario ya no está.
+
+Es lo que promete `privacidad.html`, y lo que Google prefiere ver en la ficha de
+Play frente a la vía por correo.
+
+---
+
 ## Comprobar que funciona
 
 1. Abre la app, pulsa **Entrar con Google** y completa el login.
@@ -162,6 +204,7 @@ los datos son las políticas RLS del paso 1.
 | `Passed nonce and nonce in id_token...` | El ID de cliente no está registrado en Supabase (paso 4.1) |
 | Google pone el dominio y no "SuperStat" | La marca no está verificada — ver más abajo |
 | Entra pero no aparece nada y no guarda | RLS mal, o falta ejecutar `schema.sql` |
+| «No se ha podido completar» al borrar la cuenta | Falta desplegar la Edge Function (paso 5) |
 | "Falta configurar Supabase" en pantalla | `js/config.js` está vacío |
 | Acceso denegado al entrar con Google | Tu correo no está en *Usuarios de prueba* (paso 3.1.4) |
 

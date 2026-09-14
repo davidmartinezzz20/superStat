@@ -299,8 +299,8 @@ sincronizan al recuperar la red.
 
 ## 9. Lo que no da esta ficha, y conviene saber
 
-**Borrar la cuenta se hace por correo.** La política lo explica y Play acepta
-una vía externa, pero Google prefiere que se pueda borrar la cuenta **desde
-dentro de la app**. Hoy la app deja borrar equipos y partidos, no la cuenta
-entera. Si algún día lo piden —o si quieres adelantarte—, es una pantalla en
-*Cuenta* que llame a un endpoint de borrado en Supabase.
+**La cuenta se borra desde dentro de la app**, en *Cuenta → Borrar la cuenta*,
+que es lo que Google prefiere; la política ofrece además la vía por correo, que
+Play también acepta. Lo hace una Edge Function de Supabase, así que **hay que
+desplegarla antes de publicar** (§5 de [`supabase.md`](supabase.md)): sin eso el
+botón está y da error, que es peor que no tenerlo.

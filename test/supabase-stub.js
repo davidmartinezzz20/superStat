@@ -65,6 +65,32 @@
     createClient(){
       return {
         from(table){ return new Query(table); },
+        // El doble de las Edge Functions. La de verdad (borrar-cuenta) corre en
+        // Supabase con la clave de servicio; aquí se hace lo mismo sobre el
+        // servidor de mentira, incluida la parte que importa: de quién es la
+        // cuenta lo dice la sesión y no lo que mande quien llama.
+        functions: {
+          async invoke(nombre){
+            try{ netCheck(); }catch(e){ return { data:null, error:e }; }
+            if(nombre !== 'borrar-cuenta'){
+              return { data:null, error:new Error('función no desplegada: ' + nombre) };
+            }
+            if(!SERVER.session) return { data:null, error:new Error('sin-sesion') };
+            const uid = SERVER.session.user.id;
+            // Borrado físico y no lógico, como la función de verdad: no queda
+            // ningún dispositivo con el que reconciliar nada.
+            Object.keys(SERVER.rows).forEach(tabla => {
+              Object.values(SERVER.rows[tabla]).forEach(r => {
+                if(r.user_id === uid) delete SERVER.rows[tabla][r.id];
+              });
+            });
+            Object.keys(SERVER.users).forEach(correo => {
+              if(SERVER.users[correo].id === uid) delete SERVER.users[correo];
+            });
+            save();
+            return { data:{ ok:true }, error:null };
+          }
+        },
         auth: {
           async getSession(){ return { data:{ session: SERVER.session }, error:null }; },
           onAuthStateChange(cb){ authListeners.push(cb); return { data:{ subscription:{ unsubscribe(){} } } }; },

@@ -17,7 +17,7 @@
 //
 // Al cambiar cualquier archivo del shell hay que subir VERSION, o los
 // navegadores que ya tengan la caché vieja seguirán sirviéndola.
-const VERSION = 'superstat-v5';
+const VERSION = 'superstat-v6';
 
 const SHELL = [
   './',
@@ -32,7 +32,13 @@ const SHELL = [
   './js/app.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  // Estos dos no los pide el navegador al cargar la página —el maskable lo usa
+  // el sistema al instalarla desde el manifest, y el de Apple al añadirla a la
+  // pantalla de inicio—, así que es fácil olvidarlos aquí. Para entonces puede
+  // no haber cobertura: test/archivos.js vigila que no vuelvan a faltar.
+  './icons/icon-maskable.png',
+  './icons/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', event => {
