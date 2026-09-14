@@ -14,7 +14,13 @@
 //     pendiente en la cola local: entonces gana lo local y no se pisa.
 window.Store = (function(){
 
-  const TABLES = ['teams','players','matches','shots','events'];
+  // La lista vive en db.js y aquí solo se consume. Tenerla escrita dos veces
+  // era duplicación silenciosa: añadir una tabla y olvidarse de este sitio no
+  // daba ningún error, simplemente esa tabla no se sincronizaba. db.js es quien
+  // habla con Supabase y quien sabe en qué orden hay que subirlas, así que la
+  // lista es suya. El orden de carga lo fija index.html (db.js antes que este
+  // archivo), y test/archivos.js vigila que las tres listas no se separen.
+  const TABLES = DB.TABLES;
 
   let userId = null;
   let cache = empty();
@@ -25,7 +31,11 @@ window.Store = (function(){
   let listeners = [];
 
   function empty(){
-    return { teams:{}, players:{}, matches:{}, shots:{}, events:{}, cursors:{} };
+    // Se construye desde TABLES para que añadir una tabla sea de verdad un solo
+    // sitio. Los cursores van aparte: no son una tabla, son por dónde iba pull().
+    const c = { cursors:{} };
+    for(const t of TABLES) c[t] = {};
+    return c;
   }
 
   function uuid(){
@@ -390,7 +400,7 @@ window.Store = (function(){
 
   async function sync(){
     if(syncing || !userId) return;
-    if(!window.DB || !DB.isConfigured()) return;
+    if(!DB.isConfigured()) return;
     if(typeof navigator !== 'undefined' && navigator.onLine === false) return;
     syncing = true;
     notify();
@@ -415,7 +425,7 @@ window.Store = (function(){
   }
 
   function status(){
-    if(!window.DB || !DB.isConfigured()) return 'local';
+    if(!DB.isConfigured()) return 'local';
     if(typeof navigator !== 'undefined' && navigator.onLine === false) return 'offline';
     if(syncing) return 'syncing';
     if(queue.length) return 'pending';
