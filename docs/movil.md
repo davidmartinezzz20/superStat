@@ -150,9 +150,15 @@ cd android && ./gradlew assembleDebug
    **Guárdalo fuera del repo y haz copia.** Si lo pierdes, Google Play no deja
    volver a subir una actualización de la misma app nunca más: hay que publicar
    una app nueva desde cero.
-2. En Android Studio: *Build → Generate Signed Bundle / APK → Android App
+2. **Sube el `versionCode`** de `android/app/build.gradle` si no es la primera
+   subida: Play rechaza un AAB cuyo número ya haya visto. Cuidado, porque
+   `android/` no está en el repositorio: al regenerarlo con `npx cap add`
+   —o al compilar desde otro ordenador— vuelve a `versionCode 1`, y el rechazo
+   no dice que el problema sea ese. El número de la última subida está en Play
+   Console, en la lista de versiones.
+3. En Android Studio: *Build → Generate Signed Bundle / APK → Android App
    Bundle*, con ese almacén.
-3. Sube el `.aab` a Play Console.
+4. Sube el `.aab` a Play Console.
 
 La primera publicación tarda: Google revisa las apps nuevas y, con una app que
 pide cuenta desde la primera pantalla, necesita unas credenciales para poder
@@ -162,6 +168,11 @@ El binario es solo la mitad. Todo lo demás que hay que rellenar —los textos d
 la ficha, el icono y las capturas, los formularios de seguridad de los datos y
 de clasificación por edades, y esa cuenta para el revisor— está resuelto en
 **[`play.md`](play.md)**, con los gráficos ya generados en `play/`.
+
+Y si lo que quieres es el recorrido entero en orden, desde una máquina vacía
+hasta la app publicada —incluidos los 14 días de prueba cerrada que Google exige
+a las cuentas nuevas, que son los que mandan en el calendario—, está en
+**[`publicar-android.md`](publicar-android.md)**.
 
 ---
 

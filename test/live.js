@@ -9,6 +9,7 @@ const { chromium } = require('playwright');
 const fs = require('fs');
 const STUB = fs.readFileSync(__dirname + '/supabase-stub.js', 'utf8');
 const GSTUB = fs.readFileSync(__dirname + '/google-stub.js', 'utf8');
+const { rutasDePrueba, rutaConfig, CONFIG_DE_PRUEBA } = require('./rutas.js');
 const BASE = 'http://localhost:5173/index.html';
 // Si el Chromium que trae Playwright no está instalado, se le puede pasar uno
 // con CHROMIUM_PATH=/ruta/al/chromium.
@@ -28,12 +29,7 @@ async function nuevaPagina(browser){
   await ctx.addInitScript({ content: STUB + '\n' + GSTUB });
   const page = await ctx.newPage();
   page.on('pageerror', e => { fallos++; console.log('  FALLA error en página: ' + e.message); });
-  // supabase-js ya no viene de un CDN sino de vendor/: se sirve vacío para que
-  // no pise al doble que addInitScript acaba de dejar en window.supabase.
-  await page.route('**/vendor/supabase-js-*.js', r => r.fulfill({ contentType:'application/javascript', body:'' }));
-  await page.route('**/gsi/client*', r => r.fulfill({ contentType:'application/javascript', body:'' }));
-  await page.route('**/js/config.js', r => r.fulfill({ contentType:'application/javascript',
-    body:"window.SUPERSTAT_CONFIG={SUPABASE_URL:'https://test.supabase.co',SUPABASE_ANON_KEY:'anon-test',GOOGLE_CLIENT_ID:'cliente-de-prueba.apps.googleusercontent.com'};" }));
+  await rutasDePrueba(page);
   return { ctx, page };
 }
 
@@ -282,6 +278,51 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
   await page.waitForTimeout(200);
   check('el rival editado se guarda', (await ficha()).includes('BM Granollers B'));
 
+  // Corregir sin rehacer el partido: el partido tiene cinco anotaciones (gol
+  // encajado, parada, palo, un alta de pista y un gol nuestro) y se quita la
+  // que sobra de una en una.
+  await page.click('#edit-match');
+  await page.waitForSelector('[data-del-shot]');
+  check('la ficha lista todo lo anotado',
+        (await page.$$('[data-del-shot], [data-del-event]')).length === 5,
+        'n=' + (await page.$$('[data-del-shot], [data-del-event]')).length);
+  check('las anotaciones salen en el orden en que se registraron',
+        await page.evaluate(() => {
+          const filas = [...document.querySelectorAll('.stat-list-row')]
+            .filter(r => r.querySelector('[data-del-shot],[data-del-event]'));
+          return filas[0].textContent.includes('Gol encajado')
+              && filas[filas.length-1].textContent.includes('Gol de');
+        }));
+
+  const idTiro = await page.evaluate(() => {
+    const fila = [...document.querySelectorAll('.stat-list-row')]
+      .find(r => r.querySelector('[data-del-shot]') && r.textContent.includes('Gol de'));
+    return fila && fila.querySelector('[data-del-shot]').getAttribute('data-del-shot');
+  });
+  await page.click(`[data-del-shot="${idTiro}"]`);
+  await page.waitForTimeout(200);
+  check('la anotaci\u00f3n borrada desaparece de la lista',
+        await page.$(`[data-del-shot="${idTiro}"]`) === null);
+  check('el marcador se recalcula sin el tiro borrado',
+        (await page.textContent('.score-hero-num')).replace(/\s/g,'') === '0\u20131',
+        await page.textContent('.score-hero-num'));
+  check('el tiro queda en el servidor marcado como borrado, no desaparecido',
+        await page.evaluate(id => {
+          const r = window.__SERVER__.rows.shots[id];
+          return !!r && !!r.deleted_at;
+        }, idTiro));
+
+  const idEvento = await page.evaluate(() => {
+    const b = document.querySelector('[data-del-event]');
+    return b && b.getAttribute('data-del-event');
+  });
+  await page.click(`[data-del-event="${idEvento}"]`);
+  await page.waitForTimeout(200);
+  check('los eventos tambi\u00e9n se pueden quitar de uno en uno',
+        await page.$(`[data-del-event="${idEvento}"]`) === null &&
+        await page.evaluate(id => !!window.__SERVER__.rows.events[id].deleted_at, idEvento));
+  await page.click('#edit-match');          // cerrar la ficha de correcci\u00f3n
+
   await page.click('#edit-match');
   await page.waitForSelector('#delete-match');
   page.once('dialog', d => d.accept());   // el confirm de "¿borrar?"
@@ -295,14 +336,52 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
           return rows.length === 1 && !!rows[0].deleted_at;
         }));
 
+  // ------------------------------------------------ 10. borrar un equipo
+  // La pol\u00edtica de privacidad promete que con el equipo se va su plantilla y
+  // todo lo anotado en sus partidos. Aqu\u00ed se comprueba que de verdad se va, y
+  // que se va marcado y no desaparecido: un borrado f\u00edsico reaparecer\u00eda en el
+  // siguiente dispositivo que sincronice.
+  console.log('\n10. Borrar un equipo entero');
+  await page.click('#to-team');
+  await page.waitForSelector('#delete-team');
+  page.once('dialog', d => d.accept());
+  await page.click('#delete-team');
+  await page.waitForSelector('#create-team-btn');
+  check('el equipo borrado desaparece del panel',
+        (await ficha()).includes('A\u00fan no tienes ning\u00fan equipo'));
+
+  const cascada = await page.waitForFunction(() => {
+    const r = window.__SERVER__.rows;
+    return ['teams','players','matches','shots','events']
+      .every(t => Object.values(r[t]).every(x => !!x.deleted_at));
+  }, null, { timeout: 8000 }).then(() => true).catch(() => false);
+  check('con el equipo se van su plantilla, sus partidos y lo anotado', cascada,
+        await page.evaluate(() => {
+          const r = window.__SERVER__.rows;
+          return ['teams','players','matches','shots','events']
+            .map(t => t + '=' + Object.values(r[t]).filter(x => !x.deleted_at).length).join(' ');
+        }));
+  check('nada se borra de la base: queda marcado',
+        await page.evaluate(() => {
+          const r = window.__SERVER__.rows;
+          return Object.values(r.teams).length === 1
+              && Object.values(r.players).length === 4
+              && Object.values(r.shots).length === 4;
+        }));
+
   await ctx.close();
 
-  // ------------------------------------------ 10. la app abre sin cobertura
+  // ------------------------------------------ 11. la app abre sin cobertura
   // Aquí sí se deja trabajar al service worker: es justo lo que se prueba. Sin
   // dobles ni rutas interceptadas, porque lo que se comprueba es que el HTML,
   // el CSS y los scripts salen de la caché y no de la red.
-  console.log('\n10. La app abre sin cobertura (service worker)');
+  console.log('\n11. La app abre sin cobertura (service worker)');
   const swCtx = await browser.newContext({ viewport:{ width:390, height:844 } });
+  // La única ruta que sí se intercepta aquí, y va en el contexto y no en la
+  // página: el service worker se guarda el shell con sus propias peticiones, y
+  // esas no pasan por page.route(). Sin esto la prueba cargaría el config.js
+  // del repositorio, donde están las credenciales del proyecto de verdad.
+  await rutaConfig(swCtx);
   const swPage = await swCtx.newPage();
   // Nada de lo que hace falta para arrancar puede venir de fuera: con un CDN de
   // por medio, ni la app de móvil ni la web abren la primera vez sin cobertura.
@@ -324,6 +403,8 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
     return Boolean(reg.active);
   }).catch(() => false);
   check('el service worker queda activo', activo);
+  check('la prueba no carga el config.js del repositorio',
+        await swPage.evaluate(() => window.SUPERSTAT_CONFIG.SUPABASE_URL) === 'https://test.supabase.co');
 
   const guardados = await swPage.evaluate(async () => {
     const names = await caches.keys();
@@ -341,6 +422,10 @@ const draft = page => page.evaluate(() => JSON.parse(localStorage.getItem('hb:dr
   const abreSinRed = await swPage.waitForSelector('#auth-user', { timeout: 10000 })
     .then(() => true).catch(() => false);
   check('sin red, la app se abre igual desde la caché', abreSinRed);
+  // Lo que sirve la caché es lo que el service worker guardó al instalarse: si
+  // ahí hubiera entrado el config del repositorio, saldría ahora.
+  check('lo guardado en la caché tampoco lleva las credenciales de verdad',
+        await swPage.evaluate(() => window.SUPERSTAT_CONFIG.SUPABASE_URL) === 'https://test.supabase.co');
   await swCtx.setOffline(false);
   await swCtx.close();
 

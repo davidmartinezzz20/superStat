@@ -163,6 +163,82 @@ alter table public.events add  constraint events_type_check check (type in (
   'out'         -- sale de pista
 ));
 
+-- ------------------------------------------------- purga de lo borrado
+--
+-- La política de privacidad promete que un registro borrado "se elimina de
+-- forma definitiva como máximo a los 90 días". Esto es lo que lo cumple.
+--
+-- Borrar en la app es marcar deleted_at, nunca quitar la fila: con un borrado
+-- físico inmediato, al fusionar no se distingue "lo borré" de "aún no lo he
+-- subido" y lo borrado reaparece en el siguiente dispositivo que sincronice.
+-- Los 90 días son el plazo tras el cual ya no queda ningún dispositivo que
+-- pueda resucitarla, y entonces sí se quita de verdad.
+--
+-- Sobre el cursor de pull(): los clientes piden los cambios por server_at, y
+-- una fila que se esfuma no genera ningún cambio que traer. No hace falta que
+-- lo genere: para cuando desaparece, todo dispositivo que la conocía ya la
+-- tiene marcada como borrada en su espejo local, y a uno que no la conocía no
+-- le falta nada. Lo que sí importa es no adelantar el plazo.
+
+create or replace function public.purgar_borrados(dias integer default 90)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  corte timestamptz := now() - make_interval(days => dias);
+  total integer := 0;
+  n     integer;
+begin
+  -- De dentro hacia fuera. Por las claves ajenas daría igual el orden (borrar un
+  -- partido se lleva por delante sus tiros con "on delete cascade"), pero así el
+  -- recuento que se devuelve cuenta cada fila una sola vez.
+  delete from public.shots   where deleted_at < corte;
+  get diagnostics n = row_count;  total := total + n;
+  delete from public.events  where deleted_at < corte;
+  get diagnostics n = row_count;  total := total + n;
+  delete from public.matches where deleted_at < corte;
+  get diagnostics n = row_count;  total := total + n;
+  delete from public.players where deleted_at < corte;
+  get diagnostics n = row_count;  total := total + n;
+  delete from public.teams   where deleted_at < corte;
+  get diagnostics n = row_count;  total := total + n;
+  return total;
+end;
+$$;
+
+-- Es "security definer" para poder correr desde el planificador, que no actúa
+-- como ningún usuario de la app. Por eso mismo no se le da a nadie más: si
+-- pudiera llamarla un cliente con la clave anon, cualquiera podría forzar el
+-- borrado definitivo antes de tiempo.
+revoke all on function public.purgar_borrados(integer) from public;
+revoke all on function public.purgar_borrados(integer) from anon, authenticated;
+
+-- pg_cron es una extensión de Supabase y puede no estar activada. Si no se deja
+-- activar desde aquí, se activa en Supabase → Database → Extensions y se
+-- vuelve a ejecutar este archivo; mientras tanto no se rompe nada.
+do $$
+begin
+  create extension if not exists pg_cron;
+exception when others then
+  raise notice 'pg_cron no se pudo activar (%). Actívalo en Supabase → Database → Extensions y vuelve a ejecutar este archivo.', sqlerrm;
+end;
+$$;
+
+-- cron.schedule con el mismo nombre actualiza el trabajo en vez de crear otro,
+-- así que este archivo se puede volver a ejecutar sin acumular planificaciones.
+do $$
+begin
+  if exists (select 1 from pg_extension where extname = 'pg_cron') then
+    perform cron.schedule('superstat-purga-borrados', '30 3 * * *',
+                          'select public.purgar_borrados(90)');
+  else
+    raise notice 'Sin pg_cron no hay purga programada: los borrados se quedan en la base.';
+  end if;
+end;
+$$;
+
 -- ------------------------------------------------------------------- índices
 
 -- (user_id, server_at) es el índice que usa la sincronización para pedir
@@ -243,3 +319,33 @@ join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public'
   and c.relname in ('teams','players','matches','shots','events')
 order by c.relname;
+
+-- ------------------------------------------------------ comprobación purga
+--
+-- Y esto para la purga. Va como aviso y no como consulta a propósito, por dos
+-- razones: el editor de Supabase solo enseña el resultado de la última
+-- sentencia, y consultar cron.job sin pg_cron activado no devuelve vacío, falla
+-- —y este archivo se tiene que poder ejecutar entero sin romper nada—. El
+-- aviso sale en la pestaña de mensajes, debajo de la tabla de RLS.
+--
+-- Si dice que no está programada, lo borrado no se eliminará nunca, que es justo
+-- lo contrario de lo que promete la política de privacidad. Para probarla sin
+-- esperar 90 días: pon a mano un deleted_at antiguo en una fila y ejecuta
+-- `select public.purgar_borrados(90);`, que devuelve cuántas ha eliminado.
+
+do $$
+declare
+  trabajo record;
+begin
+  if to_regclass('cron.job') is null then
+    raise notice 'PURGA: pg_cron no está activado. Lo borrado se queda en la base para siempre.';
+    return;
+  end if;
+  select * into trabajo from cron.job where jobname = 'superstat-purga-borrados';
+  if not found then
+    raise notice 'PURGA: sin programar.';
+  else
+    raise notice 'PURGA: programada (%), activa = %.', trabajo.schedule, trabajo.active;
+  end if;
+end;
+$$;
