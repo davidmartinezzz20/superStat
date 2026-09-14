@@ -111,6 +111,16 @@ const TRABAJOS = [
   { file:'play/grafico-1024x500.png', w:1024, h:500, alfa:false, svg:GRAFICO }
 ];
 
+// El dibujo de la marca y la paleta se exportan para tools/make-instagram-assets.js,
+// que pinta la foto de perfil con el mismo cuadro rojo. Es una copia menos del
+// logo: ya hay tres (brandLogo(), el favicon de index.html y make-icons.js) y
+// cada una es un sitio más donde olvidarse al cambiarlo.
+module.exports = { marca, ROJO, ROJO_2, NEGRO, CLARO, GRIS, VERDE, AZUL, BARRAS };
+
+// Ejecutado a mano genera los archivos; requerido desde otro guion, solo
+// presta el dibujo.
+if(require.main !== module) return;
+
 (async () => {
   const browser = await chromium.launch(LANZAR);
   const page = await browser.newPage();

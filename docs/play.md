@@ -22,6 +22,11 @@ node tools/make-play-assets.js     # icono y cabecera
 node tools/make-screenshots.js     # las ocho capturas
 ```
 
+> Ojo con `play/capturas-en/`: son las mismas ocho pantallas pero con la app en
+> inglés, y **no van a esta ficha**. Son para la cuenta de Instagram en inglés
+> (ver [`instagram.md`](instagram.md)). La ficha de Play es castellana, así que
+> sube las de `play/capturas/`.
+
 Las capturas salen de la app de verdad, servida desde este repo y con los dobles
 de `test/` detrás: no tocan Supabase y el partido que enseñan es inventado, así
 que no hay forma de publicar datos de nadie. El guion tiene semilla fija, o sea

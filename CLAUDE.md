@@ -60,6 +60,9 @@ no para usar la app.
   operaciones de sincronización (`pull` y `push`). No sabe de pantallas.
 - `js/store.js` — espejo local, cola de sincronización y fusión. Es la única
   puerta de entrada a los datos para el resto de la app.
+- `js/i18n.js` — los textos de la interfaz, en español y en inglés, y la
+  función `t()` que los busca. **Ningún texto visible se escribe en una
+  plantilla**: va aquí, en los dos idiomas.
 - `js/app.js` — toda la lógica de pantalla: una single-page app hecha a mano
   con `render()` que reconstruye `#app` según `state.screen`, sin frameworks.
 - `js/native.js` — puente con Android e iOS: las tres cosas que un WebView no
@@ -96,7 +99,16 @@ no para usar la app.
 - `tools/make-play-assets.js` — genera el icono y la cabecera de la ficha.
 - `tools/make-screenshots.js` — genera las capturas: abre la app de verdad con
   los dobles de `test/` detrás, juega un partido inventado con semilla fija y
-  fotografía ocho pantallas.
+  fotografía ocho pantallas. En los dos idiomas: sin nada, en castellano hacia
+  `play/capturas/`; con `IDIOMA=en`, en inglés hacia `play/capturas-en/`. La
+  semilla fija el partido, no el reloj: las cuatro capturas que enseñan un
+  minuto cambian entre ejecuciones y eso ya pasaba antes de que hubiera idiomas.
+- `instagram/` — foto de perfil y publicaciones de las dos cuentas de
+  Instagram. Como `play/`: no entra en ningún binario y solo hace falta al
+  publicar.
+- `tools/make-instagram-assets.js` — las genera. El dibujo de la marca se lo
+  pide prestado a `make-play-assets.js` en vez de copiarlo por cuarta vez.
+- `docs/instagram.md` — biografías, pies y etiquetas de las dos cuentas.
 - `docs/supabase.md` — puesta a punto de Supabase y de Google, y el despliegue
   de la Edge Function de borrado de cuenta.
 - `docs/movil.md` — compilar y publicar en Google Play y la App Store.
@@ -271,9 +283,26 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   SVG va sin `<defs>` a propósito: así se puede repetir en la misma página sin
   sufijar ids, que es lo que sí necesita `courtSvg()`. El mismo dibujo está
   duplicado como favicon en `index.html`; si cambia uno, cambia el otro.
-- Los textos de la interfaz están en español; mantener ese idioma en nuevos
-  textos visibles para el usuario. Los errores que devuelve Supabase vienen en
-  inglés: traducirlos en `authErrorText()`.
+- **La app es bilingüe, español e inglés.** Todo texto visible sale de
+  `js/i18n.js` con `t('clave')`; en las plantillas de `app.js` no debe quedar
+  ni una palabra escrita a mano, y una clave nueva se añade a los dos
+  diccionarios a la vez. `test/i18n.js` lo comprueba. El español es la fuente
+  de la verdad: si falta una clave en inglés, se enseña la española y se avisa
+  por consola.
+- **Lo que viaja a Postgres no se traduce nunca.** La posición de un jugador se
+  guarda como `'Portero'`, el tipo de un evento como `'turnover'` y la zona de
+  lanzamiento como `'EI'`: son ids, y solo se traducen al pintarlos
+  (`positionName()`, `eventName()`, `originName()`). Traducirlos como dato
+  partiría la plantilla en dos según el idioma que tuviera la app el día del
+  alta. Por lo mismo, el CSV traduce las cabeceras pero deja intactos los
+  códigos de resultado y de zona.
+- El idioma es **del aparato y no de la cuenta**: se elige en la pantalla de
+  Cuenta, lo guarda `Store.setLang()` en `hb:lang` (sin userId, porque hace
+  falta antes de entrar) y no se sincroniza. `?lang=es|en` manda sobre todo lo
+  demás, que es por donde lo piden las herramientas de `tools/`.
+- Los errores que devuelve Supabase vienen siempre en inglés y no son para
+  enseñarlos tal cual: se reconocen por su texto original en `authErrorText()`
+  y se cambian por una clave del diccionario.
 - `app.js` nunca toca `localStorage` ni Supabase directamente: todo pasa por
   `Store`. Si necesitas un dato nuevo, expón un método en `store.js`. Por eso
   limpiar el aparato al borrar la cuenta es `Store.wipeLocal()` y no cuatro
@@ -306,8 +335,10 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   jugador, rival, etc.) en una plantilla HTML, para evitar inyección.
 
 - La marca del logo también está duplicada en `tools/make-icons.js`, que genera
-  los PNG del manifest. Si cambia el dibujo hay que tocar `brandLogo()`, el
-  favicon de `index.html` y ese archivo, y volver a generar los iconos.
+  los PNG del manifest, y en `tools/make-play-assets.js`, que genera los de la
+  ficha de la tienda y se lo presta a `make-instagram-assets.js`. Si cambia el
+  dibujo hay que tocar `brandLogo()`, el favicon de `index.html` y esos dos
+  archivos, y volver a generar los iconos y los materiales de publicación.
 
 ## Al añadir un archivo o una pantalla
 

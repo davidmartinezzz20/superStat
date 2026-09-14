@@ -299,6 +299,16 @@ async function jugarPartido(page, rival, plan, semilla, opciones){
 
 // ------------------------------------------------------------------ capturas
 
+// Para desplazarse hasta una sección hay que nombrarla, y su rótulo cambia con
+// el idioma. Se le pregunta a la propia página por el texto de la clave, en vez
+// de escribirlo aquí en dos idiomas: así el guion sigue funcionando si alguien
+// reescribe el rótulo, y no hay una segunda copia de los textos fuera de
+// js/i18n.js.
+async function seccion(page, clave){
+  const texto = await page.evaluate(k => window.I18N.t(k), clave);
+  return `main .section-label:has-text("${texto}")`;
+}
+
 async function captura(page, nombre, selector){
   // Que se vaya antes el aviso flotante ("Partido guardado…"), o sale tapando
   // media captura. Dura 2,2 s y se quita solo.
@@ -347,6 +357,11 @@ async function captura(page, nombre, selector){
       // directo: la pantalla entera y el modal de la zona de lanzamiento.
       40: async p => {
         await p.evaluate(() => window.scrollTo(0, 0));
+        // El destello verde de "GOL" dura medio segundo sobre la casilla que se
+        // acaba de tocar. Si la foto lo pilla, tapa el recuento de esa casilla y
+        // además sale en unas ejecuciones sí y en otras no. Se espera a que se
+        // apague: es lo que hace captura() con el aviso flotante.
+        await p.waitForSelector('.flash', { state:'detached', timeout:3000 }).catch(() => {});
         await captura(p, '01-partido-en-vivo');
         await p.click('.goals-row [data-grid="rival"] [data-zone="3"]');
         await p.waitForSelector('#pending-modal .modal-player-btn');
@@ -367,10 +382,10 @@ async function captura(page, nombre, selector){
   // vistazo en la tienda.
   await page.click('#toggle-heat');
   await page.waitForTimeout(200);
-  await captura(page, '04-mapa-de-tiros', 'main .section-label:has-text("Desde dónde lanzamos")');
+  await captura(page, '04-mapa-de-tiros', await seccion(page, 'match.whereWeShoot'));
   await page.click('#toggle-heat');
 
-  await captura(page, '05-goleadores', 'main .section-label:has-text("Goleadores del partido")');
+  await captura(page, '05-goleadores', await seccion(page, 'match.scorers'));
 
   console.log('\nDos partidos más para la temporada…');
   await page.click('#to-matches');

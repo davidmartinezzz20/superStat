@@ -59,6 +59,10 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
 - La **cuenta entera se borra desde la app**, en *Cuenta → Borrar la cuenta*:
   desaparece todo, aquí y en la nube, sin pedirle nada a nadie.
 - **Exportar** un partido en CSV o compartirlo como imagen resumen.
+- **En español y en inglés.** El idioma se elige en *Cuenta*, se detecta solo
+  del navegador la primera vez y es de este aparato: no se sincroniza con la
+  cuenta. Lo que se guarda en la base no cambia de idioma, así que un partido
+  anotado en español se lee igual en inglés.
 
 ## Android y iOS
 
@@ -128,6 +132,7 @@ css/styles.css         estilos
 js/config.js           URL y clave anon de Supabase, y los ID de Google
 js/db.js               sesión, login y sincronización con Supabase
 js/store.js            espejo local, cola de cambios y fusión
+js/i18n.js             los textos, en español y en inglés
 js/native.js           puente con la app de Android/iOS
 js/app.js              pantallas y lógica de la app
 vendor/                supabase-js y capacitor-core, copiados sin tocar
@@ -141,11 +146,14 @@ supabase/schema.sql    tablas, migraciones y políticas de seguridad
 supabase/functions/    la Edge Function que borra la cuenta entera
 privacidad.html        política de privacidad (la URL que pide Google Play)
 play/                  icono, cabecera y capturas de la ficha de Play
+instagram/             perfil y publicaciones de las dos cuentas
 tools/make-play-assets.js  genera el icono y la cabecera de la ficha
 tools/make-screenshots.js  genera las capturas desde la app de verdad
+tools/make-instagram-assets.js  genera el perfil y las publicaciones
 docs/supabase.md       puesta a punto paso a paso
 docs/movil.md          compilar y publicar en Google Play y la App Store
 docs/play.md           textos y formularios de la ficha de Google Play
 docs/publicar-android.md  el recorrido completo hasta publicar en Play
+docs/instagram.md      biografías y pies de las cuentas de Instagram
 test/                  pruebas con Playwright
 ```
