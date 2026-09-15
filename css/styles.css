@@ -817,6 +817,23 @@
     color:var(--muted);
     padding:14px 20px 24px;
   }
+  /* Los chips de idioma de la entrada. Son los mismos que en Cuenta: lo único
+     que cambia es que ahí van pegados al margen izquierdo y aquí centrados,
+     bajo el logo, como el resto de esa pantalla. */
+  .chip-row.auth-langs{
+    justify-content:center;
+    margin:0 0 10px;
+  }
+  /* El enlace a la política de privacidad, que es la misma línea en la entrada
+     y en Cuenta. */
+  .privacy-link{
+    display:inline-block;
+    margin-top:10px;
+    color:var(--muted);
+    font-size:11.5px;
+    text-decoration:underline;
+  }
+  .privacy-link:hover{color:var(--text);}
   .toast{
     position:fixed;
     bottom:calc(var(--nav-h) + 26px + env(safe-area-inset-bottom));

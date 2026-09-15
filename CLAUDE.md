@@ -128,6 +128,12 @@ no para usar la app.
   cambia lo que dice una hay que cambiar las cuatro. **La castellana no se
   renombra**: su URL y su ancla `#borrar` están pegadas en Play Console, y el
   ancla es la misma en las cuatro para que esas URL sean intercambiables.
+  Desde la web se llega a ellas por el enlace que pintan la pantalla de entrada
+  y la de Cuenta, y lleva **a la del idioma que se esté viendo**: cuál es se
+  decide en un solo sitio, `privacyUrl()` (`js/app.js`). Dentro de la app de
+  Android o iPhone ese enlace no se pinta —`privacyUrl()` devuelve null—, porque
+  la página no viaja en el binario y daría un 404 en el WebView; `test/nativo.js`
+  lo comprueba.
 - `play/` — icono, gráfico de cabecera y capturas de la ficha de Google Play.
   No son producto: no entran en ningún binario y solo hacen falta al publicar.
 - `tools/make-play-assets.js` — genera el icono y la cabecera de la ficha.
@@ -360,7 +366,10 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   códigos de resultado y de zona.
 - El idioma es **del aparato y no de la cuenta**: se elige en la pantalla de
   Cuenta, lo guarda `Store.setLang()` en `hb:lang` (sin userId, porque hace
-  falta antes de entrar) y no se sincroniza. `?lang=es|en|fr|de` manda sobre
+  falta antes de entrar) y no se sincroniza. Los mismos chips (`languageHtml()`)
+  se pintan **también en la pantalla de entrada**, y no es un adorno: sin ellos,
+  quien tenga el navegador en un idioma no puede ver la app en otro, porque a
+  Cuenta no se llega sin haber entrado. `?lang=es|en|fr|de` manda sobre
   todo lo demás, que es por donde lo piden las herramientas de `tools/`.
   Ojo al probarlo a mano: `npm start` levanta `npx serve`, que redirige
   `/index.html?lang=de` a `/` **y se deja la query por el camino**, así que hay
