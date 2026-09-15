@@ -54,25 +54,28 @@ check("default-src es 'self'", (dMeta['default-src'] || []).join(' ') === "'self
 // el registro del service worker vive en js/sw-register.js y no en una etiqueta
 // suelta dentro del HTML.
 const script = (dMeta['script-src'] || []).join(' ');
-check("script-src es 'self' más Google y nada más",
-      script === "'self' https://accounts.google.com", script);
+check("script-src es 'self' más Google y Vercel Analytics",
+      script === "'self' https://accounts.google.com https://cdn.vercel-insights.com", script);
 check("script-src no lleva 'unsafe-inline' ni 'unsafe-eval'",
       !/unsafe-(inline|eval)/.test(script), script);
 
-// Y si la CSP prohíbe los scripts en línea, no puede haber ninguno. Se mira sin
-// los comentarios (sinComentarios() está más abajo): el propio comentario que
-// explica la CSP usa la palabra <script> como ejemplo, y eso tiene que poder
-// seguir escrito.
+// Y si la CSP prohíbe los scripts en línea, solo se permite el de Vercel Analytics
+// que inicializa window.va. Se mira sin los comentarios (sinComentarios() está
+// más abajo): el propio comentario que explica la CSP usa la palabra <script> como
+// ejemplo, y eso tiene que poder seguir escrito.
 const enLinea = sinComentarios(index)
   .match(/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/g) || [];
-check('index.html no tiene ningún <script> en línea', enLinea.length === 0,
-      enLinea.length + ' encontrados');
+// Solo se permite el script de inicialización de Vercel Analytics
+const vaScript = enLinea.filter(s => /window\.va.*window\.vaq/.test(s));
+const otrosScripts = enLinea.length - vaScript.length;
+check('index.html solo tiene el script en línea de Vercel Analytics', otrosScripts === 0,
+      enLinea.length + ' encontrados (' + otrosScripts + ' no permitidos)');
 
 // A dónde puede hablar la página. Es la mitad que importa cuando el escapado
 // falla: sin connect-src, un script colado se lleva los datos a donde quiera.
 const connect = (dMeta['connect-src'] || []).join(' ');
-check('connect-src solo deja Supabase y Google',
-      connect === "'self' https://*.supabase.co https://accounts.google.com", connect);
+check('connect-src solo deja Supabase, Google y Vercel Analytics',
+      connect === "'self' https://*.supabase.co https://accounts.google.com https://vitals.vercel-insights.com", connect);
 
 for(const d of ['base-uri', 'object-src', 'form-action']){
   check(d + " está en 'none'", (dMeta[d] || []).join(' ') === "'none'",
