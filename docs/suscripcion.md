@@ -124,16 +124,27 @@ compra (`trial_period_days: 7`). Para cambiarla, esa línea.
 
 ### El precio que se enseña
 
-En `js/config.js`:
+En `js/config.js`, hoy:
 
 ```js
-PRO_PRICE: '4,99 €'
+PRO_PRICE: '3,49 €'
 ```
 
 Es **solo el cartel** de la pantalla de Pro: quien cobra de verdad es Stripe.
 Tiene que coincidir con el precio que hayas dado de alta. Si lo dejas vacío, la
 pantalla no enseña precio y el bueno sigue siendo el que salga en la página de
 pago.
+
+Ahí va el número y nada más. Que los impuestos van aparte —lo de arriba es sin
+IVA— es un texto, así que vive donde viven todos: la clave `paywall.taxes` de
+`js/i18n.js`, en los cuatro idiomas. Escribirlo dentro de `PRO_PRICE` lo dejaría
+en castellano para todo el mundo.
+
+**El mismo precio está escrito otras cuatro veces**, en la sección de planes de
+`superstat.online` (una por idioma, en el repositorio `webSuperStat`). Si cambia,
+cambian los seis sitios: Stripe, `PRO_PRICE` y las cuatro portadas de la web. La
+prueba de aquella web compara las cuatro entre sí, pero no puede saber lo que
+cobra Stripe.
 
 ---
 
