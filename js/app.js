@@ -27,7 +27,10 @@
     // que escribir BORRAR. No se guarda nada de esto en ninguna parte.
     deletingAccount: false,
     deleteAccountError: '',
-    deleteAccountBusy: false
+    deleteAccountBusy: false,
+    // La pantalla de Pro mientras se pide la dirección de pago a Stripe.
+    paywallBusy: false,
+    paywallError: ''
   };
 
   // Atajo para los textos. Todo lo que se enseña sale de js/i18n.js: en las
@@ -42,6 +45,31 @@
   const GOALKEEPER = 'Portero';
 
   function positionName(id){ return t('position.' + id); }
+
+  // Cuántos equipos entran en el plan gratis. Cambiar el plan es cambiar este
+  // número: el tope se comprueba en un solo sitio (handleCreateTeam).
+  //
+  // El tope está **solo en crear**. Los equipos que ya existen se siguen
+  // abriendo, editando y usando para anotar partidos aunque sobren: quien
+  // termina una prueba con tres equipos se queda con los tres. Quitarle datos a
+  // alguien por dejar de pagar sería otra cosa muy distinta de lo que se vende
+  // aquí, y además rompería la app en la cara de quien ya la usa.
+  const FREE_TEAMS = 1;
+
+  // Si en esta pantalla se puede vender o no.
+  //
+  // Dentro de la app de Android o iPhone, **no**. Apple (guía 3.1.1) y Google
+  // prohíben que una app lleve a comprar fuera de su sistema de pago, y no solo
+  // con enlaces: cuenta también un texto que diga dónde se compra. Como aquí el
+  // cobro vive en la web, lo único que la app puede hacer es enseñar el estado
+  // del plan —que no es vender— y decir que el plan gratis llega hasta un
+  // equipo. Ni precio, ni enlace, ni mencionar que hay un correo esperando.
+  //
+  // Quien avisa de que existe Pro es el correo, que va fuera de la app y eso sí
+  // está permitido. test/nativo.js vigila que esto no se deshaga sin querer.
+  function puedeComprar(){
+    return !(window.Native && Native.isNative());
+  }
 
   // Los botones del registro rápido, en el orden en que salen en pantalla.
   // Quitar uno de aquí lo quita del panel y nada más: lo que ya estuviera
@@ -308,7 +336,8 @@
     pause: '<path d="M9 5.5v13M15 5.5v13"/>',
     share: '<path d="M12 15.5V4m0 0L8.5 7.5M12 4l3.5 3.5"/><path d="M5.5 13v5.5a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5V13"/>',
     trash: '<path d="M5 7h14M10 7V5.5A1.5 1.5 0 0 1 11.5 4h1A1.5 1.5 0 0 1 14 5.5V7m-7 0 .8 11.1A1.5 1.5 0 0 0 9.3 20h5.4a1.5 1.5 0 0 0 1.5-1.4L17 7"/>',
-    pencil:'<path d="M16.5 4.5 19.5 7.5M4.5 19.5l.9-3.6L16 5.3a1.2 1.2 0 0 1 1.7 0l1 1a1.2 1.2 0 0 1 0 1.7L8.1 18.6z"/>'
+    pencil:'<path d="M16.5 4.5 19.5 7.5M4.5 19.5l.9-3.6L16 5.3a1.2 1.2 0 0 1 1.7 0l1 1a1.2 1.2 0 0 1 0 1.7L8.1 18.6z"/>',
+    lock:  '<rect x="4.8" y="10.5" width="14.4" height="9.2" rx="2"/><path d="M8.4 10.5V8a3.6 3.6 0 0 1 7.2 0v2.5"/>'
   };
 
   function icon(name){
@@ -500,6 +529,11 @@
       state.deletingAccount = false;
       state.deleteAccountError = '';
     }
+    // La pantalla de Pro no existe dentro de la app de Android o iPhone. Se
+    // corta aquí, en un solo sitio, y no en cada botón que pueda llevar a ella:
+    // lo que no se puede permitir es que una ruta olvidada la cuele en una
+    // versión de la tienda (ver puedeComprar).
+    if(state.screen === 'paywall' && !puedeComprar()) state.screen = 'dashboard';
     // Las pantallas de datos se releen del store en cada pintada: así lo que
     // llega de otro dispositivo aparece sin tener que recordar refrescarlo.
     if(state.user){
@@ -520,6 +554,7 @@
     else if(state.screen === 'liveMatch') html = renderLiveMatch();
     else if(state.screen === 'migrate') html = renderMigrate();
     else if(state.screen === 'account') html = renderAccount();
+    else if(state.screen === 'paywall') html = renderPaywall();
     else html = `<div class="loading-msg">${esc(t('common.loading'))}</div>`;
     // La barra inferior la pone aquí el render y no cada pantalla, para que
     // añadir una vista nueva no obligue a acordarse de ella.
@@ -732,14 +767,53 @@
         ${syncBanner()}
         ${resumeCardHtml()}
         ${teamsHtml}
-        <div class="section-label">${esc(t('dashboard.newTeam'))}</div>
-        <div class="field">
-          <label for="new-team-name">${esc(t('dashboard.teamName'))}</label>
-          <input id="new-team-name" type="text" maxlength="80" placeholder="${esc(t('dashboard.teamHint'))}">
-        </div>
-        <button class="primary" id="create-team-btn">${esc(t('dashboard.create'))}</button>
+        ${newTeamHtml()}
       </main>
     `;
+  }
+
+  // Dar de alta un equipo, o el cartel de que ya no caben más. Se sustituye el
+  // formulario entero en vez de dejarlo y rebotar al pulsar: hacer escribir un
+  // nombre para luego decir que no es una pequeña falta de respeto.
+  function newTeamHtml(){
+    if(teamLimitReached()) return teamLimitHtml();
+    return `
+      <div class="section-label">${esc(t('dashboard.newTeam'))}</div>
+      <div class="field">
+        <label for="new-team-name">${esc(t('dashboard.teamName'))}</label>
+        <input id="new-team-name" type="text" maxlength="80" placeholder="${esc(t('dashboard.teamHint'))}">
+      </div>
+      <button class="primary" id="create-team-btn">${esc(t('dashboard.create'))}</button>
+    `;
+  }
+
+  // Lo que se enseña al llegar al tope, y aquí es donde se nota la regla de las
+  // tiendas: en la web hay un botón que lleva a Pro, y en la app de móvil el
+  // mismo cartel se queda sin botón, sin precio y sin decir dónde se compra.
+  function teamLimitHtml(){
+    const clave = puedeComprar() ? 'limit.subWeb' : 'limit.subApp';
+    return `
+      <div class="section-label">${esc(t('dashboard.newTeam'))}</div>
+      <div class="card locked-card" id="team-limit-card">
+        <div class="card-title">${icon('lock')} ${esc(t('limit.title', { n: FREE_TEAMS }))}</div>
+        <div class="card-sub">${esc(t(clave))}</div>
+        ${puedeComprar()
+          ? `<button class="primary slim" id="go-pro">${esc(t('limit.seePro'))}</button>`
+          : ''}
+      </div>
+    `;
+  }
+
+  // Llegar al tope desde cualquier otro sitio que no sea el panel.
+  function hitTeamLimit(){
+    if(puedeComprar()){
+      state.paywallError = '';
+      state.screen = 'paywall';
+      render();
+      return;
+    }
+    render();
+    toast(t('limit.title', { n: FREE_TEAMS }));
   }
 
   // Un partido sin guardar es lo único que no está a salvo en ningún sitio: se
@@ -768,6 +842,73 @@
     `;
   }
 
+  // ---------- PRO ----------
+  //
+  // Solo se llega aquí desde el navegador: el cobro vive fuera de las tiendas y
+  // esta pantalla es precisamente lo que una app no puede enseñar (ver
+  // puedeComprar). render() se encarga de que en móvil no se pinte nunca.
+  //
+  // No se cobra aquí dentro: el botón pide a la Edge Function `pago` una
+  // dirección de Stripe y manda allí el navegador. Ni un dato de tarjeta pasa
+  // por esta página, que es la única forma sensata de no tener que cuidarlos.
+  function renderPaywall(){
+    // El precio sale de js/config.js y no del diccionario: es un número, es el
+    // mismo en los dos idiomas y tiene que poder cambiarse sin tocar textos.
+    // Tiene que coincidir con el Price de Stripe (docs/suscripcion.md).
+    const precio = (window.SUPERSTAT_CONFIG || {}).PRO_PRICE || '';
+    return `
+      ${topbar({ left: backBtn('to-dashboard', t('nav.teams')) })}
+      <main>
+        ${pageTitle(t('paywall.title'), t('paywall.sub'))}
+        <div class="card">
+          <ul class="plan-list">
+            <li>${esc(t('paywall.f1'))}</li>
+            <li>${esc(t('paywall.f2'))}</li>
+            <li>${esc(t('paywall.f3'))}</li>
+          </ul>
+          ${precio ? `<div class="plan-price">${esc(t('paywall.priceMonth', { p: precio }))}</div>` : ''}
+          <div class="card-sub">${esc(t('paywall.trial'))}</div>
+        </div>
+        ${state.paywallError ? `<div class="error-msg">${esc(state.paywallError)}</div>` : ''}
+        <button class="primary" id="go-checkout" ${state.paywallBusy ? 'disabled' : ''}>
+          ${esc(state.paywallBusy ? t('paywall.going') : t('paywall.go'))}
+        </button>
+        <div class="plan-legal">${esc(t('paywall.legal'))}</div>
+      </main>
+    `;
+  }
+
+  // Un timestamp de la base a la fecha del día, en la zona del aparato.
+  // shortDate() espera un YYYY-MM-DD, y recortar la cadena a pelo daría el día
+  // en UTC, que a última hora de la tarde ya no es el mismo.
+  function isoDay(ts){
+    const d = new Date(ts);
+    if(isNaN(d.getTime())) return '';
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  }
+
+  async function handleCheckout(){
+    state.paywallBusy = true;
+    state.paywallError = '';
+    render();
+    try{
+      window.location.href = await DB.checkoutUrl();
+    }catch(e){
+      state.paywallBusy = false;
+      state.paywallError = t('paywall.failed');
+      render();
+    }
+  }
+
+  async function handleManagePlan(){
+    try{
+      window.location.href = await DB.portalUrl();
+    }catch(e){
+      toast(t('paywall.failed'));
+    }
+  }
+
   // ---------- CUENTA ----------
   // Vive aquí lo que antes colgaba de la cabecera del panel: quién eres, cómo
   // va la sincronización y el botón de salir.
@@ -792,6 +933,8 @@
             <div class="card-sub">${esc(t('account.allGoodSub'))}</div>
           </div>
         `}
+        <div class="section-label">${esc(t('plan.title'))}</div>
+        ${planHtml()}
         <div class="section-label">
           ${esc(t('account.language'))}
           <small>${esc(t('account.languageSub'))}</small>
@@ -803,6 +946,38 @@
         <div class="section-label">${esc(t('account.deleteTitle'))}</div>
         ${deleteAccountHtml()}
       </main>
+    `;
+  }
+
+  // En qué plan estás y, en la web, el botón que corresponde.
+  //
+  // Enseñar el **estado** sí se puede hacer en la app de móvil: decir "Pro
+  // hasta el 3 de marzo" no es vender nada. Lo que no aparece allí es el botón,
+  // el precio ni una palabra sobre dónde se contrata (ver puedeComprar).
+  function planHtml(){
+    const pro = Store.isPro();
+    const hasta = Store.proUntil();
+    const enPrueba = pro && Store.planStatus() === 'trialing';
+    const titulo = !pro ? t('plan.free') : enPrueba ? t('plan.trialing') : t('plan.pro');
+    const sub = pro
+      ? (hasta ? t('plan.until', { d: shortDate(isoDay(hasta)) }) : '')
+      : t(puedeComprar() ? 'limit.subWeb' : 'limit.subApp');
+    const boton = !puedeComprar() ? ''
+      : pro ? `<button class="secondary slim" id="manage-plan">${esc(t('plan.manage'))}</button>`
+            : `<button class="primary slim" id="go-pro">${esc(t('limit.seePro'))}</button>`;
+    return `
+      <div class="card">
+        <div class="card-title">${pro ? icon('lock') : ''} ${esc(titulo)}</div>
+        ${sub ? `<div class="card-sub">${esc(sub)}</div>` : ''}
+        ${boton}
+      </div>
+      <label class="switch-row" for="avisos-ok">
+        <span>
+          ${esc(t('plan.emails'))}
+          <small>${esc(t('plan.emailsSub'))}</small>
+        </span>
+        <input type="checkbox" id="avisos-ok" ${Store.emailOk() ? 'checked' : ''}>
+      </label>
     `;
   }
 
@@ -889,12 +1064,30 @@
     toast(t('account.deleted'));
   }
 
+  // El tope del plan gratis. Se comprueba aquí y no en store.js a propósito:
+  // Store.createTeam() la usa también la importación de la versión vieja
+  // (importLegacy), y a nadie que ya tenía sus equipos guardados se le puede
+  // quedar la mitad fuera al migrar.
+  //
+  // En la base no hay ningún candado equivalente, y también es a propósito: si
+  // Postgres rechazara el alta, push() lanzaría y la cola de sincronización se
+  // quedaría atascada con los partidos sin subir dentro. Lo que de verdad hay
+  // que proteger —que nadie se regale el Pro— lo protege RLS sobre
+  // subscriptions, que el navegador no puede escribir.
+  function teamLimitReached(){
+    return !Store.isPro() && state.teams.length >= FREE_TEAMS;
+  }
+
   async function handleCreateTeam(){
     const name = document.getElementById('new-team-name').value.trim();
     if(!name) return;
     if(name.length > 80){
       state.formError = t('dashboard.nameTooLong');
       render();
+      return;
+    }
+    if(teamLimitReached()){
+      hitTeamLimit();
       return;
     }
     const team = Store.createTeam(name);
@@ -2613,6 +2806,10 @@
   }
 
   // ---------- event wiring ----------
+  // Ver el comentario de attachHandlers(): el aviso del tope se pide una sola
+  // vez por sesión, no una por render.
+  let avisoTopePedido = false;
+
   function attachHandlers(){
     const app = document.getElementById('app');
 
@@ -2674,6 +2871,33 @@
     });
 
     bind('create-team-btn','click', handleCreateTeam);
+    bind('go-pro','click', () => {
+      state.paywallError = '';
+      state.screen = 'paywall';
+      render();
+    });
+    bind('go-checkout','click', handleCheckout);
+    bind('manage-plan','click', handleManagePlan);
+    bind('avisos-ok','change', async (e) => {
+      const quiere = e.target.checked;
+      try{
+        await Store.setEmailOk(quiere);
+      }catch(err){
+        e.target.checked = !quiere;   // se deja como estaba, no como se pidió
+        toast(t('plan.emailsFailed'));
+      }
+    });
+
+    // El aviso por correo de que existe Pro se pide al **enseñar** el tope, no
+    // al pulsar nada: dentro de la app no hay nada que pulsar —es un cartel sin
+    // botón— y es justo a esa gente a la que hay que avisar por fuera.
+    //
+    // Una vez por sesión, y quien decide de verdad si se manda es el servidor,
+    // que mira el interruptor del usuario y que no se le haya escrito hace poco.
+    if(document.getElementById('team-limit-card') && !avisoTopePedido && state.user){
+      avisoTopePedido = true;
+      if(DB.isConfigured()) DB.avisarTope(I18N.lang()).catch(() => {});
+    }
     app.querySelectorAll('[data-team]').forEach(el => {
       el.addEventListener('click', async () => {
         state.currentTeamId = el.getAttribute('data-team');
@@ -2872,6 +3096,7 @@
     liveMatch: 'dashboard',
     team: 'dashboard',
     account: 'dashboard',
+    paywall: 'dashboard',
     migrate: null,
     auth: null,
     dashboard: null
@@ -2920,6 +3145,37 @@
 
     if(user) await enterApp(user);
     else { state.screen = 'auth'; render(); }
+
+    await recogerVueltaDePago();
   })();
+
+  // La vuelta de Stripe.
+  //
+  // success_url trae ?pago=ok, pero quien activa el Pro no es esta vuelta: es
+  // el webhook, que escribe la fila por su cuenta y puede tardar unos segundos.
+  // Así que se relee unas cuantas veces antes de rendirse. Volver de pagar y
+  // encontrarse "Gratis" es la peor bienvenida posible, y pasa de verdad si se
+  // mira una sola vez.
+  async function recogerVueltaDePago(){
+    if(!new URLSearchParams(window.location.search).has('pago')) return;
+    const ok = new URLSearchParams(window.location.search).get('pago') === 'ok';
+    // Se limpia la barra lo primero, para que recargar no vuelva a esperar.
+    history.replaceState({}, document.title, window.location.pathname);
+    if(!ok || !state.user) return;      // pago cancelado: no hay nada que decir
+
+    toast(t('paywall.checking'));
+    for(let intento = 0; intento < 10; intento++){
+      await Store.refreshPlan();
+      if(Store.isPro()){
+        render();
+        toast(t('paywall.welcome'));
+        return;
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    // Ha pagado y aún no ha llegado. No es un error suyo ni hay nada que pueda
+    // hacer: llegará sola en cuanto el webhook escriba.
+    toast(t('paywall.soon'));
+  }
 
 })();

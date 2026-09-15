@@ -105,6 +105,55 @@ create table if not exists public.events (
   server_at   timestamptz not null default now()
 );
 
+-- ------------------------------------------------------------------ el plan
+--
+-- Las dos tablas de abajo son distintas de las cinco de arriba y conviene tener
+-- clara la diferencia: **no se sincronizan**. No llevan server_at, no están en
+-- DB.TABLES (js/db.js) y el navegador no las sube nunca. La app las lee y ya.
+--
+-- El motivo es la cola de sincronización: push() hace upsert de todas las
+-- tablas de esa lista, RLS rechazaría la escritura y el error dejaría la cola
+-- atascada para siempre, con los partidos sin subir dentro. Si alguna vez
+-- alguien las añade a esa lista, eso es lo que pasará.
+
+-- Quién tiene Pro y hasta cuándo. La escribe **solo** la clave de servicio,
+-- desde el webhook de Stripe (supabase/functions/stripe-webhook). Esa es toda
+-- la seguridad del asunto: la clave anon la tiene cualquiera que abra la web,
+-- así que si el usuario pudiera escribir aquí, el Pro sería gratis.
+--
+-- pro_until es una fecha y no un booleano a propósito. Un móvil que pase
+-- semanas sin cobertura caduca la suscripción él solo cuando toca, sin lógica
+-- de gracia y sin poder quedarse Pro para siempre. Y la prueba gratuita no
+-- necesita nada aparte: una suscripción en periodo de prueba ya trae su fecha
+-- de fin a siete días vista, así que es Pro normal y corriente.
+create table if not exists public.subscriptions (
+  user_id            uuid primary key references auth.users(id) on delete cascade,
+  pro_until          timestamptz,   -- null = nunca ha sido Pro
+  status             text,          -- trialing | active | past_due | canceled
+  stripe_customer_id text unique,
+  -- Fecha del evento que se aplicó. Los webhooks se reintentan y llegan
+  -- desordenados: sin esto, un 'trialing' reintentado puede pisar al 'active'
+  -- que vino después y dejar a un usuario que paga con la fecha de la prueba.
+  event_at           timestamptz,
+  updated_at         timestamptz not null default now()
+);
+
+-- Preferencias de correo. Va en su propia tabla y no como columnas de
+-- subscriptions porque quien nunca ha pagado no tiene fila allí, y es justo a
+-- quien hay que avisar de que existe el plan Pro.
+--
+-- lang es una **copia para los correos**, no la preferencia de interfaz. El
+-- idioma de la app es del aparato y no de la cuenta (ver Store.setLang), así
+-- que el servidor no sabría en qué idioma escribir; esto se lo dice.
+create table if not exists public.avisos (
+  user_id         uuid primary key references auth.users(id) on delete cascade,
+  email_ok        boolean not null default true,
+  lang            text not null default 'es' check (lang in ('es','en')),
+  tope_avisado_at timestamptz,   -- para no mandar el mismo aviso cada semana
+  baja_token      uuid not null default gen_random_uuid(),
+  updated_at      timestamptz not null default now()
+);
+
 -- ---------------------------------------------------------------- migraciones
 --
 -- Para una base que ya existe de una versión anterior. Todo es "if exists" /
@@ -273,6 +322,42 @@ create trigger shots_server_at   before insert or update on public.shots
 create trigger events_server_at  before insert or update on public.events
   for each row execute function public.touch_server_at();
 
+-- ------------------------------------------------- la fila de avisos, al alta
+--
+-- Cada usuario tiene su fila de preferencias desde el primer momento. Se crea
+-- aquí y no desde la app por una razón concreta: el interruptor de la pantalla
+-- de Cuenta solo tiene permiso para **actualizar** dos columnas (ver más
+-- abajo), no para insertar, así que sin fila no habría nada que actualizar.
+--
+-- Va con su propio manejo de errores porque esto corre dentro del alta de
+-- usuario: si fallara, no se crearía la fila de avisos *ni la cuenta*. Vale más
+-- una cuenta sin preferencias —que se pueden rehacer con el backfill de
+-- abajo— que un registro que no se puede completar.
+create or replace function public.crear_avisos()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.avisos (user_id) values (new.id)
+  on conflict (user_id) do nothing;
+  return new;
+exception when others then
+  raise warning 'no se pudo crear la fila de avisos de % (%)', new.id, sqlerrm;
+  return new;
+end;
+$$;
+
+drop trigger if exists crear_avisos_al_alta on auth.users;
+create trigger crear_avisos_al_alta after insert on auth.users
+  for each row execute function public.crear_avisos();
+
+-- Y las cuentas que ya existían antes de que hubiera planes.
+insert into public.avisos (user_id)
+select id from auth.users
+on conflict (user_id) do nothing;
+
 -- ------------------------------------------------------- seguridad por filas
 --
 -- ESTO ES LO IMPORTANTE. La clave anónima va dentro del JavaScript que
@@ -303,11 +388,47 @@ create policy "solo lo mío" on public.shots   for all to authenticated
 create policy "solo lo mío" on public.events  for all to authenticated
   using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
+-- Las dos del plan van distinto, y es el corazón de que esto no se pueda
+-- falsificar: se leen, no se escriben. Quien escribe subscriptions es el
+-- webhook de Stripe con la clave de servicio, que se salta RLS. Si aquí
+-- hubiera un "for all", cualquiera se regalaría el Pro con la clave anon.
+
+alter table public.subscriptions enable row level security;
+alter table public.avisos        enable row level security;
+
+drop policy if exists "leer lo mío"       on public.subscriptions;
+drop policy if exists "leer lo mío"       on public.avisos;
+drop policy if exists "cambiar mis avisos" on public.avisos;
+
+create policy "leer lo mío" on public.subscriptions for select to authenticated
+  using (user_id = (select auth.uid()));
+
+create policy "leer lo mío" on public.avisos for select to authenticated
+  using (user_id = (select auth.uid()));
+
+-- El interruptor de avisos de la pantalla de Cuenta. La política deja tocar la
+-- fila propia, y el permiso por columnas decide **qué** de ella: el sello de
+-- frecuencia y el token de baja los escribe solo el servidor, o darse de alta
+-- otra vez sería tan fácil como ponerlos a null y recibir el aviso cada día.
+create policy "cambiar mis avisos" on public.avisos for update to authenticated
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+revoke update on public.avisos from authenticated;
+grant  update (email_ok, lang) on public.avisos to authenticated;
+
 -- ---------------------------------------------------------- comprobación RLS
 --
--- Ejecuta esto después y mira el resultado: las cinco tablas tienen que salir
--- con rls_activo = true y politicas = 1. Si alguna sale en false, NO subas la
--- app: esa tabla es pública.
+-- Ejecuta esto después y mira el resultado: las siete tablas tienen que salir
+-- con rls_activo = true. Si alguna sale en false, NO subas la app: esa tabla es
+-- pública.
+--
+-- El número de políticas esperado no es el mismo en todas, y la diferencia es
+-- justo lo que hay que mirar:
+--   las cinco de datos → 1 política ("solo lo mío", que lee y escribe)
+--   subscriptions      → 1 política, y es **de solo lectura**. Si aquí
+--                        aparecieran 2, alguien le habría dado permiso de
+--                        escritura al usuario y el Pro sería gratis.
+--   avisos             → 2 (leer la fila propia y cambiar el interruptor)
 
 select
   c.relname                          as tabla,
@@ -317,7 +438,8 @@ select
 from pg_class c
 join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public'
-  and c.relname in ('teams','players','matches','shots','events')
+  and c.relname in ('teams','players','matches','shots','events',
+                    'subscriptions','avisos')
 order by c.relname;
 
 -- ------------------------------------------------------ comprobación purga

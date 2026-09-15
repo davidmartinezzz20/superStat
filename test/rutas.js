@@ -21,7 +21,10 @@
 const CONFIG_DE_PRUEBA =
   "window.SUPERSTAT_CONFIG={SUPABASE_URL:'https://test.supabase.co'," +
   "SUPABASE_ANON_KEY:'anon-test'," +
-  "GOOGLE_CLIENT_ID:'cliente-de-prueba.apps.googleusercontent.com'};";
+  "GOOGLE_CLIENT_ID:'cliente-de-prueba.apps.googleusercontent.com'," +
+  // El precio que enseña la pantalla de Pro. Quien cobra es Stripe; esto es
+  // solo el cartel, y por eso puede ser de mentira aquí.
+  "PRO_PRICE:'4,99 \\u20ac'};";
 
 // Sin URL ni clave: es como se ve la app recién descargada del repositorio.
 const CONFIG_SIN_RELLENAR =

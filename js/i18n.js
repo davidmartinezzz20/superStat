@@ -211,6 +211,41 @@ window.I18N = (function(){
     'account.deleteFailed': 'No se ha podido borrar la cuenta.',
     'account.deleted':      'Cuenta borrada',
 
+    // ---------------------------------------------------------------- plan
+    // Ojo con estos textos: `limit.subApp` es el que ve la app de Android e
+    // iPhone, y allí no se puede vender ni decir dónde se compra (ver
+    // puedeComprar en app.js). Ni precio, ni "entra en", ni nombrar la web.
+    'plan.title':        'Plan',
+    'plan.free':         'Plan Gratis',
+    'plan.pro':          'SuperStat Pro',
+    'plan.trialing':     'SuperStat Pro · prueba',
+    'plan.until':        'Activo hasta el {d}',
+    'plan.manage':       'Gestionar la suscripción',
+    'plan.emails':       'Avisos por correo',
+    'plan.emailsSub':    'Novedades y avisos sobre tu plan. Puedes darte de baja cuando quieras.',
+    'plan.emailsFailed': 'No se ha podido guardar el cambio.',
+
+    'limit.title_one':   'El plan Gratis llega a {n} equipo',
+    'limit.title_other': 'El plan Gratis llega a {n} equipos',
+    'limit.subWeb':      'Con SuperStat Pro llevas todos los equipos que quieras, cada uno con su plantilla y sus partidos.',
+    'limit.subApp':      'Puedes seguir anotando partidos y editando el equipo que ya tienes.',
+    'limit.seePro':      'Ver SuperStat Pro',
+
+    'paywall.title':      'SuperStat Pro',
+    'paywall.sub':        'Todos tus equipos en la misma cuenta',
+    'paywall.f1':         'Equipos sin límite, cada uno con su plantilla',
+    'paywall.f2':         'Partidos, mapa de tiros y estadísticas de temporada, como siempre',
+    'paywall.f3':         'Los mismos datos en el móvil y en el ordenador, también sin cobertura',
+    'paywall.priceMonth': '{p} al mes',
+    'paywall.trial':      'Los 7 primeros días son gratis. Cancela cuando quieras.',
+    'paywall.go':         'Empezar la prueba de 7 días',
+    'paywall.going':      'Abriendo el pago…',
+    'paywall.failed':     'No se ha podido abrir la pantalla de pago. Inténtalo otra vez.',
+    'paywall.legal':      'El pago lo gestiona Stripe. SuperStat no guarda los datos de tu tarjeta.',
+    'paywall.checking':   'Comprobando el pago…',
+    'paywall.welcome':    'Ya tienes SuperStat Pro',
+    'paywall.soon':       'El pago ha entrado. El plan se activa en un momento.',
+
     // -------------------------------------------------------------- equipo
     'team.roster':        'Plantilla',
     'team.noPlayers':     'Sin jugadores todavía.',
@@ -626,6 +661,38 @@ window.I18N = (function(){
     'account.deleteType':   'Type {palabra} to confirm.',
     'account.deleteFailed': 'Could not delete the account.',
     'account.deleted':      'Account deleted',
+
+    // ---------------------------------------------------------------- plan
+    'plan.title':        'Plan',
+    'plan.free':         'Free plan',
+    'plan.pro':          'SuperStat Pro',
+    'plan.trialing':     'SuperStat Pro · trial',
+    'plan.until':        'Active until {d}',
+    'plan.manage':       'Manage subscription',
+    'plan.emails':       'Email updates',
+    'plan.emailsSub':    'News and updates about your plan. You can unsubscribe at any time.',
+    'plan.emailsFailed': 'The change could not be saved.',
+
+    'limit.title_one':   'The Free plan covers {n} team',
+    'limit.title_other': 'The Free plan covers {n} teams',
+    'limit.subWeb':      'With SuperStat Pro you can run as many teams as you like, each with its own roster and matches.',
+    'limit.subApp':      'You can carry on recording matches and editing the team you already have.',
+    'limit.seePro':      'See SuperStat Pro',
+
+    'paywall.title':      'SuperStat Pro',
+    'paywall.sub':        'All your teams in one account',
+    'paywall.f1':         'Unlimited teams, each with its own roster',
+    'paywall.f2':         'Matches, shot map and season stats, just as always',
+    'paywall.f3':         'The same data on your phone and your computer, offline too',
+    'paywall.priceMonth': '{p} per month',
+    'paywall.trial':      'The first 7 days are free. Cancel any time.',
+    'paywall.go':         'Start the 7-day trial',
+    'paywall.going':      'Opening checkout…',
+    'paywall.failed':     'The checkout page could not be opened. Please try again.',
+    'paywall.legal':      'Payments are handled by Stripe. SuperStat never stores your card details.',
+    'paywall.checking':   'Checking your payment…',
+    'paywall.welcome':    'You now have SuperStat Pro',
+    'paywall.soon':       'Payment received. Your plan will be active shortly.',
 
     // -------------------------------------------------------------- equipo
     'team.roster':        'Roster',

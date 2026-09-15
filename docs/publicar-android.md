@@ -54,7 +54,10 @@ se lo pide.
    - Idioma predeterminado: Español (España)
    - Aplicación o juego: **Aplicación**
    - Gratuita o de pago: **Gratuita** (ojo: de gratuita a de pago no se puede
-     cambiar después)
+     cambiar después). Sigue siendo **Gratuita** aunque exista SuperStat Pro:
+     eso se refiere a cobrar por la descarga, y Pro se contrata en la web, no en
+     la app. Tampoco hay que dar de alta ningún producto ni activar la
+     facturación de Play (ver `suscripcion.md`).
    - Marca las dos declaraciones de las políticas.
 3. Mira en el panel izquierdo, en **Prueba → Prueba cerrada**. Si tu cuenta está
    sujeta al requisito, la consola te lo dice ahí con todas las letras y te

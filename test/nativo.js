@@ -206,6 +206,57 @@ const llamadas = page => page.evaluate(() => window.__NATIVO__.llamadas);
         }));
   await ctx.close();
 
+  // ------------------------------------------ 7. dentro de la app no se vende
+  //
+  // Esta es la comprobación que evita que tumben la app en la revisión de la
+  // tienda. Apple (guía 3.1.1) y Google prohíben que una app lleve a comprar
+  // fuera de su sistema de pago, y no hace falta un enlace: cuenta también un
+  // texto que diga dónde se compra. Como SuperStat cobra en la web, aquí dentro
+  // no puede haber ni botón, ni precio, ni dirección, ni la palabra Stripe.
+  //
+  // Es exactamente el tipo de regla que alguien deshace sin querer dentro de
+  // seis meses añadiendo un botón "muy útil", y para entonces nadie se acuerda
+  // de por qué no estaba. La única forma de que no se cuele en una
+  // actualización es que falle una prueba.
+  console.log('\n7. Dentro de la app no se vende nada');
+  ({ ctx, page } = await appNativa(browser, { plataforma:'ios' }));
+
+  // Una cuenta con un equipo: justo el estado en el que aparece el tope.
+  await page.click('#auth-toggle');
+  await page.fill('#auth-user', 'tienda@correo.com');
+  await page.fill('#auth-pass', 'balonmano1');
+  await page.click('#auth-submit');
+  await page.waitForSelector('#create-team-btn', { timeout:10000 });
+  await page.fill('#new-team-name', 'CB Sabadell');
+  await page.click('#create-team-btn');
+  await page.waitForSelector('#add-player-btn', { timeout:10000 });
+  await page.click('#to-dashboard');
+  await page.waitForSelector('#team-limit-card', { timeout:10000 });
+
+  check('al llegar al tope no hay botón de comprar',
+        await page.$('#go-pro') === null && await page.$('#go-checkout') === null);
+
+  const visible = (await page.textContent('#app')).toLowerCase();
+  const prohibidas = ['stripe', '€', 'http', '.com', '.online', 'suscri', 'precio', 'pago'];
+  const encontradas = prohibidas.filter(p => visible.includes(p));
+  check('ni precio, ni dirección, ni una palabra sobre dónde se paga',
+        encontradas.length === 0, 'aparece: ' + encontradas.join(', '));
+
+  // Y si alguien llega a la pantalla de Pro por una ruta olvidada, tampoco.
+  const aDondeVa = await page.evaluate(() => {
+    window.SuperStatBack();              // por tener un gesto cualquiera antes
+    const app = document.getElementById('app');
+    return app.className;
+  });
+  check('el panel sigue siendo el panel', aDondeVa.includes('screen-'), aDondeVa);
+
+  await page.click('#tab-account');
+  await page.waitForSelector('#logout-btn', { timeout:10000 });
+  check('la pantalla de Cuenta enseña el plan pero no lo vende',
+        (await page.textContent('#app')).includes('Gratis') &&
+        await page.$('#manage-plan') === null && await page.$('#go-pro') === null);
+  await ctx.close();
+
   console.log(`\n${pasadas} comprobaciones pasadas, ${fallos} fallidas`);
   await browser.close();
   process.exit(fallos ? 1 : 0);

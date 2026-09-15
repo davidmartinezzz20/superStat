@@ -23,9 +23,17 @@
 // SHA-1 con la que se firma el APK, no por nada escrito en el código. Déjalo
 // vacío mientras no publiques en iOS; está explicado en docs/movil.md.
 
+// PRO_PRICE es lo que se enseña en la pantalla de Pro, y solo eso: quien cobra
+// de verdad es Stripe, así que **tiene que coincidir con el Price que tengas
+// dado de alta allí** (docs/suscripcion.md). Está aquí y no en js/i18n.js
+// porque es un número, es el mismo en los dos idiomas y cambia sin que haya que
+// tocar ni un texto. Déjalo vacío y la pantalla no enseña precio: el que salga
+// en la página de pago de Stripe seguirá siendo el bueno.
+
 window.SUPERSTAT_CONFIG = {
   SUPABASE_URL: 'https://cqjpexlgjqyzdjkcdwpw.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxanBleGxnanF5emRqa2Nkd3B3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyNzYwMTIsImV4cCI6MjEwNDg1MjAxMn0.pmgU4Z3PpEjfEe7aEUxW8AFLsarru_R98CcG0dXZ0cY',
   GOOGLE_CLIENT_ID: '749407066281-h4trcuskeo8a60ljl7dg1579pm7aq81k.apps.googleusercontent.com',
-  GOOGLE_CLIENT_ID_IOS: ''
+  GOOGLE_CLIENT_ID_IOS: '',
+  PRO_PRICE: ''
 };

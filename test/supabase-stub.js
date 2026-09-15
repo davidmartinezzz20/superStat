@@ -11,11 +11,18 @@
     return null;
   }
   const SERVER = window.__SERVER__ = restore() || window.__SERVER__ || {
-    rows: { teams:{}, players:{}, matches:{}, shots:{}, events:{} },
+    rows: { teams:{}, players:{}, matches:{}, shots:{}, events:{},
+            // Las dos del plan. No se sincronizan —no están en DB.TABLES— y
+            // aquí solo se leen, igual que en la base de verdad: quien las
+            // escribe allí es el webhook de Stripe con la clave de servicio.
+            subscriptions:{}, avisos:{} },
     clock: 0,
     users: {},
     session: null,
-    pushes: 0
+    pushes: 0,
+    // Las llamadas a Edge Functions, en orden, para poder comprobar que el
+    // aviso del tope se pide una vez y no una por render.
+    invocaciones: []
   };
   function save(){
     try{ sessionStorage.setItem('__server__', JSON.stringify(SERVER)); }catch(e){}
@@ -35,6 +42,14 @@
     order(){ return this; }
     limit(n){ this._limit = n; return this; }
     gt(col, val){ this.filters.push(r => String(r[col]) > String(val)); return this; }
+    eq(col, val){ this.filters.push(r => String(r[col]) === String(val)); return this; }
+    // Una fila o ninguna, sin que "ninguna" sea un error. Es como se leen las
+    // tablas del plan, que tienen el usuario como clave primaria.
+    maybeSingle(){ this._single = true; return this; }
+    // update() se encadena antes que los .eq(), así que no puede escribir aquí:
+    // se guarda lo que hay que cambiar y se aplica al resolver, cuando ya están
+    // todos los filtros puestos.
+    update(patch){ this._update = patch; return this; }
     async upsert(rows){
       try{ netCheck(); }catch(e){ return { error:e }; }
       SERVER.pushes++;
@@ -47,11 +62,20 @@
     }
     then(resolve, reject){
       try{ netCheck(); }catch(e){ return resolve({ data:null, error:e }); }
-      let data = Object.values(SERVER.rows[this.table])
+      // Una tabla que no existe se lee como vacía y no revienta: hay pruebas
+      // que se construyen su propio servidor a mano y no nombran todas.
+      let data = Object.values(SERVER.rows[this.table] || {})
+        // El doble de RLS: solo se ve lo propio.
         .filter(r => !SERVER.session || r.user_id === SERVER.session.user.id)
         .filter(r => this.filters.every(f => f(r)))
-        .sort((a,b) => a.server_at.localeCompare(b.server_at))
+        .sort((a,b) => String(a.server_at || '').localeCompare(String(b.server_at || '')))
         .slice(0, this._limit);
+
+      if(this._update){
+        data.forEach(r => Object.assign(r, this._update));
+        save();
+      }
+      if(this._single) return resolve({ data: data[0] || null, error:null });
       return resolve({ data, error:null });
     }
   }
@@ -70,8 +94,31 @@
         // servidor de mentira, incluida la parte que importa: de quién es la
         // cuenta lo dice la sesión y no lo que mande quien llama.
         functions: {
-          async invoke(nombre){
+          async invoke(nombre, opciones){
             try{ netCheck(); }catch(e){ return { data:null, error:e }; }
+            SERVER.invocaciones.push(nombre);
+            save();
+
+            // Abrir el pago. La de verdad tampoco cobra: devuelve una dirección
+            // de Stripe a la que la app manda el navegador.
+            if(nombre === 'pago'){
+              if(window.__SIN_PAGO__){
+                return { data:null, error:new Error('Failed to send a request to the Edge Function') };
+              }
+              if(!SERVER.session) return { data:null, error:new Error('sin-sesion') };
+              const cuerpo = (opciones && opciones.body) || {};
+              return { data:{ url:'https://pago.de.mentira/' + (cuerpo.accion || 'suscribir') },
+                       error:null };
+            }
+
+            // El aviso del tope. Aquí no se manda ningún correo; lo que importa
+            // de esta función en las pruebas es que la app la llame, y que la
+            // llame una sola vez.
+            if(nombre === 'aviso-tope'){
+              if(!SERVER.session) return { data:null, error:new Error('sin-sesion') };
+              return { data:{ ok:true, enviado:true }, error:null };
+            }
+
             // Sin desplegar, la función no existe y el navegador se queda sin
             // respuesta que leer: supabase-js lo da con este mensaje exacto, y
             // copiarlo es lo que permite probar cómo lo traduce la app.

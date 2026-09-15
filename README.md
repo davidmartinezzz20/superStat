@@ -12,7 +12,9 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
   igual; lo pendiente se sube solo al volver la red, y la app te dice cuánto
   queda. Se puede **instalar en la pantalla de inicio** como una app más.
 - Gestión de uno o varios equipos, cada uno con su plantilla (nombre,
-  dorsal, posición).
+  dorsal, posición). El plan gratuito lleva un equipo; **SuperStat Pro** quita
+  ese límite y se contrata en la web (ver
+  **[`docs/suscripcion.md`](docs/suscripcion.md)**).
 - Alta de partidos nuevos contra un rival, con las dos porterías dibujadas
   una al lado de la otra (propia y rival), divididas en una cuadrícula de
   9 zonas.
@@ -121,6 +123,11 @@ Los datos viven en Postgres, en Supabase, con RLS: cada cuenta solo ve lo suyo.
 El navegador guarda un espejo local y una cola de cambios pendientes, que es lo
 que permite trabajar sin conexión. Ver `CLAUDE.md` para el detalle.
 
+Dos tablas van aparte y **no se sincronizan**: `subscriptions` (quién tiene Pro
+y hasta cuándo) y `avisos` (preferencias de correo). La primera solo la escribe
+el webhook de Stripe con la clave de servicio, que es lo que impide que nadie se
+regale el plan de pago.
+
 Si ya tenías equipos y partidos guardados de la versión anterior, la app te
 ofrece importarlos la primera vez que entras con tu cuenta.
 
@@ -143,7 +150,7 @@ icons/  assets/        iconos de la web y materia prima de los de las apps
 tools/make-icons.js    genera todo eso desde el dibujo de la marca
 tools/build-www.js     junta lo que se empaqueta dentro de la app
 supabase/schema.sql    tablas, migraciones y políticas de seguridad
-supabase/functions/    la Edge Function que borra la cuenta entera
+supabase/functions/    borrado de cuenta, cobro con Stripe y avisos por correo
 privacidad.html        política de privacidad (la URL que pide Google Play)
 play/                  icono, cabecera y capturas de la ficha de Play
 instagram/             perfil y publicaciones de las dos cuentas
@@ -151,6 +158,7 @@ tools/make-play-assets.js  genera el icono y la cabecera de la ficha
 tools/make-screenshots.js  genera las capturas desde la app de verdad
 tools/make-instagram-assets.js  genera el perfil y las publicaciones
 docs/supabase.md       puesta a punto paso a paso
+docs/suscripcion.md    el plan Pro: Stripe, el webhook y los avisos por correo
 docs/movil.md          compilar y publicar en Google Play y la App Store
 docs/play.md           textos y formularios de la ficha de Google Play
 docs/publicar-android.md  el recorrido completo hasta publicar en Play

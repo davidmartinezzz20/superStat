@@ -21,11 +21,17 @@
 //
 //   supabase functions deploy borrar-cuenta
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import Stripe from 'https://esm.sh/stripe@22.6.2?target=deno';
 
 // El orden importa: los hijos antes que los padres. Las claves ajenas de
 // schema.sql tienen "on delete cascade", pero borrar en orden no depende de eso
 // y deja claro qué se va.
-const TABLAS = ['events', 'shots', 'matches', 'players', 'teams'];
+//
+// subscriptions y avisos van detrás porque no cuelgan de nada más que del
+// usuario. Y tienen que ir: una suscripción que sobreviviera al borrado dejaría
+// a alguien pagando por una cuenta que ya no existe.
+const TABLAS = ['events', 'shots', 'matches', 'players', 'teams',
+                'subscriptions', 'avisos'];
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -38,6 +44,43 @@ const json = (cuerpo: unknown, status = 200) =>
     status,
     headers: { ...CORS, 'Content-Type': 'application/json' }
   });
+
+// Cancela la suscripción y borra el cliente de Stripe, que es donde queda el
+// correo de la persona y su historial de pagos. Es la otra mitad de lo que
+// promete privacidad.html: borrar la cuenta tiene que borrarla también donde
+// está fuera de Supabase.
+//
+// No lanza: el borrado de la cuenta no puede quedarse a medias porque Stripe
+// esté caído. Lo que no salga se queda registrado y se limpia a mano.
+async function cancelarEnStripe(admin: any, uid: string): Promise<void> {
+  const clave = Deno.env.get('STRIPE_SECRET_KEY');
+  if (!clave) return;   // proyecto sin cobro configurado: no hay nada que cancelar
+  try {
+    const { data } = await admin
+      .from('subscriptions')
+      .select('stripe_customer_id')
+      .eq('user_id', uid)
+      .maybeSingle();
+    const cliente = data?.stripe_customer_id;
+    if (!cliente) return;
+
+    const stripe = new Stripe(clave, {
+      httpClient: Stripe.createFetchHttpClient(),
+      apiVersion: '2025-08-27.basil'
+    });
+    // Borrar el cliente cancela sus suscripciones, pero se cancelan antes una a
+    // una para que quede dicho: lo que no puede pasar es que siga un cobro.
+    const subs = await stripe.subscriptions.list({ customer: cliente, status: 'all', limit: 100 });
+    for (const s of subs.data) {
+      if (s.status !== 'canceled' && s.status !== 'incomplete_expired') {
+        await stripe.subscriptions.cancel(s.id);
+      }
+    }
+    await stripe.customers.del(cliente);
+  } catch (e) {
+    console.warn('no se pudo cancelar en Stripe; la cuenta se borra igual', e);
+  }
+}
 
 Deno.serve(async (req) => {
   // El navegador pregunta antes de llamar desde otro origen.
@@ -59,6 +102,15 @@ Deno.serve(async (req) => {
   const { data: quien, error: errorSesion } = await admin.auth.getUser(token);
   if (errorSesion || !quien?.user) return json({ error: 'sesion-no-valida' }, 401);
   const uid = quien.user.id;
+
+  // Antes de borrar nada: cancelar lo que esté cobrándose en Stripe. Si no,
+  // quien borra su cuenta se encuentra el recibo del mes que viene, y para
+  // entonces ya no existe la fila que diría de quién era.
+  //
+  // Va aparte del bucle de abajo y con su propio try: si Stripe no responde, se
+  // sigue borrando igual. Un cliente huérfano en Stripe se arregla a mano desde
+  // su panel; una cuenta a medio borrar, no.
+  await cancelarEnStripe(admin, uid);
 
   const borradas: Record<string, number> = {};
   for (const tabla of TABLAS) {
