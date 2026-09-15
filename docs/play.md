@@ -379,7 +379,7 @@ Ohne Werbung und ohne In-App-Käufe.
 |---|---|
 | Categoría | Deportes |
 | Etiquetas | balonmano, estadísticas, entrenador, deportes de equipo |
-| Correo de contacto | opt1a.david.martinez@gmail.com |
+| Correo de contacto | superstat.hello@gmail.com |
 | Sitio web | `https://super-stat.vercel.app` |
 | Teléfono | déjalo vacío, no es obligatorio |
 | Anuncios | **No**, la app no contiene anuncios |
