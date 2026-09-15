@@ -71,16 +71,26 @@ no para usar la app.
 - `vendor/` — librerías de terceros copiadas sin tocar, para no depender de un
   CDN. Tiene su propio README con cómo actualizarlas.
 - `supabase/schema.sql` — tablas, índices, migraciones y políticas RLS.
-- `supabase/functions/borrar-cuenta/` — la única pieza de servidor del proyecto.
-  Borra la cuenta entera, incluida la fila de `auth.users`, que es lo que la app
-  no puede hacer: con la clave anon y RLS se marcan las filas propias, pero al
-  usuario no se le toca. Se despliega aparte del esquema (`docs/supabase.md`) y,
-  sin desplegar, el botón de *Cuenta* da error.
+- `supabase/functions/` — las piezas de servidor, que son todo lo que la app no
+  puede hacer desde el navegador con la clave anon. Se despliegan aparte del
+  esquema (`docs/supabase.md` y `docs/suscripcion.md`) y, sin desplegar, el
+  botón correspondiente da error.
+  - `borrar-cuenta/` — borra la cuenta entera, incluida la fila de `auth.users`:
+    con RLS se marcan las filas propias, pero al usuario no se le toca. Además
+    cancela la suscripción en Stripe, o el cobro seguiría vivo sin cuenta.
+  - `pago/` — devuelve la dirección de Stripe a la que mandar el navegador, para
+    contratar Pro o para gestionar la suscripción. No cobra nada: ni un dato de
+    tarjeta pasa por SuperStat.
+  - `stripe-webhook/` — **la única que escribe `subscriptions`**, con la clave de
+    servicio. Ahí está toda la seguridad del plan de pago.
+  - `aviso-tope/` y `baja-avisos/` — el correo de "has llegado al límite" y el
+    enlace de baja de su pie. Comparten `_shared/correo.ts`.
 - `supabase/config.toml` — lo justo para que la CLI sepa a qué proyecto
-  desplegar esa función, y para que su `verify_jwt = false` viaje en el
-  repositorio en vez de en un ajuste del panel: con la comprobación del token en
+  desplegar esas funciones, y para que sus `verify_jwt = false` viajen en el
+  repositorio en vez de en un ajuste del panel. No es el mismo motivo en todas y
+  está explicado allí; en las que llama la app, con la comprobación del token en
   la puerta de enlace, el preflight de CORS —que va sin `Authorization`— se
-  rechaza y el borrado falla con el mismo error que si no estuviera desplegada.
+  rechaza y la llamada falla con el mismo error que si no estuviera desplegada.
   Quien comprueba el token es la propia función, así que no se pierde nada.
 - `sw.js` — service worker: guarda el shell para poder abrir sin cobertura.
 - `manifest.webmanifest` e `icons/` — instalación en la pantalla de inicio.
@@ -111,6 +121,9 @@ no para usar la app.
 - `docs/instagram.md` — biografías, pies y etiquetas de las dos cuentas.
 - `docs/supabase.md` — puesta a punto de Supabase y de Google, y el despliegue
   de la Edge Function de borrado de cuenta.
+- `docs/suscripcion.md` — el plan Pro: Stripe, el webhook, los avisos por correo
+  y, lo primero de todo, por qué el cobro vive fuera de las tiendas y qué
+  **no** puede enseñar la app por eso.
 - `docs/movil.md` — compilar y publicar en Google Play y la App Store.
 - `docs/play.md` — la ficha de Play: textos, respuestas de los formularios y la
   cuenta para el revisor.
@@ -125,6 +138,16 @@ La verdad está en Postgres (`supabase/schema.sql`): cinco tablas —`teams`,
 políticas RLS sean directas. **RLS es lo único que separa los datos de un
 usuario de los de otro**, porque la clave anon la tiene cualquiera que abra la
 web: si añades una tabla, añade su política en el mismo commit.
+
+Hay otras dos, `subscriptions` y `avisos`, que son de otra clase y conviene no
+confundirlas con las cinco: **no se sincronizan**. No llevan `server_at`, no
+están en `DB.TABLES` y el navegador no las sube nunca; se leen con accesores
+aparte (`DB.subscription()`, `DB.avisos()`). Meterlas en `DB.TABLES` rompería la
+app entera y en silencio: `push()` haría upsert de ellas, RLS rechazaría la
+escritura y el error dejaría la cola de sincronización atascada **para siempre**,
+con los partidos sin subir dentro. `subscriptions` además tiene una política de
+**solo lectura**: la escribe únicamente el webhook de Stripe con la clave de
+servicio, y eso es lo único que impide que cualquiera se regale el plan Pro.
 
 El archivo se puede volver a ejecutar entero sobre una base que ya tiene datos:
 lo que se añadió después de la primera versión está en su sección de
@@ -333,6 +356,22 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   resumen SHA-256 y a Supabase el original; mandar el mismo a los dos falla.
 - `esc()` debe usarse siempre que se inserte texto de usuario (nombre de
   jugador, rival, etc.) en una plantilla HTML, para evitar inyección.
+- **Dentro de la app de Android o iPhone no se vende nada.** Apple (guía 3.1.1)
+  y Google prohíben que una app lleve a comprar fuera de su sistema de pago, y
+  no hace falta un enlace: cuenta también un texto que diga dónde se compra.
+  Como SuperStat cobra en la web con Stripe, en la app no puede haber botón, ni
+  precio, ni dirección, ni la palabra Stripe. Lo decide `puedeComprar()` en un
+  solo sitio, `render()` manda al panel si alguien llega a la pantalla de Pro en
+  móvil, y la sección 7 de `test/nativo.js` lo comprueba. **Si esa prueba falla,
+  no la cambies**: está para que no tumben la app en una actualización. Quien
+  avisa de que existe Pro es el correo, que va fuera de la app y sí está
+  permitido (`docs/suscripcion.md`).
+- El tope del plan gratis es `FREE_TEAMS` en `app.js`, y está **solo en crear**
+  (`handleCreateTeam`). Los equipos que ya existen se siguen abriendo, editando
+  y usando para anotar aunque sobren: quien acaba una prueba con tres se queda
+  con los tres. Tampoco se comprueba en la base, y es a propósito: si Postgres
+  rechazara el alta, `push()` lanzaría y la cola se quedaría atascada con los
+  partidos sin subir dentro.
 
 - La marca del logo también está duplicada en `tools/make-icons.js`, que genera
   los PNG del manifest, y en `tools/make-play-assets.js`, que genera los de la

@@ -68,20 +68,25 @@ escriben en el campo tal cual.
 ```
 Estadísticas de balonmano, tiro a tiro.
 Anota el partido desde la banda, sin cobertura.
-Gratis · Próximamente en Google Play
+Empieza gratis · Próximamente en Google Play
 ```
 
-*(124 caracteres, saltos incluidos.)*
+*(133 caracteres, saltos incluidos.)*
+
+*«Empieza gratis» y no «Gratis» a secas: la app se usa gratis con un equipo, y
+llevar más es de pago. Aquí, que es una red social y no la ficha de la tienda ni
+la app, sí se puede contar el plan Pro y enlazar al pago sin ningún problema —de
+hecho es el sitio natural para hacerlo.*
 
 ### Inglés
 
 ```
 Handball stats, shot by shot.
 Log the match from the bench, no signal needed.
-Free · Coming soon to Google Play
+Start free · Coming soon to Google Play
 ```
 
-*(111 caracteres.)*
+*(117 caracteres.)*
 
 ### El enlace
 
@@ -305,7 +310,12 @@ ninguna.
 
 ## 5. Lo que estos textos prometen, y conviene que siga siendo verdad
 
-- **Gratis y sin compras**: es lo mismo que se declara en la ficha de Play.
+- **Empieza gratis**: la app se usa gratis con un equipo y el plan Pro quita ese
+  límite. Aquí sí se puede hablar del precio y enlazar al pago: las reglas de
+  Apple y Google sobre llevar a comprar fuera valen dentro de la app y en la
+  ficha de la tienda, no en tus redes ni en tu web. Es más: como la app **no
+  puede** decir que existe Pro, Instagram y el correo son por donde se entera la
+  gente (ver `suscripcion.md`).
 - **Sin publicidad ni seguimiento**: lo dice `privacidad.html` y lo respalda que
   la app no pida ni un permiso de Android para nada de eso.
 - **Cada cuenta solo ve lo suyo**: hoy es cierto porque RLS es

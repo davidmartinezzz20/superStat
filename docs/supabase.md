@@ -13,8 +13,17 @@ Ten a mano la **referencia de tu proyecto** de Supabase (el trozo de la URL:
 
 1. Supabase → **SQL Editor** → *New query*.
 2. Pega entero el contenido de `supabase/schema.sql` y pulsa **Run**.
-3. Al final verás una tabla de resultados con cinco filas. **Comprueba que las
-   cinco tienen `rls_activo = true` y `politicas = 1`.**
+3. Al final verás una tabla de resultados con siete filas. **Comprueba que las
+   siete tienen `rls_activo = true`.** Si alguna sale en `false`, esa tabla está
+   abierta a cualquiera y no puedes subir la app.
+
+   El número de políticas no es el mismo en todas, y la diferencia importa:
+
+   | Tabla | `politicas` | Por qué |
+   |---|---|---|
+   | `teams`, `players`, `matches`, `shots`, `events` | 1 | "solo lo mío": leer y escribir lo propio |
+   | `subscriptions` | 1 | **de solo lectura**. Si aquí pone 2, alguien le ha dado permiso de escritura al usuario y el plan Pro es gratis |
+   | `avisos` | 2 | leer la fila propia y cambiar el interruptor de los correos |
 4. Mira también la pestaña de **mensajes**, debajo de esa tabla: tiene que salir
    un aviso que empieza por `PURGA:` y dice **programada**.
 
@@ -179,6 +188,11 @@ función, **desactiva *Verify JWT*** (ver más abajo por qué).
 
 No hay que declarar ningún secreto: `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`
 las pone Supabase en el entorno de la función.
+
+> Si además vas a cobrar el plan Pro, esta función necesita `STRIPE_SECRET_KEY`
+> para cancelar la suscripción de quien borre su cuenta. Está en
+> [`suscripcion.md`](suscripcion.md), y sin ella el borrado sigue funcionando:
+> lo que pasa es que el cobro seguiría vivo en Stripe.
 
 ### Por qué *Verify JWT* va desactivado
 

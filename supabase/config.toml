@@ -28,3 +28,28 @@ project_id = "cqjpexlgjqyzdjkcdwpw"
 # nada. De quién es la cuenta lo sigue diciendo el token, nunca quien llama.
 [functions.borrar-cuenta]
 verify_jwt = false
+
+# `pago` y `aviso-tope` las llama la app con la sesión del usuario, así que les
+# pasa exactamente lo de arriba: el preflight va sin Authorization y la puerta
+# de enlace lo tumbaría. Las dos exigen el Bearer y resuelven al usuario con
+# auth.getUser(token), igual que borrar-cuenta.
+[functions.pago]
+verify_jwt = false
+
+[functions.aviso-tope]
+verify_jwt = false
+
+# Esta va sin token por otro motivo: quien llama es Stripe, y lo que trae no es
+# una sesión de Supabase sino su propia firma. La función la comprueba con el
+# secreto del webhook antes de mirar nada del cuerpo, y sin firma válida no
+# escribe una sola fila. Es lo único que impide que alguien se regale el Pro
+# mandando un POST a mano.
+[functions.stripe-webhook]
+verify_jwt = false
+
+# Y esta porque es el enlace de "darse de baja" del pie de los correos: exigir
+# iniciar sesión para dejar de recibirlos sería justo lo contrario de lo que
+# tiene que ser. Lo que sustituye a la sesión es el token de un solo uso de
+# avisos.baja_token, que solo viaja dentro del correo de su dueño.
+[functions.baja-avisos]
+verify_jwt = false

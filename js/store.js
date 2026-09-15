@@ -77,6 +77,7 @@ window.Store = (function(){
       cache = empty();
       queue = [];
     }
+    loadPlan();
   }
 
   // ------------------------------------------------------------ suscripción
@@ -396,6 +397,84 @@ window.Store = (function(){
     }catch(e){
       console.error('no se pudo guardar el idioma', e);
     }
+    // Y se le dice al servidor, solo para los correos. Es una copia y no la
+    // preferencia: la interfaz sigue mandando en este aparato y nada más. Sin
+    // esperar ni avisar si falla, que para escribir un correo en español
+    // cuando tocaba inglés no merece la pena molestar a nadie.
+    if(userId && code && plan.emailOk !== undefined){
+      DB.setAvisos(userId, { lang: code }).catch(() => {});
+    }
+  }
+
+  // ------------------------------------------------------------------- plan
+  //
+  // Quién tiene Pro. Es un dato de la cuenta que llega del servidor, así que
+  // lleva userId en la clave (al contrario que el idioma, que es del aparato).
+  //
+  // Va en su propia clave y **no** en el espejo ni en la cola: no es una tabla
+  // que se sincronice, es un derecho que se lee. Escribirlo es cosa del webhook
+  // de Stripe con la clave de servicio; desde aquí solo se mira.
+  //
+  // Se guarda en local para que el límite funcione sin cobertura, que es la
+  // mitad de la app. Y se guarda la **fecha de fin**, no un sí/no: un móvil que
+  // pase semanas sin red caduca la suscripción él solo cuando toca.
+
+  let plan = {};    // { proUntil, status, emailOk }
+
+  function planKey(){ return 'hb:plan:' + userId; }
+
+  function loadPlan(){
+    try{
+      const raw = localStorage.getItem(planKey());
+      plan = raw ? JSON.parse(raw) : {};
+    }catch(e){ plan = {}; }
+  }
+
+  function persistPlan(){
+    try{ localStorage.setItem(planKey(), JSON.stringify(plan)); }
+    catch(e){ console.error('no se pudo guardar el plan', e); }
+  }
+
+  // Comparando fechas y no textos: Postgres devuelve "...+00:00" y toISOString()
+  // termina en "Z", así que compararlas como cadenas da resultados falsos.
+  function isPro(){
+    return Boolean(plan.proUntil) && new Date(plan.proUntil).getTime() > Date.now();
+  }
+
+  function proUntil(){ return plan.proUntil || null; }
+  function planStatus(){ return plan.status || null; }
+
+  // Si no se ha leído nunca, se da por bueno que sí: el interruptor sale
+  // encendido, que es el valor de la base.
+  function emailOk(){ return plan.emailOk !== false; }
+
+  // Relee el derecho del servidor. No lanza nunca: si falla, se queda lo que
+  // hubiera en la caché. Dejar sin Pro a quien paga porque una consulta no
+  // salió es el peor fallo que puede tener esto.
+  async function refreshPlan(){
+    if(!userId || !DB.isConfigured()) return;
+    try{
+      const [sub, av] = await Promise.all([DB.subscription(), DB.avisos()]);
+      if(!sub && !av) return;
+      if(sub) plan = Object.assign({}, plan, {
+        proUntil: sub.pro_until || null, status: sub.status || null
+      });
+      if(av) plan = Object.assign({}, plan, { emailOk: av.email_ok !== false });
+      persistPlan();
+      notify();
+    }catch(e){
+      console.warn('no se pudo leer el plan', e);
+    }
+  }
+
+  // El interruptor de la pantalla de Cuenta. Este sí propaga el fallo: el
+  // usuario acaba de pulsarlo y tiene que enterarse de si no se guardó.
+  async function setEmailOk(ok){
+    if(!userId) return;
+    await DB.setAvisos(userId, { email_ok: Boolean(ok) });
+    plan.emailOk = Boolean(ok);
+    persistPlan();
+    notify();
   }
 
   // ---------------------------------------------------------- sincronización
@@ -442,6 +521,11 @@ window.Store = (function(){
       merge(await DB.pull(cache.cursors));
       lastError = null;
       persist();
+      // Fuera del reparto de culpas de arriba, y a propósito: refreshPlan() no
+      // lanza, así que no puede encender lastError. No poder leer el plan no es
+      // un fallo de sincronización de datos y no tiene por qué pintar el banner
+      // de "no se ha podido sincronizar" en la pantalla de nadie.
+      await refreshPlan();
     }catch(e){
       lastError = e;
       console.error('fallo al sincronizar', e);
@@ -536,6 +620,9 @@ window.Store = (function(){
     cache = empty();
     queue = [];
     lastError = null;
+    // Si esto no se limpiara, el Pro de una cuenta se le aparecería a la
+    // siguiente que entrara en el mismo móvil.
+    plan = {};
   }
 
   // No queda rastro de la cuenta en este aparato: el espejo, la cola, el partido
@@ -548,6 +635,7 @@ window.Store = (function(){
       localStorage.removeItem(cacheKey());
       localStorage.removeItem(queueKey());
       localStorage.removeItem(draftKey());
+      localStorage.removeItem(planKey());
       localStorage.removeItem('hb:migrated:' + userId);
     }catch(e){
       console.error('no se pudo limpiar el navegador', e);
@@ -568,6 +656,7 @@ window.Store = (function(){
     saveMatch, updateMatch, deleteMatch, deleteShot, deleteEvent,
     saveDraft, loadDraft, clearDraft,
     lang, setLang,
+    isPro, proUntil, planStatus, emailOk, refreshPlan, setEmailOk,
     hasLegacyData, importLegacy, skipLegacy
   };
 })();

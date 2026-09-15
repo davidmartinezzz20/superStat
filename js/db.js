@@ -210,6 +210,91 @@ window.DB = (function(){
     return data;
   }
 
+  // ------------------------------------------------------------------ plan
+  //
+  // El derecho a Pro y las preferencias de correo se leen, no se sincronizan, y
+  // eso es a propósito: **no pueden entrar en TABLES**. push() hace upsert de
+  // todas las tablas de esa lista, RLS rechaza la escritura de estas dos y el
+  // error dejaría la cola atascada para siempre, con los partidos sin subir
+  // dentro. Aquí se piden aparte y se leen y ya está.
+  //
+  // Quién puede leer qué lo decide RLS, así que no hace falta filtrar por
+  // usuario: la consulta solo puede devolver la fila propia.
+
+  async function subscription(){
+    const c = init();
+    if(!c) return null;
+    const { data, error } = await c.from('subscriptions')
+      .select('pro_until,status').maybeSingle();
+    // Sin red, sin tabla todavía o con cualquier otro fallo: no se devuelve
+    // nada y decide lo que haya en la caché. Lo que no puede pasar nunca es
+    // dejar sin Pro a quien paga porque una consulta no salió.
+    if(error) return null;
+    return data;
+  }
+
+  // Sin baja_token: ese solo lo usa el enlace del pie de los correos y no
+  // tiene por qué viajar al navegador.
+  async function avisos(){
+    const c = init();
+    if(!c) return null;
+    const { data, error } = await c.from('avisos')
+      .select('email_ok,lang').maybeSingle();
+    if(error) return null;
+    return data;
+  }
+
+  // El interruptor de la pantalla de Cuenta. Solo llegan email_ok y lang: el
+  // permiso de la base está dado por columnas y lo demás lo rechazaría.
+  async function setAvisos(userId, patch){
+    const c = init();
+    if(!c) throw new Error('Supabase no está configurado.');
+    const { error } = await c.from('avisos').update(patch).eq('user_id', userId);
+    if(error) throw error;
+  }
+
+  // ------------------------------------------------------------------ pago
+  //
+  // El cobro vive fuera de la app, en una página de Stripe. Estas dos funciones
+  // solo piden la dirección a la que hay que mandar el navegador; quién es el
+  // usuario lo dice el token de la sesión y nunca lo que se manda en el cuerpo,
+  // igual que en borrar-cuenta.
+
+  async function invocar(nombre, cuerpo){
+    const c = init();
+    if(!c) throw new Error('Supabase no está configurado.');
+    const { data, error } = await c.functions.invoke(nombre, {
+      method: 'POST', body: cuerpo || {}
+    });
+    if(error){
+      const m = (error.message || '').toLowerCase();
+      if(m.includes('edge function')){
+        console.warn(nombre + ' no responde. ¿Está desplegada? Ver docs/suscripcion.md.', error);
+      }
+      throw error;
+    }
+    return data;
+  }
+
+  async function checkoutUrl(){
+    const d = await invocar('pago', { accion:'suscribir' });
+    if(!d || !d.url) throw new Error('sin-url-de-pago');
+    return d.url;
+  }
+
+  async function portalUrl(){
+    const d = await invocar('pago', { accion:'gestionar' });
+    if(!d || !d.url) throw new Error('sin-url-de-pago');
+    return d.url;
+  }
+
+  // Avisa al servidor de que alguien ha chocado con el tope del plan gratis.
+  // Si manda el correo o no lo decide él: aquí no se sabe ni hace falta, y la
+  // pantalla no cambia por la respuesta.
+  async function avisarTope(lang){
+    return invocar('aviso-tope', { lang });
+  }
+
   // ------------------------------------------------------- sincronización
 
   // Trae lo que haya cambiado en el servidor desde la última vez. El corte se
@@ -257,6 +342,7 @@ window.DB = (function(){
     TABLES, init, isConfigured, currentUser, onAuthChange, cleanAuthUrl,
     renderGoogleButton, signInWithGoogleNative,
     signInWithPassword, signUpWithPassword, signOut, deleteAccount,
+    subscription, avisos, setAvisos, checkoutUrl, portalUrl, avisarTope,
     pull, push
   };
 })();

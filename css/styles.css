@@ -268,6 +268,63 @@
   .card.clickable:hover{background:var(--panel-2);}
   .card-title{font-size:16px;font-weight:600;letter-spacing:-0.01em;}
   .card-sub{font-size:12.5px;color:var(--muted);margin-top:3px;}
+  .card-title svg{width:16px;height:16px;vertical-align:-2px;color:var(--gold);}
+
+  /* ---- el plan ---- */
+  /* El tope del plan gratis y la pantalla de Pro. El candado va en dorado y no
+     en el rojo de la marca: no es un error ni un aviso, es algo que se abre. */
+  .locked-card{
+    background:var(--panel-2);
+    border-color:rgba(232,184,75,0.28);
+  }
+  .locked-card button{margin-top:14px;}
+  .plan-list{
+    margin:0;
+    padding:0 0 0 18px;
+    font-size:13.5px;
+    line-height:1.7;
+  }
+  .plan-price{
+    margin-top:14px;
+    font-size:22px;
+    font-weight:650;
+    letter-spacing:-0.02em;
+  }
+  .plan-legal{
+    margin-top:12px;
+    font-size:11.5px;
+    color:var(--muted);
+    line-height:1.5;
+    text-align:center;
+  }
+  /* Interruptor de los avisos por correo. Es una fila pulsable entera, no una
+     casilla suelta con una etiqueta al lado: en un móvil, acertar en una
+     casilla de 16 píxeles es pedir demasiado. */
+  .switch-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    justify-content:space-between;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius-lg);
+    padding:14px 16px;
+    margin-bottom:12px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .switch-row small{
+    display:block;
+    font-size:12.5px;
+    color:var(--muted);
+    margin-top:3px;
+  }
+  .switch-row input{
+    flex:none;
+    width:20px;
+    height:20px;
+    accent-color:var(--brand-2);
+  }
 
   /* ---- tarjetas con degradado (equipos y partidos) ---- */
   /* El color no se guarda en ninguna parte: el de un equipo se deduce de su

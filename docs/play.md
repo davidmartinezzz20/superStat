@@ -128,8 +128,16 @@ y en el ordenador. Sin publicidad, sin analítica y sin seguimiento: cada cuenta
 solo puede ver lo suyo. Puedes exportar cualquier partido o borrar lo que
 quieras cuando quieras.
 
-Varios equipos, cada uno con su plantilla. Gratis y sin compras dentro.
+Un equipo gratis, con todo lo de arriba incluido. Con SuperStat Pro, todos los
+que quieras: una categoría por equipo, cada uno con su plantilla y su temporada.
+Sin anuncios y sin compras dentro de la app.
 ```
+
+> **Ojo con este párrafo.** Describe qué entra en cada plan y **no dice dónde se
+> contrata Pro**, y así tiene que quedarse. Las reglas de Apple y Google sobre
+> llevar a comprar fuera alcanzan también a los textos de la ficha: un enlace o
+> una dirección aquí es lo mismo que un botón dentro de la app. El porqué está
+> en `suscripcion.md`.
 
 ### Resto de campos
 
@@ -142,6 +150,13 @@ Varios equipos, cada uno con su plantilla. Gratis y sin compras dentro.
 | Teléfono | déjalo vacío, no es obligatorio |
 | Anuncios | **No**, la app no contiene anuncios |
 | Compras en la aplicación | **No** |
+
+**Sí, sigue siendo "No" aunque exista el plan Pro**, y no es una trampa: la
+pregunta es si se compra *dentro de la aplicación*, y aquí no se compra nada
+dentro. El cobro está en la web con Stripe, la app no lleva hasta él y no usa el
+sistema de facturación de Play. Por eso tampoco hay que dar de alta ningún
+producto en la consola. Si algún día se añadieran compras in-app, esta fila y el
+cuestionario IARC habría que rehacerlos.
 
 ---
 
@@ -215,7 +230,7 @@ información financiera. La app no pide ni un permiso de Android para nada de es
 | Violencia, sexo, lenguaje soez, drogas, juego | **No** a todas |
 | ¿Los usuarios pueden interactuar o comunicarse entre ellos? | **No** |
 | ¿Se comparte la ubicación con otros usuarios? | **No** |
-| ¿Permite comprar artículos digitales? | **No** |
+| ¿Permite comprar artículos digitales? | **No** — no se compra nada dentro de la app (ver arriba) |
 | ¿Contenido generado por usuarios visible para otros? | **No** — cada cuenta solo ve lo suyo |
 
 Sale PEGI 3 / *Todos los públicos*. Si algún día se comparte un equipo con el
