@@ -148,7 +148,7 @@ create table if not exists public.subscriptions (
 create table if not exists public.avisos (
   user_id         uuid primary key references auth.users(id) on delete cascade,
   email_ok        boolean not null default true,
-  lang            text not null default 'es' check (lang in ('es','en')),
+  lang            text not null default 'es' check (lang in ('es','en','fr','de')),
   tope_avisado_at timestamptz,   -- para no mandar el mismo aviso cada semana
   baja_token      uuid not null default gen_random_uuid(),
   updated_at      timestamptz not null default now()
@@ -211,6 +211,15 @@ alter table public.events add  constraint events_type_check check (type in (
   'in',         -- entra a pista
   'out'         -- sale de pista
 ));
+
+-- La app pasó de dos idiomas a cuatro. Sin esto, elegir francés o alemán en la
+-- pantalla de Cuenta falla aquí y **en silencio**: Store.setLang() escribe
+-- avisos.lang sin esperar respuesta (es una copia para los correos, no la
+-- preferencia de interfaz, que vive en el aparato), así que la app se ve en
+-- francés y los avisos siguen llegando en español sin que nada avise.
+alter table public.avisos drop constraint if exists avisos_lang_check;
+alter table public.avisos add  constraint avisos_lang_check
+  check (lang in ('es','en','fr','de'));
 
 -- ------------------------------------------------- purga de lo borrado
 --

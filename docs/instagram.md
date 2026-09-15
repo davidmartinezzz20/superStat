@@ -37,11 +37,18 @@ acabe publicándose el equipo de nadie**. Es lo mismo que se sube a Play.
 
 ## 1. Antes de abrir las cuentas: tres cosas que decidir
 
-**No se abre la cuenta en inglés a la vez que la castellana.** La app ya está en
-los dos idiomas, pero la web, la ficha de Google Play y `privacidad.html` siguen
-siendo solo castellanas. Una cuenta en inglés que lleva a una web en español
-pierde a quien haga clic. Lo razonable es empezar por la castellana, y abrir la
-inglesa cuando la web tenga su versión.
+**La cuenta en inglés ya se puede abrir.** Lo que antes lo frenaba era que la
+app estuviera en dos idiomas y todo lo demás en uno: quien hacía clic desde una
+cuenta en inglés caía en una web en español. Eso ya no pasa. La app habla
+castellano, inglés, francés y alemán; la web es la misma app, así que se abre en
+el idioma del aparato (y `?lang=en` la fuerza); la política de privacidad tiene
+su versión en cada idioma (`privacidad-en.html` y compañía); y la ficha de Play
+tiene sus textos traducidos en [`play.md`](play.md), aunque darla de alta en
+Play Console es un paso aparte.
+
+Lo único que sigue siendo de un solo idioma es esta guía y los pies de las
+publicaciones, que están más abajo en castellano y en inglés. Si algún día se
+abren cuentas en francés o alemán, es aquí donde hay que escribir sus textos.
 
 **Los nombres de usuario.** El bueno es el corto, pero suele estar cogido; van
 por orden de preferencia y se prueban en la app al registrarse:

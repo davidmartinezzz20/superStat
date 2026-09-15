@@ -62,10 +62,10 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
 - La **cuenta entera se borra desde la app**, en *Cuenta → Borrar la cuenta*:
   desaparece todo, aquí y en la nube, sin pedirle nada a nadie.
 - **Exportar** un partido en CSV o compartirlo como imagen resumen.
-- **En español y en inglés.** El idioma se elige en *Cuenta*, se detecta solo
-  del navegador la primera vez y es de este aparato: no se sincroniza con la
-  cuenta. Lo que se guarda en la base no cambia de idioma, así que un partido
-  anotado en español se lee igual en inglés.
+- **En español, inglés, francés y alemán.** El idioma se elige en *Cuenta*, se
+  detecta solo del navegador la primera vez y es de este aparato: no se
+  sincroniza con la cuenta. Lo que se guarda en la base no cambia de idioma, así
+  que un partido anotado en español se lee igual en alemán.
 
 ## Android y iOS
 
@@ -147,7 +147,7 @@ css/styles.css         estilos
 js/config.js           URL y clave anon de Supabase, y los ID de Google
 js/db.js               sesión, login y sincronización con Supabase
 js/store.js            espejo local, cola de cambios y fusión
-js/i18n.js             los textos, en español y en inglés
+js/i18n.js             los textos, en los cuatro idiomas
 js/native.js           puente con la app de Android/iOS
 js/app.js              pantallas y lógica de la app
 vendor/                supabase-js y capacitor-core, copiados sin tocar
@@ -163,6 +163,7 @@ tools/build-www.js     junta lo que se empaqueta dentro de la app
 supabase/schema.sql    tablas, migraciones y políticas de seguridad
 supabase/functions/    borrado de cuenta, cobro con Stripe y avisos por correo
 privacidad.html        política de privacidad (la URL que pide Google Play)
+privacidad-en.html     la misma, en inglés, francés y alemán (-fr, -de)
 play/                  icono, cabecera y capturas de la ficha de Play
 instagram/             perfil y publicaciones de las dos cuentas
 tools/make-play-assets.js  genera el icono y la cabecera de la ficha

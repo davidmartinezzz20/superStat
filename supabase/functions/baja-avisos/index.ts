@@ -28,6 +28,18 @@ const TEXTOS: Record<string, { titulo: string; cuerpo: string }> = {
     cuerpo: 'You have been unsubscribed from SuperStat emails. Your data and your ' +
             'account are unchanged, and you can turn them back on at any time from ' +
             'the Account screen.'
+  },
+  fr: {
+    titulo: 'Tu ne recevras plus de messages',
+    cuerpo: 'Tu as été désabonné des e-mails de SuperStat. Tes données et ton compte ' +
+            'ne changent pas, et tu peux les réactiver quand tu veux depuis l’écran ' +
+            'Compte.'
+  },
+  de: {
+    titulo: 'Du bekommst keine Hinweise mehr',
+    cuerpo: 'Du hast dich von den E-Mails von SuperStat abgemeldet. Deine Daten und ' +
+            'dein Konto bleiben unverändert, und du kannst sie jederzeit im ' +
+            'Bildschirm Konto wieder einschalten.'
   }
 };
 
@@ -41,15 +53,28 @@ const ERROR: Record<string, { titulo: string; cuerpo: string }> = {
     titulo: 'This link no longer works',
     cuerpo: 'We could not find who to unsubscribe. You can turn the emails off from ' +
             'the Account screen in the app.'
+  },
+  fr: {
+    titulo: 'Ce lien ne fonctionne plus',
+    cuerpo: 'Nous n’avons pas trouvé qui désabonner. Tu peux désactiver les messages ' +
+            'depuis l’écran Compte de l’application.'
+  },
+  de: {
+    titulo: 'Dieser Link gilt nicht mehr',
+    cuerpo: 'Wir konnten nicht feststellen, wer abgemeldet werden soll. Du kannst die ' +
+            'Hinweise im Bildschirm Konto der App abschalten.'
   }
 };
 
 // Una página suelta, sin CSS ni scripts del resto de la app, como
 // privacidad.html: se abre desde un correo, en cualquier navegador, y no
 // depende de que nada más cargue.
-function pagina(t: { titulo: string; cuerpo: string }, status: number): Response {
+// El idioma va en el argumento y no fijo en el HTML: la página se sirve en el
+// idioma en el que se le escribió a esa persona, así que el atributo lang tiene
+// que decir el mismo o el lector de pantalla lee alemán con acento español.
+function pagina(t: { titulo: string; cuerpo: string }, status: number, lang = 'es'): Response {
   const html = `<!doctype html>
-<html lang="es"><head>
+<html lang="${lang}"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SuperStat</title>
@@ -107,5 +132,8 @@ Deno.serve(async (req) => {
   }
 
   // En el idioma en el que se le escribió, que es el que esa persona entiende.
-  return pagina(TEXTOS[data.lang === 'en' ? 'en' : 'es'], 200);
+  // Uno que no conozcamos —una fila vieja, o un idioma que se quitó— cae al
+  // español, igual que en _shared/correo.ts.
+  const lang = TEXTOS[data.lang] ? data.lang : 'es';
+  return pagina(TEXTOS[lang], 200, lang);
 });

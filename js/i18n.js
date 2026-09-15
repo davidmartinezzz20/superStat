@@ -1,13 +1,19 @@
-// Los textos de la interfaz, en español y en inglés.
+// Los textos de la interfaz, en español, inglés, francés y alemán.
 //
 // La app se escribió entera en español, con los textos dentro de las plantillas
 // de app.js. Esto los saca de ahí y los deja en un solo sitio, para que la
-// misma pantalla se pueda pintar en los dos idiomas sin duplicar ni una vista.
+// misma pantalla se pueda pintar en los cuatro idiomas sin duplicar ni una
+// vista.
 //
 // Sin framework y sin build, como el resto: un objeto por idioma y una función
 // que busca la clave. El español es la fuente de la verdad —es el idioma en el
-// que se piensa la app—, así que si una clave falta en inglés se cae al español
-// y se avisa por consola en vez de enseñar la clave cruda al usuario.
+// que se piensa la app—, así que si una clave falta en otro idioma se cae al
+// español y se avisa por consola en vez de enseñar la clave cruda al usuario.
+//
+// Los cuatro diccionarios están en este archivo y no en cuatro, a propósito:
+// partirlos obligaría a mantener el archivo nuevo en las tres listas de
+// siempre (index.html, el SHELL de sw.js y el COPIAR de build-www.js) para
+// cargar de todas formas los cuatro, que es lo que ya pasa aquí.
 //
 // **Lo que NO se traduce nunca**: los valores que viajan a Postgres. La
 // posición de un jugador se guarda como 'Portero', el tipo de un evento como
@@ -22,8 +28,8 @@
 //   3. El idioma del navegador.
 //   4. Español.
 //
-// Al añadir un texto visible hay que meterlo en los dos diccionarios: no vale
-// dejarlo escrito en la plantilla. test/i18n.js lo comprueba.
+// Al añadir un texto visible hay que meterlo en los cuatro diccionarios: no
+// vale dejarlo escrito en la plantilla. test/i18n.js lo comprueba.
 window.I18N = (function(){
 
   const ES = {
@@ -940,9 +946,925 @@ window.I18N = (function(){
     'ask.originSub': '{quien} attacking · tap the exact point on the court'
   };
 
-  const DICTS = { es: ES, en: EN };
-  const LANGS = ['es', 'en'];
-  const NAMES = { es:'Español', en:'English' };
+  const FR = {
+    // ---------------------------------------------------------------- común
+    'common.loading':        'Chargement…',
+    'common.cancel':         'Annuler',
+    'common.saveChanges':    'Enregistrer les modifications',
+    'common.unspecified':    'Non précisé',
+    'common.unassigned':     'non attribué',
+    'common.noData':         'Pas encore de données.',
+    'common.myAccount':      'mon compte',
+    'common.yourTeam':       'Ton équipe',
+    'common.edit':           'Modifier',
+    'common.delete':         'Supprimer',
+    'common.wait':           'Un instant…',
+    'common.cancelNoRecord': 'Annuler, ne pas enregistrer',
+
+    'app.title':    'SuperStat — Statistiques de handball',
+    'app.tagline':  'Statistiques de matchs de handball, équipe par équipe, tir par tir.',
+
+    // -------------------------------------------------------- sincronización
+    'sync.syncing':      'Synchronisation…',
+    'sync.pending':      'Modifications à envoyer',
+    'sync.offline':      'Hors ligne : enregistré ici et envoyé au retour du réseau',
+    'sync.error':        'La synchronisation a échoué. Elle sera relancée toute seule.',
+    'sync.local':        'Supabase non configuré : les données ne sont que sur cet appareil',
+    'sync.pendingCount': ' · {n} non envoyées',
+
+    // ----------------------------------------------------------- barra y nav
+    'nav.teams':     'Équipes',
+    'nav.matches':   'Matchs',
+    'nav.account':   'Compte',
+    'nav.newMatch':  'Nouveau match',
+    'nav.pickTeam':  'Choisis d’abord une équipe',
+
+    // ------------------------------------------------------------- la pista
+    'court.title':   'Demi-terrain de handball',
+
+    // -------------------------------------------------------- posiciones
+    // La clave sigue siendo el valor guardado en la base: solo cambia el texto.
+    'position.Portero':            'Gardien',
+    'position.Lateral izquierdo':  'Arrière gauche',
+    'position.Central':            'Demi-centre',
+    'position.Lateral derecho':    'Arrière droit',
+    'position.Extremo izquierdo':  'Ailier gauche',
+    'position.Extremo derecho':    'Ailier droit',
+    'position.Pivote':             'Pivot',
+
+    // ------------------------------------------------- zonas de lanzamiento
+    'origin.EI':   'Ailier gauche',
+    'origin.LI':   'Arrière gauche',
+    'origin.CE':   'Demi-centre',
+    'origin.LD':   'Arrière droit',
+    'origin.ED':   'Ailier droit',
+    'origin.PIV':  'Pivot',
+    'origin.7M':   '7 mètres',
+
+    // ---------------------------------------------------- zonas de portería
+    'goalZone.1':  'haut gauche',
+    'goalZone.2':  'haut centre',
+    'goalZone.3':  'haut droite',
+    'goalZone.4':  'milieu gauche',
+    'goalZone.5':  'milieu centre',
+    'goalZone.6':  'milieu droite',
+    'goalZone.7':  'bas gauche',
+    'goalZone.8':  'bas centre',
+    'goalZone.9':  'bas droite',
+
+    // -------------------------------------------------------------- eventos
+    'event.turnover':   'Perte de balle',
+    'event.steal':      'Interception',
+    'event.exclusion':  '2 minutes',
+    'event.yellow':     'Carton jaune',
+    'event.red':        'Carton rouge',
+    'event.assist':     'Passe décisive',
+    'event.block':      'Contre',
+    'event.foul7m':     '7 m obtenu',
+    'event.in':         'Entre en jeu',
+    'event.out':        'Sort du terrain',
+
+    'eventShort.turnover':  'PB',
+    'eventShort.steal':     'IN',
+    'eventShort.exclusion': '2′',
+    'eventShort.yellow':    'CJ',
+    'eventShort.red':       'CR',
+
+    // --------------------------------------------------------------- meses
+    'month.1':  'janv.', 'month.2':  'févr.', 'month.3':  'mars',  'month.4':  'avr.',
+    'month.5':  'mai',   'month.6':  'juin',  'month.7':  'juil.', 'month.8':  'août',
+    'month.9':  'sept.', 'month.10': 'oct.',  'month.11': 'nov.',  'month.12': 'déc.',
+    'date.short': '{d} {mes}',
+    'number.decimal': ',',
+
+    // ------------------------------------------------------------- tarjetas
+    'team.playerCount_one':   '{n} joueur',
+    'team.playerCount_other': '{n} joueurs',
+    'team.rosterCount_one':   '{n} joueur dans l’effectif',
+    'team.rosterCount_other': '{n} joueurs dans l’effectif',
+    'result.win':   'Victoire',
+    'result.loss':  'Défaite',
+    'result.draw':  'Match nul',
+
+    // ------------------------------------------------------------- entrada
+    'auth.noConfig':      'Supabase n’est pas configuré. Remplis <code>js/config.js</code> avec l’URL du projet et la clé anon (Project Settings → API).',
+    'auth.noConfigHint':  'En attendant, impossible de se connecter ou d’enregistrer quoi que ce soit.',
+    'auth.orEmail':       'ou avec ton adresse e-mail',
+    'auth.login':         'Se connecter',
+    'auth.register':      'Créer un compte',
+    'auth.email':         'Adresse e-mail',
+    'auth.emailHint':     'toi@email.com',
+    'auth.password':      'Mot de passe',
+    'auth.toLogin':       'Tu as déjà un compte ? Connecte-toi',
+    'auth.toRegister':    'Pas encore de compte ? Crées-en un',
+    'auth.footer':        'Tes données sont enregistrées dans ton compte et synchronisées entre tes appareils.',
+    'auth.googleBtn':     'Se connecter avec Google',
+    'auth.needBoth':      'Saisis ton adresse e-mail et ton mot de passe.',
+    'auth.confirmSent':   'Compte créé. Confirme l’e-mail que nous t’avons envoyé, puis connecte-toi.',
+
+    // errores de Supabase, que vienen en inglés
+    'authError.googleNoToken':  'Google n’a pas renvoyé de session. Réessaie.',
+    'authError.googleOff':      'La connexion avec Google n’est pas disponible pour le moment.',
+    'authError.googleSign':     'L’application n’est pas déclarée chez Google avec cette signature. Vérifie l’ID client et l’empreinte SHA-1.',
+    'authError.badLogin':       'Adresse e-mail ou mot de passe incorrects.',
+    'authError.alreadyUser':    'Un compte existe déjà avec cette adresse. Connecte-toi au lieu d’en créer un.',
+    'authError.shortPassword':  'Ce mot de passe est trop court : 6 caractères minimum.',
+    'authError.badEmail':       'Cette adresse e-mail ne semble pas valide.',
+    'authError.notConfirmed':   'Tu dois confirmer ton adresse e-mail avant de te connecter. Regarde ta boîte de réception.',
+    'authError.edgeFunction':   'Impossible de joindre le service de suppression. Vérifie ta connexion ; si le problème persiste, tu peux demander la suppression par e-mail depuis la politique de confidentialité.',
+    'authError.network':        'Pas de connexion au serveur. Vérifie ton réseau.',
+    'authError.generic':        'Impossible de terminer : {msg}',
+    'authError.unknown':        'erreur inconnue',
+    'google.noClientId':        'Pour se connecter avec Google, il manque l’ID client dans js/config.js.',
+    'google.noSecureContext':   'La connexion avec Google nécessite https (ou localhost).',
+    'google.notLoaded':         'Impossible de charger le bouton Google. Vérifie ta connexion.',
+
+    // ------------------------------------------------------------- migración
+    'migrate.title':    'Données de ce navigateur',
+    'migrate.body':     'Ce navigateur contient des équipes et des matchs enregistrés avant qu’il y ait des comptes. Veux-tu les transférer dans le tien ?',
+    'migrate.note':     'Ils sont copiés, pas supprimés. Si tu refuses, ils restent où ils sont et la question ne reviendra pas.',
+    'migrate.yes':      'Importer dans mon compte',
+    'migrate.no':       'Non, repartir de zéro',
+    'migrate.done_one':   '{n} match importé',
+    'migrate.done_other': '{n} matchs importés',
+    'migrate.doneEmpty':  'Données importées',
+
+    // --------------------------------------------------------------- panel
+    'dashboard.title':      'Équipes',
+    'dashboard.empty':      'Tu n’as encore aucune équipe',
+    'dashboard.emptyHint':  'Crée ta première équipe pour commencer à enregistrer des matchs.',
+    'dashboard.newTeam':    'Nouvelle équipe',
+    'dashboard.teamName':   'Nom de l’équipe',
+    'dashboard.teamHint':   'Ex. CB Sabadell',
+    'dashboard.create':     'Créer l’équipe',
+    'dashboard.nameTooLong':'Le nom de l’équipe est trop long (80 caractères maximum).',
+
+    'resume.unsaved':   'Non enregistré',
+    'resume.continue':  'Reprendre le match',
+    'resume.drop':      'Abandonner',
+    'resume.dropAsk':   'Abandonner le match non enregistré ? Tout ce qui a été noté sera perdu.',
+
+    // --------------------------------------------------------------- cuenta
+    'account.title':        'Compte',
+    'account.teams_one':    '{n} équipe dans ce compte',
+    'account.teams_other':  '{n} équipes dans ce compte',
+    'account.sync':         'Synchronisation',
+    'account.allGood':      'Tout est à jour',
+    'account.allGoodSub':   'Tes données sont enregistrées dans le cloud et sur cet appareil.',
+    'account.session':      'Session',
+    'account.logout':       'Se déconnecter',
+    'account.language':     'Langue',
+    'account.languageSub':  'Sur cet appareil uniquement : ce réglage n’est pas synchronisé avec le compte.',
+    'account.deleteTitle':  'Supprimer le compte',
+    'account.deleteSub':    'Le compte et tout ce qu’il contient sont supprimés : équipes, effectifs, matchs, tirs et événements, sur cet appareil et dans le cloud. C’est irréversible.',
+    'account.deleteBtn':    'Supprimer mon compte',
+    'account.deleteNoUndo': 'C’est irréversible',
+    'account.deleteAsk':    'Écris <strong>{palabra}</strong> pour confirmer que tu veux supprimer le compte et tout ce qu’il contient.',
+    'account.deleteWord':   'SUPPRIMER',
+    'account.deleteLabel':  'Confirmation',
+    'account.deleteGo':     'Supprimer le compte',
+    'account.deleting':     'Suppression…',
+    'account.deleteType':   'Écris {palabra} pour confirmer.',
+    'account.deleteFailed': 'Impossible de supprimer le compte.',
+    'account.deleted':      'Compte supprimé',
+
+    // ---------------------------------------------------------------- plan
+    // `limit.subApp` es el que ve la app de Android e iPhone: ni precio, ni
+    // dónde se compra, ni nombrar la web (ver puedeComprar en app.js).
+    'plan.title':        'Formule',
+    'plan.free':         'Formule Gratuite',
+    'plan.pro':          'SuperStat Pro',
+    'plan.trialing':     'SuperStat Pro · essai',
+    'plan.until':        'Actif jusqu’au {d}',
+    'plan.manage':       'Gérer l’abonnement',
+    'plan.emails':       'Notifications par e-mail',
+    'plan.emailsSub':    'Nouveautés et informations sur ta formule. Tu peux te désabonner quand tu veux.',
+    'plan.emailsFailed': 'Impossible d’enregistrer la modification.',
+    'plan.freeUse':      'Tu as {n} matchs enregistrés sur {tope}.',
+
+    'limit.title_one':   'La formule Gratuite s’arrête à {n} équipe',
+    'limit.title_other': 'La formule Gratuite s’arrête à {n} équipes',
+    'limit.subWeb':      'Avec SuperStat Pro, tu gères autant d’équipes que tu veux, chacune avec son effectif et ses matchs.',
+    'limit.subApp':      'Tu peux continuer à enregistrer des matchs et à modifier l’équipe que tu as déjà.',
+    'limit.matchTitle_one':   'La formule Gratuite s’arrête à {n} match enregistré',
+    'limit.matchTitle_other': 'La formule Gratuite s’arrête à {n} matchs enregistrés',
+    'limit.matchSubWeb':      'Avec SuperStat Pro, tu enregistres autant de matchs que tu veux, avec leur carte de tirs et leur saison.',
+    'limit.matchSubApp':      'Les matchs que tu as déjà restent là : ils s’ouvrent, se corrigent et s’exportent comme avant.',
+    'limit.seePro':      'Voir SuperStat Pro',
+
+    'paywall.title':      'SuperStat Pro',
+    'paywall.sub':        'Toutes tes équipes et tous tes matchs dans le même compte',
+    'paywall.f1':         'Équipes sans limite, chacune avec son effectif',
+    'paywall.f2':         'Matchs sans limite, avec leur carte de tirs et leur saison',
+    'paywall.f3':         'Les mêmes données sur le téléphone et sur l’ordinateur, même sans réseau',
+    'paywall.priceMonth': '{p} par mois',
+    'paywall.trial':      'Les 7 premiers jours sont gratuits. Annule quand tu veux.',
+    'paywall.go':         'Commencer l’essai de 7 jours',
+    'paywall.going':      'Ouverture du paiement…',
+    'paywall.failed':     'Impossible d’ouvrir l’écran de paiement. Réessaie.',
+    'paywall.legal':      'Le paiement est géré par Stripe. SuperStat n’enregistre pas les données de ta carte.',
+    'paywall.checking':   'Vérification du paiement…',
+    'paywall.welcome':    'Tu as maintenant SuperStat Pro',
+    'paywall.soon':       'Le paiement est passé. La formule s’active dans un instant.',
+
+    // -------------------------------------------------------------- equipo
+    'team.roster':        'Effectif',
+    'team.noPlayers':     'Pas encore de joueurs.',
+    'team.editPlayer':    'Modifier le joueur',
+    'team.newPlayer':     'Nouveau joueur',
+    'team.name':          'Nom',
+    'team.nameHint':      'Nom du joueur',
+    'team.dorsal':        'Numéro',
+    'team.position':      'Poste',
+    'team.addPlayer':     'Ajouter un joueur',
+    'team.matches':       'Matchs',
+    'team.newMatch':      '＋ Nouveau match',
+    'team.viewMatches':   'Voir les statistiques des matchs précédents',
+    'team.viewSeason':    'Cumul de la saison',
+    'team.deleteTitle':   'Supprimer',
+    'team.deleteSub':     'Avec l’équipe partent son effectif et tous ses matchs, avec tout ce qui y a été noté. C’est irréversible.',
+    'team.deleteBtn':     'Supprimer cette équipe',
+    'team.deleteAsk_one':   'Supprimer l’équipe {equipo} ? Son effectif et {n} match partiront, avec tout ce qui a été noté. C’est irréversible.',
+    'team.deleteAsk_other': 'Supprimer l’équipe {equipo} ? Son effectif et {n} matchs partiront, avec tout ce qui a été noté. C’est irréversible.',
+    'team.deleted':       'Équipe supprimée',
+    'team.playerSaved':   'Joueur mis à jour',
+    'team.needNameDorsal':'Saisis le nom et le numéro.',
+    'team.badDorsal':     'Le numéro doit être un nombre entre 0 et 99.',
+    'team.nameTooLong':   'Le nom est trop long (80 caractères maximum).',
+
+    // ------------------------------------------------------ lista de partidos
+    'matchList.title':   'Matchs',
+    'matchList.empty':   'Aucun match enregistré pour l’instant.',
+    'matchList.season':  'Voir le cumul de la saison',
+
+    // ------------------------------------------------------ ficha de partido
+    'match.vs':             'vs {rival}',
+    'match.halfTimeAt':     'mi-temps à la {n}′',
+    'match.ourShots':       'Nos tirs (but adverse)',
+    'match.goals':          'Buts',
+    'match.savedByRival':   'Arrêtés par l’adversaire',
+    'match.outAndPosts':    'Hors cadre et poteaux',
+    'match.efficiency':     'Efficacité',
+    'match.scorers':        'Buteurs du match',
+    'match.goalsUnit_one':   '{n} but',
+    'match.goalsUnit_other': '{n} buts',
+    'match.whereWeShoot':   'D’où nous tirons',
+    'match.goalsPerShots':  'buts / tirs',
+    'match.whereInGoal':    'Dans quelle partie du but',
+    'match.fromEachZone':   'depuis chaque zone',
+    'match.rivalShots':     'Tirs adverses (notre but)',
+    'match.conceded':       'Buts encaissés',
+    'match.ourSaves':       'Arrêts de ton gardien',
+    'match.rivalOut':       'Hors cadre de l’adversaire',
+    'match.savePct':        '% Arrêts gardien',
+    'match.keepers':        'Gardiens',
+    'match.savesPerFaced':  'arrêts / tirs reçus',
+    'match.whereTheyShoot': 'D’où ils nous tirent',
+    'match.plusMinus':      'Plus/moins',
+    'match.plusMinusSub':   'avec chaque joueur sur le terrain',
+    'match.otherRecords':   'Autres relevés',
+    'match.share':          'Partager',
+    'match.shareImage':     'Image',
+    'match.downloadCsv':    'Télécharger le CSV',
+    'match.edit':           'Modifier le match',
+    'match.rival':          'Adversaire',
+    'match.date':           'Date',
+    'match.halfTimeMinute': 'Minute de la mi-temps',
+    'match.halfTimeEmpty':  'Non renseignée',
+    'match.deleteBtn':      'Supprimer ce match',
+    'match.deleteAsk':      'Supprimer le match contre {rival} ? C’est irréversible.',
+    'match.deleted':        'Match supprimé',
+    'match.saved':          'Match mis à jour',
+    'match.needRivalDate':  'Indique l’adversaire et la date.',
+    'match.rivalTooLong':   'Le nom de l’adversaire est trop long (80 caractères maximum).',
+    'match.badHalfTime':    'La minute de la mi-temps doit être un nombre de minutes.',
+
+    'stats.noShotsAtUs':    'Pas encore de tirs sur notre but.',
+    'stats.needCourtMark':  'Indique qui est sur le terrain pendant le match et tu verras ici ce qui se passe au tableau d’affichage quand chacun joue.',
+    'stats.noEvents':       'Aucun n’a été noté dans ce match.',
+    'stats.needOrigin':     'Il faut enregistrer le point de tir pour le croiser avec le but.',
+    'stats.crossLegend':    'Buts / tirs vers chaque partie du but. Plus c’est clair, plus on y tire.',
+    'stats.crossCell':      '{zona} : {goles} sur {n}',
+    'stats.shotsUnit_one':   '{n} tir',
+    'stats.shotsUnit_other': '{n} tirs',
+
+    // --------------------------------------------------------- mapa de tiros
+    'map.all':        'Tout',
+    'map.half':       'Mi-temps {n}',
+    'map.heat':       'Carte de chaleur',
+    'map.allPlayers': 'Tous les joueurs',
+    'map.noPoints':   'Aucun tir avec un point enregistré.',
+    'map.noPointsFiltered': 'Aucun tir avec un point enregistré pour ce filtre.',
+    'map.shots_one':   '{n} tir',
+    'map.shots_other': '{n} tirs',
+    'map.goals_one':   '{n} but',
+    'map.goals_other': '{n} buts',
+    'map.saves_one':   '{n} arrêt',
+    'map.saves_other': '{n} arrêts',
+    'map.out':         '{n} hors cadre',
+
+    // ----------------------------------------------------------- anotaciones
+    'annot.title':        'Annotations',
+    'annot.titleSub':     'dans l’ordre où elles ont été enregistrées',
+    'annot.empty':        'Ce match n’a aucune annotation.',
+    'annot.delete':       'Supprimer l’annotation',
+    'annot.deleted':      'Annotation supprimée',
+    'annot.rival.goal':   'But',
+    'annot.rival.save':   'Arrêt du gardien adverse',
+    'annot.rival.out':    'Tir hors cadre',
+    'annot.rival.post':   'Poteau',
+    'annot.own.goal':     'But encaissé',
+    'annot.own.save':     'Arrêt',
+    'annot.own.out':      'Tir hors cadre de l’adversaire',
+    'annot.own.post':     'Poteau de l’adversaire',
+    'annot.shot':         'Tir',
+    'annot.by':           '{que} de {quien}',
+    'annot.keeper':       '{que} · gardien {quien}',
+    'annot.withPlayer':   '{que} · {quien}',
+    'annot.minute':       '{n}′',
+    'annot.minuteHalf':   '{n}′ · mi-temps {parte}',
+    'annot.half':         'Mi-temps {n}',
+
+    // ------------------------------------------------------------- temporada
+    'season.title':       'Saison',
+    'season.empty':       'Pas encore de matchs',
+    'season.emptyHint':   'Dès que tu en enregistreras un, tout s’additionnera ici : buteurs, gardiens et les zones d’où l’on tire le mieux.',
+    'season.played_one':  '{n} match',
+    'season.played_other':'{n} matchs',
+    'season.record':      'victoires · nuls · défaites',
+    'season.total':       'Au total',
+    'season.goalsFor':    'Buts marqués · {n}/match',
+    'season.goalsAgainst':'Encaissés · {n}/match',
+    'season.effIn_one':     'Efficacité sur {n} tir',
+    'season.effIn_other':   'Efficacité sur {n} tirs',
+    'season.savesIn_one':   'Arrêts sur {n} tir reçu',
+    'season.savesIn_other': 'Arrêts sur {n} tirs reçus',
+    'season.scorers':     'Buteurs',
+    'season.wholeSeason': 'toute la saison',
+    'season.perMatch':    '{n}/match',
+    'season.noScorers':   'Aucun but attribué à un joueur pour l’instant.',
+    'season.noFaced':     'Aucun tir reçu pour l’instant.',
+    'season.bestZones':   'D’où nous tirons le mieux',
+    'season.noOrigins':   'Il faut enregistrer le point de tir.',
+    'season.plusMinus':   'Plus/moins cumulé',
+    'season.noPlusMinus': 'Indique qui est sur le terrain pendant les matchs pour le voir ici.',
+    'season.noEvents':    'Aucun n’a encore été noté.',
+
+    // --------------------------------------------------------- marcador y CSV
+    'timeline.title':     'Évolution de l’écart de buts',
+    'timeline.range':     'min 0 – {n}',
+    'timeline.goalByGoal':'but par but',
+    'timeline.bestRunUs':    'Meilleure série : {n} buts d’affilée pour nous',
+    'timeline.bestRunThem':  'Meilleure série : {n} buts d’affilée pour l’adversaire',
+    'timeline.bestRunWhen':  ' (min {desde}–{hasta})',
+
+    // Las cabeceras se traducen; los códigos de resultado y de zona, no.
+    'csv.type':       'type',
+    'csv.period':     'mi_temps',
+    'csv.minute':     'minute',
+    'csv.side':       'cote',
+    'csv.result':     'resultat',
+    'csv.goalZone':   'zone_but',
+    'csv.player':     'joueur',
+    'csv.dorsal':     'numero',
+    'csv.courtZone':  'zone_terrain',
+    'csv.originX':    'origine_x',
+    'csv.originY':    'origine_y',
+    'csv.shot':       'tir',
+    'csv.event':      'evenement',
+    'csv.ourGoal':    'notre but',
+    'csv.rivalGoal':  'but adverse',
+    'csv.fileName':   'match',
+
+    'share.efficiency':  'Efficacité',
+    'share.shots':       'Tirs',
+    'share.saves':       'Arrêts',
+    'share.savePct':     '% arrêts',
+    'share.scorers':     'BUTEURS',
+    'share.noScorers':   'Aucun but enregistré par joueur',
+    'share.madeWith':    'Fait avec SuperStat',
+    'share.goal_one':    '{n} but',
+    'share.goal_other':  '{n} buts',
+    'share.failed':      'Impossible de générer l’image',
+    'share.savedTo':     'Enregistré dans Documents : {archivo}',
+    'share.downloaded':  'Téléchargé',
+
+    // ------------------------------------------------------- partido en vivo
+    'setup.title':      'Nouveau match',
+    'setup.rivalName':  'Nom de l’équipe adverse',
+    'setup.rivalHint':  'Ex. CE Granollers',
+    'setup.date':       'Date',
+    'setup.start':      'Commencer à enregistrer les tirs',
+
+    'live.save':          'Enregistrer',
+    'live.ourGoal':       'Notre but',
+    'live.rivalGoal':     'But adverse',
+    'live.keeperIs':      '{quien} au but',
+    'live.rivalShoots':   'l’adversaire tire',
+    'live.weShoot':       'nous tirons',
+    'live.tally':         '{g} B · {p} A · {f} hors cadre',
+    'live.tallyPost':     ' · {n} poteau',
+    'live.out':           'Hors cadre',
+    'live.post':          'Poteau',
+    'live.undo':          'Annuler',
+    'live.tapHint':       '1 appui = but · 2 appuis = arrêt',
+    'live.quickLog':      'Saisie rapide',
+    'live.undoEvent':     'Annuler {que}',
+    'live.undoEventOf':   'Annuler {que} de {quien}',
+    'live.inGoal':        'Au but',
+    'live.keeperUnset':   'non défini : les buts encaissés n’auront pas de gardien',
+    'live.noKeepers':     'Il n’y a aucun gardien dans l’effectif.',
+    'live.onCourt':       'Sur le terrain',
+    'live.tooMany':       ' · tu en as trop',
+    'live.noFieldPlayers':'Il n’y a aucun joueur de champ dans l’effectif.',
+    'live.courtHint':     'Appuie sur qui entre ou qui sort. C’est de là que sort le plus/moins de chacun.',
+    'live.options':       'Options',
+    'live.askOrigin':     'Demander la zone de tir',
+    'live.discard':       'Abandonner le match',
+    'live.discardAsk':    'Abandonner ce match ? Les tirs enregistrés seront perdus.',
+    'live.half':          'Mi-temps {n}',
+    'live.endFirstHalf':  'Fin 1re mi-temps',
+    'live.clockStop':     'Arrêter le chrono',
+    'live.clockStart':    'Lancer le chrono',
+    'live.halfEnded':     'Fin de la première mi-temps à la minute {n}',
+    'live.flashGoal':     'BUT',
+    'live.flashSave':     'ARRÊT',
+    'live.matchSaved':    'Match enregistré',
+    'live.matchSavedHere':'Match enregistré sur cet appareil',
+
+    'ask.goal':      'Qui a marqué ?',
+    'ask.save':      'Qui a tiré ?',
+    'ask.out':       'Qui a tiré hors cadre ?',
+    'ask.post':      'Qui a touché le poteau ?',
+    'ask.player':    'Choisis un joueur',
+    'ask.keeper':    'Quel gardien avons-nous au but ?',
+    'ask.keeperSub': 'Il reste en place pour le reste du match ; tu peux le changer quand un autre entre.',
+    'ask.whichPlayer':'Quel joueur ?',
+    'ask.origin':    'D’où a-t-il tiré ?',
+    'ask.originSub': 'Attaque de {quien} · appuie sur le point exact du terrain'
+  };
+
+  const DE = {
+    // ---------------------------------------------------------------- común
+    'common.loading':        'Lädt…',
+    'common.cancel':         'Abbrechen',
+    'common.saveChanges':    'Änderungen speichern',
+    'common.unspecified':    'Nicht angegeben',
+    'common.unassigned':     'nicht zugeordnet',
+    'common.noData':         'Noch keine Daten.',
+    'common.myAccount':      'mein Konto',
+    'common.yourTeam':       'Dein Team',
+    'common.edit':           'Bearbeiten',
+    'common.delete':         'Löschen',
+    'common.wait':           'Einen Moment…',
+    'common.cancelNoRecord': 'Abbrechen, nicht erfassen',
+
+    'app.title':    'SuperStat — Handball-Statistiken',
+    'app.tagline':  'Handball-Spielstatistiken, Team für Team, Wurf für Wurf.',
+
+    // -------------------------------------------------------- sincronización
+    'sync.syncing':      'Wird synchronisiert…',
+    'sync.pending':      'Änderungen warten auf den Upload',
+    'sync.offline':      'Offline: wird hier gespeichert und bei Netz hochgeladen',
+    'sync.error':        'Synchronisieren hat nicht geklappt. Es wird von allein erneut versucht.',
+    'sync.local':        'Supabase nicht eingerichtet: die Daten liegen nur auf diesem Gerät',
+    'sync.pendingCount': ' · {n} nicht hochgeladen',
+
+    // ----------------------------------------------------------- barra y nav
+    'nav.teams':     'Teams',
+    'nav.matches':   'Spiele',
+    'nav.account':   'Konto',
+    'nav.newMatch':  'Neues Spiel',
+    'nav.pickTeam':  'Wähle zuerst ein Team',
+
+    // ------------------------------------------------------------- la pista
+    'court.title':   'Handball-Spielfeldhälfte',
+
+    // -------------------------------------------------------- posiciones
+    'position.Portero':            'Torwart',
+    'position.Lateral izquierdo':  'Rückraum links',
+    'position.Central':            'Rückraum Mitte',
+    'position.Lateral derecho':    'Rückraum rechts',
+    'position.Extremo izquierdo':  'Linksaußen',
+    'position.Extremo derecho':    'Rechtsaußen',
+    'position.Pivote':             'Kreisläufer',
+
+    // ------------------------------------------------- zonas de lanzamiento
+    'origin.EI':   'Linksaußen',
+    'origin.LI':   'Rückraum links',
+    'origin.CE':   'Rückraum Mitte',
+    'origin.LD':   'Rückraum rechts',
+    'origin.ED':   'Rechtsaußen',
+    'origin.PIV':  'Kreisläufer',
+    'origin.7M':   '7 Meter',
+
+    // ---------------------------------------------------- zonas de portería
+    'goalZone.1':  'oben links',
+    'goalZone.2':  'oben Mitte',
+    'goalZone.3':  'oben rechts',
+    'goalZone.4':  'Mitte links',
+    'goalZone.5':  'Mitte zentral',
+    'goalZone.6':  'Mitte rechts',
+    'goalZone.7':  'unten links',
+    'goalZone.8':  'unten Mitte',
+    'goalZone.9':  'unten rechts',
+
+    // -------------------------------------------------------------- eventos
+    'event.turnover':   'Ballverlust',
+    'event.steal':      'Ballgewinn',
+    'event.exclusion':  '2 Minuten',
+    'event.yellow':     'Gelbe Karte',
+    'event.red':        'Rote Karte',
+    'event.assist':     'Assist',
+    'event.block':      'Block',
+    'event.foul7m':     '7 m herausgeholt',
+    'event.in':         'Kommt aufs Feld',
+    'event.out':        'Geht vom Feld',
+
+    'eventShort.turnover':  'BV',
+    'eventShort.steal':     'BG',
+    'eventShort.exclusion': '2′',
+    'eventShort.yellow':    'GK',
+    'eventShort.red':       'RK',
+
+    // --------------------------------------------------------------- meses
+    'month.1':  'Jan.', 'month.2':  'Feb.',  'month.3':  'März', 'month.4':  'Apr.',
+    'month.5':  'Mai',  'month.6':  'Juni',  'month.7':  'Juli', 'month.8':  'Aug.',
+    'month.9':  'Sep.', 'month.10': 'Okt.',  'month.11': 'Nov.', 'month.12': 'Dez.',
+    // El punto va detrás del día: "13. Jan.".
+    'date.short': '{d}. {mes}',
+    'number.decimal': ',',
+
+    // ------------------------------------------------------------- tarjetas
+    'team.playerCount_one':   '{n} Spieler',
+    'team.playerCount_other': '{n} Spieler',
+    'team.rosterCount_one':   '{n} Spieler im Kader',
+    'team.rosterCount_other': '{n} Spieler im Kader',
+    'result.win':   'Sieg',
+    'result.loss':  'Niederlage',
+    'result.draw':  'Unentschieden',
+
+    // ------------------------------------------------------------- entrada
+    'auth.noConfig':      'Supabase ist nicht eingerichtet. Trage in <code>js/config.js</code> die Projekt-URL und den anon-Schlüssel ein (Project Settings → API).',
+    'auth.noConfigHint':  'Bis dahin kannst du dich weder anmelden noch etwas speichern.',
+    'auth.orEmail':       'oder mit deiner E-Mail-Adresse',
+    'auth.login':         'Anmelden',
+    'auth.register':      'Konto erstellen',
+    'auth.email':         'E-Mail-Adresse',
+    'auth.emailHint':     'du@email.de',
+    'auth.password':      'Passwort',
+    'auth.toLogin':       'Schon ein Konto? Melde dich an',
+    'auth.toRegister':    'Noch kein Konto? Erstelle eins',
+    'auth.footer':        'Deine Daten werden in deinem Konto gespeichert und zwischen deinen Geräten synchronisiert.',
+    'auth.googleBtn':     'Mit Google anmelden',
+    'auth.needBoth':      'Gib deine E-Mail-Adresse und dein Passwort ein.',
+    'auth.confirmSent':   'Konto erstellt. Bestätige die E-Mail, die wir dir geschickt haben, und melde dich an.',
+
+    // errores de Supabase, que vienen en inglés
+    'authError.googleNoToken':  'Google hat keine Sitzung zurückgegeben. Versuche es noch einmal.',
+    'authError.googleOff':      'Die Anmeldung mit Google ist gerade nicht möglich.',
+    'authError.googleSign':     'Die App ist bei Google nicht mit dieser Signatur registriert. Prüfe die Client-ID und den SHA-1-Fingerabdruck.',
+    'authError.badLogin':       'E-Mail-Adresse oder Passwort falsch.',
+    'authError.alreadyUser':    'Mit dieser E-Mail-Adresse gibt es schon ein Konto. Melde dich an, statt eins zu erstellen.',
+    'authError.shortPassword':  'Das Passwort ist zu kurz: mindestens 6 Zeichen.',
+    'authError.badEmail':       'Diese E-Mail-Adresse sieht nicht gültig aus.',
+    'authError.notConfirmed':   'Du musst deine E-Mail-Adresse bestätigen, bevor du dich anmeldest. Sieh in deinem Posteingang nach.',
+    'authError.edgeFunction':   'Der Löschdienst ist nicht erreichbar. Prüfe deine Verbindung; wenn es weiter fehlschlägt, kannst du die Löschung per E-Mail über die Datenschutzerklärung beantragen.',
+    'authError.network':        'Keine Verbindung zum Server. Prüfe dein Netzwerk.',
+    'authError.generic':        'Konnte nicht abgeschlossen werden: {msg}',
+    'authError.unknown':        'unbekannter Fehler',
+    'google.noClientId':        'Für die Anmeldung mit Google fehlt die Client-ID in js/config.js.',
+    'google.noSecureContext':   'Die Anmeldung mit Google braucht https (oder localhost).',
+    'google.notLoaded':         'Die Google-Schaltfläche konnte nicht geladen werden. Prüfe deine Verbindung.',
+
+    // ------------------------------------------------------------- migración
+    'migrate.title':    'Daten in diesem Browser',
+    'migrate.body':     'In diesem Browser liegen Teams und Spiele aus der Zeit vor den Konten. Möchtest du sie in deins übernehmen?',
+    'migrate.note':     'Sie werden kopiert, nicht gelöscht. Wenn du ablehnst, bleiben sie, wo sie sind, und es wird nicht noch einmal gefragt.',
+    'migrate.yes':      'In mein Konto importieren',
+    'migrate.no':       'Nein, bei null anfangen',
+    'migrate.done_one':   '{n} Spiel importiert',
+    'migrate.done_other': '{n} Spiele importiert',
+    'migrate.doneEmpty':  'Daten importiert',
+
+    // --------------------------------------------------------------- panel
+    'dashboard.title':      'Teams',
+    'dashboard.empty':      'Du hast noch kein Team',
+    'dashboard.emptyHint':  'Erstelle dein erstes Team, um Spiele zu erfassen.',
+    'dashboard.newTeam':    'Neues Team',
+    'dashboard.teamName':   'Teamname',
+    'dashboard.teamHint':   'z. B. CB Sabadell',
+    'dashboard.create':     'Team erstellen',
+    'dashboard.nameTooLong':'Der Teamname ist zu lang (maximal 80 Zeichen).',
+
+    'resume.unsaved':   'Nicht gespeichert',
+    'resume.continue':  'Spiel fortsetzen',
+    'resume.drop':      'Verwerfen',
+    'resume.dropAsk':   'Das nicht gespeicherte Spiel verwerfen? Alles Erfasste geht verloren.',
+
+    // --------------------------------------------------------------- cuenta
+    'account.title':        'Konto',
+    'account.teams_one':    '{n} Team in diesem Konto',
+    'account.teams_other':  '{n} Teams in diesem Konto',
+    'account.sync':         'Synchronisierung',
+    'account.allGood':      'Alles aktuell',
+    'account.allGoodSub':   'Deine Daten liegen in der Cloud und auf diesem Gerät.',
+    'account.session':      'Sitzung',
+    'account.logout':       'Abmelden',
+    'account.language':     'Sprache',
+    'account.languageSub':  'Nur auf diesem Gerät: wird nicht mit dem Konto synchronisiert.',
+    'account.deleteTitle':  'Konto löschen',
+    'account.deleteSub':    'Das Konto und alles darin wird gelöscht: Teams, Kader, Spiele, Würfe und Ereignisse, auf diesem Gerät und in der Cloud. Das lässt sich nicht rückgängig machen.',
+    'account.deleteBtn':    'Mein Konto löschen',
+    'account.deleteNoUndo': 'Das lässt sich nicht rückgängig machen',
+    'account.deleteAsk':    'Schreibe <strong>{palabra}</strong>, um zu bestätigen, dass du das Konto und alles darin löschen willst.',
+    'account.deleteWord':   'LÖSCHEN',
+    'account.deleteLabel':  'Bestätigung',
+    'account.deleteGo':     'Konto löschen',
+    'account.deleting':     'Wird gelöscht…',
+    'account.deleteType':   'Schreibe {palabra}, um zu bestätigen.',
+    'account.deleteFailed': 'Das Konto konnte nicht gelöscht werden.',
+    'account.deleted':      'Konto gelöscht',
+
+    // ---------------------------------------------------------------- plan
+    // `limit.subApp` es el que ve la app de Android e iPhone: ni precio, ni
+    // dónde se compra, ni nombrar la web (ver puedeComprar en app.js).
+    'plan.title':        'Tarif',
+    'plan.free':         'Gratis-Tarif',
+    'plan.pro':          'SuperStat Pro',
+    'plan.trialing':     'SuperStat Pro · Testphase',
+    'plan.until':        'Aktiv bis zum {d}',
+    'plan.manage':       'Abo verwalten',
+    'plan.emails':       'E-Mail-Benachrichtigungen',
+    'plan.emailsSub':    'Neuigkeiten und Hinweise zu deinem Tarif. Du kannst dich jederzeit abmelden.',
+    'plan.emailsFailed': 'Die Änderung konnte nicht gespeichert werden.',
+    'plan.freeUse':      'Du hast {n} von {tope} gespeicherten Spielen.',
+
+    'limit.title_one':   'Der Gratis-Tarif reicht bis {n} Team',
+    'limit.title_other': 'Der Gratis-Tarif reicht bis {n} Teams',
+    'limit.subWeb':      'Mit SuperStat Pro führst du so viele Teams, wie du willst, jedes mit eigenem Kader und eigenen Spielen.',
+    'limit.subApp':      'Du kannst weiter Spiele erfassen und das Team bearbeiten, das du schon hast.',
+    'limit.matchTitle_one':   'Der Gratis-Tarif reicht bis {n} gespeichertes Spiel',
+    'limit.matchTitle_other': 'Der Gratis-Tarif reicht bis {n} gespeicherte Spiele',
+    'limit.matchSubWeb':      'Mit SuperStat Pro speicherst du so viele Spiele, wie du willst, mit Wurfkarte und Saisonbilanz.',
+    'limit.matchSubApp':      'Die Spiele, die du schon hast, bleiben da: Sie lassen sich öffnen, korrigieren und exportieren wie immer.',
+    'limit.seePro':      'SuperStat Pro ansehen',
+
+    'paywall.title':      'SuperStat Pro',
+    'paywall.sub':        'Alle deine Teams und alle deine Spiele im selben Konto',
+    'paywall.f1':         'Teams ohne Limit, jedes mit eigenem Kader',
+    'paywall.f2':         'Spiele ohne Limit, mit Wurfkarte und Saisonbilanz',
+    'paywall.f3':         'Dieselben Daten auf dem Handy und am Rechner, auch ohne Netz',
+    'paywall.priceMonth': '{p} pro Monat',
+    'paywall.trial':      'Die ersten 7 Tage sind gratis. Jederzeit kündbar.',
+    'paywall.go':         'Die 7 Tage kostenlos testen',
+    'paywall.going':      'Bezahlung wird geöffnet…',
+    'paywall.failed':     'Die Bezahlseite konnte nicht geöffnet werden. Versuche es noch einmal.',
+    'paywall.legal':      'Die Zahlung wickelt Stripe ab. SuperStat speichert keine Kartendaten.',
+    'paywall.checking':   'Zahlung wird geprüft…',
+    'paywall.welcome':    'Du hast jetzt SuperStat Pro',
+    'paywall.soon':       'Die Zahlung ist eingegangen. Der Tarif wird gleich aktiviert.',
+
+    // -------------------------------------------------------------- equipo
+    'team.roster':        'Kader',
+    'team.noPlayers':     'Noch keine Spieler.',
+    'team.editPlayer':    'Spieler bearbeiten',
+    'team.newPlayer':     'Neuer Spieler',
+    'team.name':          'Name',
+    'team.nameHint':      'Name des Spielers',
+    'team.dorsal':        'Rückennummer',
+    'team.position':      'Position',
+    'team.addPlayer':     'Spieler hinzufügen',
+    'team.matches':       'Spiele',
+    'team.newMatch':      '＋ Neues Spiel',
+    'team.viewMatches':   'Statistiken früherer Spiele ansehen',
+    'team.viewSeason':    'Saisonbilanz',
+    'team.deleteTitle':   'Löschen',
+    'team.deleteSub':     'Mit dem Team gehen sein Kader und alle seine Spiele, samt allem, was darin erfasst wurde. Das lässt sich nicht rückgängig machen.',
+    'team.deleteBtn':     'Dieses Team löschen',
+    'team.deleteAsk_one':   'Das Team {equipo} löschen? Sein Kader und {n} Spiel gehen mit, samt allem Erfassten. Das lässt sich nicht rückgängig machen.',
+    'team.deleteAsk_other': 'Das Team {equipo} löschen? Sein Kader und {n} Spiele gehen mit, samt allem Erfassten. Das lässt sich nicht rückgängig machen.',
+    'team.deleted':       'Team gelöscht',
+    'team.playerSaved':   'Spieler aktualisiert',
+    'team.needNameDorsal':'Gib Name und Rückennummer ein.',
+    'team.badDorsal':     'Die Rückennummer muss eine Zahl zwischen 0 und 99 sein.',
+    'team.nameTooLong':   'Der Name ist zu lang (maximal 80 Zeichen).',
+
+    // ------------------------------------------------------ lista de partidos
+    'matchList.title':   'Spiele',
+    'matchList.empty':   'Noch keine gespeicherten Spiele.',
+    'matchList.season':  'Saisonbilanz ansehen',
+
+    // ------------------------------------------------------ ficha de partido
+    'match.vs':             'vs {rival}',
+    'match.halfTimeAt':     'Halbzeit in der {n}′',
+    'match.ourShots':       'Unsere Würfe (gegnerisches Tor)',
+    'match.goals':          'Tore',
+    'match.savedByRival':   'Vom Gegner gehalten',
+    'match.outAndPosts':    'Daneben und Pfosten',
+    'match.efficiency':     'Wurfquote',
+    'match.scorers':        'Torschützen des Spiels',
+    'match.goalsUnit_one':   '{n} Tor',
+    'match.goalsUnit_other': '{n} Tore',
+    'match.whereWeShoot':   'Von wo wir werfen',
+    'match.goalsPerShots':  'Tore / Würfe',
+    'match.whereInGoal':    'In welchen Teil des Tors',
+    'match.fromEachZone':   'aus jeder Zone',
+    'match.rivalShots':     'Gegnerische Würfe (eigenes Tor)',
+    'match.conceded':       'Gegentore',
+    'match.ourSaves':       'Paraden deines Torwarts',
+    'match.rivalOut':       'Daneben vom Gegner',
+    'match.savePct':        '% Paraden Torwart',
+    'match.keepers':        'Torhüter',
+    'match.savesPerFaced':  'Paraden / erhaltene Würfe',
+    'match.whereTheyShoot': 'Von wo auf uns geworfen wird',
+    'match.plusMinus':      'Plus/Minus',
+    'match.plusMinusSub':   'mit jedem Spieler auf dem Feld',
+    'match.otherRecords':   'Weitere Einträge',
+    'match.share':          'Teilen',
+    'match.shareImage':     'Bild',
+    'match.downloadCsv':    'CSV herunterladen',
+    'match.edit':           'Spiel bearbeiten',
+    'match.rival':          'Gegner',
+    'match.date':           'Datum',
+    'match.halfTimeMinute': 'Minute der Halbzeit',
+    'match.halfTimeEmpty':  'Nicht angegeben',
+    'match.deleteBtn':      'Dieses Spiel löschen',
+    'match.deleteAsk':      'Das Spiel gegen {rival} löschen? Das lässt sich nicht rückgängig machen.',
+    'match.deleted':        'Spiel gelöscht',
+    'match.saved':          'Spiel aktualisiert',
+    'match.needRivalDate':  'Gib Gegner und Datum an.',
+    'match.rivalTooLong':   'Der Name des Gegners ist zu lang (maximal 80 Zeichen).',
+    'match.badHalfTime':    'Die Minute der Halbzeit muss eine Minutenzahl sein.',
+
+    'stats.noShotsAtUs':    'Noch keine Würfe auf unser Tor.',
+    'stats.needCourtMark':  'Markiere während des Spiels, wer auf dem Feld steht, und hier siehst du, was auf der Anzeigetafel passiert, während jeder spielt.',
+    'stats.noEvents':       'In diesem Spiel wurde keins erfasst.',
+    'stats.needOrigin':     'Der Wurfpunkt muss erfasst sein, um ihn mit dem Tor zu kreuzen.',
+    'stats.crossLegend':    'Tore / Würfe in jeden Teil des Tors. Je heller, desto öfter wird dorthin geworfen.',
+    'stats.crossCell':      '{zona}: {goles} von {n}',
+    'stats.shotsUnit_one':   '{n} Wurf',
+    'stats.shotsUnit_other': '{n} Würfe',
+
+    // --------------------------------------------------------- mapa de tiros
+    'map.all':        'Alles',
+    'map.half':       '{n}. Halbzeit',
+    'map.heat':       'Heatmap',
+    'map.allPlayers': 'Alle Spieler',
+    'map.noPoints':   'Kein Wurf mit erfasstem Punkt.',
+    'map.noPointsFiltered': 'Kein Wurf mit erfasstem Punkt für diesen Filter.',
+    'map.shots_one':   '{n} Wurf',
+    'map.shots_other': '{n} Würfe',
+    'map.goals_one':   '{n} Tor',
+    'map.goals_other': '{n} Tore',
+    'map.saves_one':   '{n} Parade',
+    'map.saves_other': '{n} Paraden',
+    'map.out':         '{n} daneben',
+
+    // ----------------------------------------------------------- anotaciones
+    'annot.title':        'Einträge',
+    'annot.titleSub':     'in der Reihenfolge, in der sie erfasst wurden',
+    'annot.empty':        'Dieses Spiel hat keine Einträge.',
+    'annot.delete':       'Eintrag löschen',
+    'annot.deleted':      'Eintrag gelöscht',
+    'annot.rival.goal':   'Tor',
+    'annot.rival.save':   'Parade des gegnerischen Torwarts',
+    'annot.rival.out':    'Wurf daneben',
+    'annot.rival.post':   'Pfosten',
+    'annot.own.goal':     'Gegentor',
+    'annot.own.save':     'Parade',
+    'annot.own.out':      'Wurf des Gegners daneben',
+    'annot.own.post':     'Pfosten des Gegners',
+    'annot.shot':         'Wurf',
+    'annot.by':           '{que} von {quien}',
+    'annot.keeper':       '{que} · Torwart {quien}',
+    'annot.withPlayer':   '{que} · {quien}',
+    'annot.minute':       '{n}′',
+    'annot.minuteHalf':   '{n}′ · {parte}. Halbzeit',
+    'annot.half':         '{n}. Halbzeit',
+
+    // ------------------------------------------------------------- temporada
+    'season.title':       'Saison',
+    'season.empty':       'Noch keine Spiele',
+    'season.emptyHint':   'Sobald du eins speicherst, wird hier alles zusammengezählt: Torschützen, Torhüter und die Zonen, aus denen am besten geworfen wird.',
+    'season.played_one':  '{n} Spiel',
+    'season.played_other':'{n} Spiele',
+    'season.record':      'Siege · Unentschieden · Niederlagen',
+    'season.total':       'Insgesamt',
+    'season.goalsFor':    'Tore · {n}/Spiel',
+    'season.goalsAgainst':'Gegentore · {n}/Spiel',
+    'season.effIn_one':     'Wurfquote bei {n} Wurf',
+    'season.effIn_other':   'Wurfquote bei {n} Würfen',
+    'season.savesIn_one':   'Paraden bei {n} erhaltenen Wurf',
+    'season.savesIn_other': 'Paraden bei {n} erhaltenen Würfen',
+    'season.scorers':     'Torschützen',
+    'season.wholeSeason': 'die ganze Saison',
+    'season.perMatch':    '{n}/Spiel',
+    'season.noScorers':   'Noch keine Tore einem Spieler zugeordnet.',
+    'season.noFaced':     'Noch keine erhaltenen Würfe.',
+    'season.bestZones':   'Von wo wir am besten werfen',
+    'season.noOrigins':   'Der Wurfpunkt muss erfasst sein.',
+    'season.plusMinus':   'Plus/Minus gesamt',
+    'season.noPlusMinus': 'Markiere während der Spiele, wer auf dem Feld steht, um es hier zu sehen.',
+    'season.noEvents':    'Noch keins erfasst.',
+
+    // --------------------------------------------------------- marcador y CSV
+    'timeline.title':     'Entwicklung der Tordifferenz',
+    'timeline.range':     'Min. 0 – {n}',
+    'timeline.goalByGoal':'Tor für Tor',
+    'timeline.bestRunUs':    'Beste Serie: {n} Tore in Folge für uns',
+    'timeline.bestRunThem':  'Beste Serie: {n} Tore in Folge für den Gegner',
+    'timeline.bestRunWhen':  ' (Min. {desde}–{hasta})',
+
+    // Las cabeceras se traducen; los códigos de resultado y de zona, no.
+    'csv.type':       'typ',
+    'csv.period':     'halbzeit',
+    'csv.minute':     'minute',
+    'csv.side':       'seite',
+    'csv.result':     'ergebnis',
+    'csv.goalZone':   'torzone',
+    'csv.player':     'spieler',
+    'csv.dorsal':     'nummer',
+    'csv.courtZone':  'feldzone',
+    'csv.originX':    'ursprung_x',
+    'csv.originY':    'ursprung_y',
+    'csv.shot':       'wurf',
+    'csv.event':      'ereignis',
+    'csv.ourGoal':    'unser tor',
+    'csv.rivalGoal':  'gegnerisches tor',
+    'csv.fileName':   'spiel',
+
+    'share.efficiency':  'Wurfquote',
+    'share.shots':       'Würfe',
+    'share.saves':       'Paraden',
+    'share.savePct':     '% Paraden',
+    'share.scorers':     'TORSCHÜTZEN',
+    'share.noScorers':   'Keine Tore je Spieler erfasst',
+    'share.madeWith':    'Gemacht mit SuperStat',
+    'share.goal_one':    '{n} Tor',
+    'share.goal_other':  '{n} Tore',
+    'share.failed':      'Das Bild konnte nicht erzeugt werden',
+    'share.savedTo':     'In Dokumente gespeichert: {archivo}',
+    'share.downloaded':  'Heruntergeladen',
+
+    // ------------------------------------------------------- partido en vivo
+    'setup.title':      'Neues Spiel',
+    'setup.rivalName':  'Name der gegnerischen Mannschaft',
+    'setup.rivalHint':  'z. B. CE Granollers',
+    'setup.date':       'Datum',
+    'setup.start':      'Mit dem Erfassen der Würfe beginnen',
+
+    'live.save':          'Speichern',
+    'live.ourGoal':       'Unser Tor',
+    'live.rivalGoal':     'Gegnerisches Tor',
+    'live.keeperIs':      '{quien} im Tor',
+    'live.rivalShoots':   'der Gegner wirft',
+    'live.weShoot':       'wir werfen',
+    'live.tally':         '{g} T · {p} P · {f} daneben',
+    'live.tallyPost':     ' · {n} Pfosten',
+    'live.out':           'Daneben',
+    'live.post':          'Pfosten',
+    'live.undo':          'Rückgängig',
+    'live.tapHint':       '1 Tippen = Tor · 2 Tippen = Parade',
+    'live.quickLog':      'Schnellerfassung',
+    'live.undoEvent':     '{que} rückgängig machen',
+    'live.undoEventOf':   '{que} von {quien} rückgängig machen',
+    'live.inGoal':        'Im Tor',
+    'live.keeperUnset':   'nicht festgelegt: die Gegentore haben dann keinen Torwart',
+    'live.noKeepers':     'Es ist kein Torwart im Kader.',
+    'live.onCourt':       'Auf dem Feld',
+    'live.tooMany':       ' · das sind zu viele',
+    'live.noFieldPlayers':'Es sind keine Feldspieler im Kader.',
+    'live.courtHint':     'Tippe an, wer rein- oder rausgeht. Daraus ergibt sich das Plus/Minus jedes Spielers.',
+    'live.options':       'Optionen',
+    'live.askOrigin':     'Nach der Wurfzone fragen',
+    'live.discard':       'Spiel verwerfen',
+    'live.discardAsk':    'Dieses Spiel verwerfen? Die erfassten Würfe gehen verloren.',
+    'live.half':          '{n}. Halbzeit',
+    'live.endFirstHalf':  'Ende 1. Halbzeit',
+    'live.clockStop':     'Uhr anhalten',
+    'live.clockStart':    'Uhr starten',
+    'live.halfEnded':     'Ende der ersten Halbzeit in Minute {n}',
+    'live.flashGoal':     'TOR',
+    'live.flashSave':     'PARADE',
+    'live.matchSaved':    'Spiel gespeichert',
+    'live.matchSavedHere':'Spiel auf diesem Gerät gespeichert',
+
+    'ask.goal':      'Wer hat getroffen?',
+    'ask.save':      'Wer hat geworfen?',
+    'ask.out':       'Wer hat danebengeworfen?',
+    'ask.post':      'Wer hat den Pfosten getroffen?',
+    'ask.player':    'Spieler auswählen',
+    'ask.keeper':    'Welchen Torwart haben wir im Tor?',
+    'ask.keeperSub': 'Er bleibt für den Rest des Spiels eingestellt; du kannst ihn wechseln, wenn ein anderer kommt.',
+    'ask.whichPlayer':'Welcher Spieler?',
+    'ask.origin':    'Von wo wurde geworfen?',
+    'ask.originSub': 'Angriff von {quien} · tippe den genauen Punkt auf dem Feld an'
+  };
+
+  const DICTS = { es: ES, en: EN, fr: FR, de: DE };
+  const LANGS = ['es', 'en', 'fr', 'de'];
+  const NAMES = { es:'Español', en:'English', fr:'Français', de:'Deutsch' };
 
   let lang = 'es';
 
@@ -980,12 +1902,22 @@ window.I18N = (function(){
     ));
   }
 
-  // Con `n` en los parámetros se prueba primero la forma de plural. El inglés y
-  // el español coinciden en partir por "uno / los demás", así que basta con dos
-  // formas; si algún día entra un idioma con más, es aquí donde se amplía.
-  function lookup(dict, key, params){
+  // Dónde parte cada idioma entre singular y plural. Los cuatro se arreglan con
+  // dos formas, pero no parten en el mismo sitio: el francés dice "0 tir" en
+  // singular, mientras que el español, el inglés y el alemán dicen "0 tiros".
+  // Y eso se ve: una temporada recién empezada enseña ceros por todas partes.
+  // Si algún día entra un idioma con más de dos formas (el polaco, el ruso), es
+  // aquí donde se amplía, no en cada plantilla.
+  const PLURAL = {
+    fr: n => (n === 0 || n === 1) ? '_one' : '_other',
+    _:  n => n === 1 ? '_one' : '_other'
+  };
+
+  // Con `n` en los parámetros se prueba primero la forma de plural.
+  function lookup(dict, key, params, code){
     if(params && params.n !== undefined){
-      const suf = Number(params.n) === 1 ? '_one' : '_other';
+      const regla = PLURAL[code] || PLURAL._;
+      const suf = regla(Number(params.n));
       if(dict[key + suf] !== undefined) return dict[key + suf];
     }
     return dict[key];
@@ -993,12 +1925,12 @@ window.I18N = (function(){
 
   function t(key, params){
     const dict = DICTS[lang] || ES;
-    let text = lookup(dict, key, params);
+    let text = lookup(dict, key, params, lang);
     if(text === undefined){
       // Una clave sin traducir se enseña en español antes que como clave: el
       // usuario ve una palabra rara, no "season.noEvents". El aviso es para
       // quien programa, y test/i18n.js hace que no llegue a producción.
-      text = lookup(ES, key, params);
+      text = lookup(ES, key, params, 'es');
       if(text === undefined){
         console.warn('texto sin clave: ' + key);
         return key;

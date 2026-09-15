@@ -123,8 +123,18 @@ console.log('\n3. Ningún secreto de servidor en lo que se descarga');
 // de cualquiera que abra la web. Lo que no puede aparecer jamás en el navegador
 // es la clave de servicio, que se salta RLS entera, ni una clave de Stripe o de
 // Resend. Se mira en todo lo que se sirve, no solo en config.js.
-const DELCLIENTE = ['index.html', 'privacidad.html', 'sw.js', 'css/styles.css']
+// Los .html se buscan en la raíz en vez de nombrarlos: hay uno por idioma de la
+// política de privacidad y el día que se añada otro nadie se acordará de
+// apuntarlo aquí. Lo que se sirve del sitio es lo que hay que barrer.
+const DELCLIENTE = fs.readdirSync(RAIZ)
+  .filter(f => f.endsWith('.html'))
+  .concat(['sw.js', 'css/styles.css'])
   .concat(fs.readdirSync(path.join(RAIZ, 'js')).map(f => 'js/' + f));
+
+check('el barrido alcanza index.html y todas las políticas de privacidad',
+      DELCLIENTE.includes('index.html') &&
+      DELCLIENTE.filter(f => f.startsWith('privacidad')).length >= 1,
+      DELCLIENTE.filter(f => f.endsWith('.html')).join(', '));
 
 const VENENO = [
   [/service_role/, 'la clave de servicio'],

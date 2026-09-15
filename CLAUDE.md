@@ -60,9 +60,11 @@ no para usar la app.
   operaciones de sincronización (`pull` y `push`). No sabe de pantallas.
 - `js/store.js` — espejo local, cola de sincronización y fusión. Es la única
   puerta de entrada a los datos para el resto de la app.
-- `js/i18n.js` — los textos de la interfaz, en español y en inglés, y la
-  función `t()` que los busca. **Ningún texto visible se escribe en una
-  plantilla**: va aquí, en los dos idiomas.
+- `js/i18n.js` — los textos de la interfaz, en español, inglés, francés y
+  alemán, y la función `t()` que los busca. **Ningún texto visible se escribe en
+  una plantilla**: va aquí, en los cuatro idiomas. Los cuatro diccionarios están
+  en el mismo archivo a propósito: partirlos obligaría a mantener el archivo
+  nuevo en las tres listas de siempre para cargar de todas formas los cuatro.
 - `js/app.js` — toda la lógica de pantalla: una single-page app hecha a mano
   con `render()` que reconstruye `#app` según `state.screen`, sin frameworks.
 - `js/native.js` — puente con Android e iOS: las tres cosas que un WebView no
@@ -117,19 +119,25 @@ no para usar la app.
   dibujo de la marca.
 - `tools/build-www.js` — arma `www/` con lo que se empaqueta dentro de la app.
   **Si añades un archivo a la web, hay que añadirlo a su lista**, o no entrará.
-- `privacidad.html` — política de privacidad. Página suelta, sin CSS ni scripts
-  del resto: Google Play exige una URL pública que se abra sin instalar nada ni
-  entrar con una cuenta. **No entra en `tools/build-www.js` a propósito**: lo
-  que pide Play es el enlace en la ficha, no una pantalla más dentro de la app.
+- `privacidad.html` y `privacidad-en/-fr/-de.html` — política de privacidad, una
+  por idioma. Páginas sueltas, sin CSS ni scripts del resto: Google Play exige
+  una URL pública que se abra sin instalar nada ni entrar con una cuenta.
+  **No entran en `tools/build-www.js` a propósito**: lo que pide Play es el
+  enlace en la ficha, no una pantalla más dentro de la app. Y como no cargan ni
+  un script, tampoco pueden usar `i18n.js`: son cuatro archivos completos, y si
+  cambia lo que dice una hay que cambiar las cuatro. **La castellana no se
+  renombra**: su URL y su ancla `#borrar` están pegadas en Play Console, y el
+  ancla es la misma en las cuatro para que esas URL sean intercambiables.
 - `play/` — icono, gráfico de cabecera y capturas de la ficha de Google Play.
   No son producto: no entran en ningún binario y solo hacen falta al publicar.
 - `tools/make-play-assets.js` — genera el icono y la cabecera de la ficha.
 - `tools/make-screenshots.js` — genera las capturas: abre la app de verdad con
   los dobles de `test/` detrás, juega un partido inventado con semilla fija y
-  fotografía ocho pantallas. En los dos idiomas: sin nada, en castellano hacia
-  `play/capturas/`; con `IDIOMA=en`, en inglés hacia `play/capturas-en/`. La
-  semilla fija el partido, no el reloj: las cuatro capturas que enseñan un
-  minuto cambian entre ejecuciones y eso ya pasaba antes de que hubiera idiomas.
+  fotografía ocho pantallas. En los cuatro idiomas: sin nada, en castellano
+  hacia `play/capturas/`; con `IDIOMA=en|fr|de`, hacia `play/capturas-en/`,
+  `-fr` y `-de`. La semilla fija el partido, no el reloj: las cuatro capturas
+  que enseñan un minuto cambian entre ejecuciones y eso ya pasaba antes de que
+  hubiera idiomas.
 - `instagram/` — foto de perfil y publicaciones de las dos cuentas de
   Instagram. Como `play/`: no entra en ningún binario y solo hace falta al
   publicar.
@@ -326,12 +334,23 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   SVG va sin `<defs>` a propósito: así se puede repetir en la misma página sin
   sufijar ids, que es lo que sí necesita `courtSvg()`. El mismo dibujo está
   duplicado como favicon en `index.html`; si cambia uno, cambia el otro.
-- **La app es bilingüe, español e inglés.** Todo texto visible sale de
-  `js/i18n.js` con `t('clave')`; en las plantillas de `app.js` no debe quedar
-  ni una palabra escrita a mano, y una clave nueva se añade a los dos
-  diccionarios a la vez. `test/i18n.js` lo comprueba. El español es la fuente
-  de la verdad: si falta una clave en inglés, se enseña la española y se avisa
-  por consola.
+- **La app habla cuatro idiomas: español, inglés, francés y alemán.** Todo texto
+  visible sale de `js/i18n.js` con `t('clave')`; en las plantillas de `app.js`
+  no debe quedar ni una palabra escrita a mano, y una clave nueva se añade a los
+  cuatro diccionarios a la vez. `test/i18n.js` lo comprueba, comparando cada
+  idioma contra el español. El español es la fuente de la verdad: si falta una
+  clave en otro idioma, se enseña la española y se avisa por consola.
+- **Dónde parte el plural no es igual en todos.** `lookup()` no compara con 1 a
+  pelo: hay una tabla `PLURAL` en `i18n.js` porque el francés dice `0 tir` en
+  singular mientras el español, el inglés y el alemán dicen `0 tiros`, y una
+  temporada recién empezada está llena de ceros. Un idioma con más de dos formas
+  (polaco, ruso) se añade ahí y en ninguna plantilla.
+- **Añadir un idioma no es solo `i18n.js`.** La misma lista de códigos está en
+  el `check` de `avisos.lang` (`supabase/schema.sql`), en el filtro de
+  `supabase/functions/aviso-tope/`, en `IDIOMAS` de `_shared/correo.ts` y en
+  `tools/make-screenshots.js`. Olvidar la del esquema es el peor de los cuatro y
+  no se ve: `Store.setLang()` escribe `avisos.lang` sin esperar respuesta, así
+  que la app se ve en el idioma nuevo y los correos siguen llegando en español.
 - **Lo que viaja a Postgres no se traduce nunca.** La posición de un jugador se
   guarda como `'Portero'`, el tipo de un evento como `'turnover'` y la zona de
   lanzamiento como `'EI'`: son ids, y solo se traducen al pintarlos
@@ -341,8 +360,12 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   códigos de resultado y de zona.
 - El idioma es **del aparato y no de la cuenta**: se elige en la pantalla de
   Cuenta, lo guarda `Store.setLang()` en `hb:lang` (sin userId, porque hace
-  falta antes de entrar) y no se sincroniza. `?lang=es|en` manda sobre todo lo
-  demás, que es por donde lo piden las herramientas de `tools/`.
+  falta antes de entrar) y no se sincroniza. `?lang=es|en|fr|de` manda sobre
+  todo lo demás, que es por donde lo piden las herramientas de `tools/`.
+  Ojo al probarlo a mano: `npm start` levanta `npx serve`, que redirige
+  `/index.html?lang=de` a `/` **y se deja la query por el camino**, así que hay
+  que pedir `http://localhost:5173/?lang=de`. A `make-screenshots.js` no le pasa
+  porque se sirve los archivos con su propio servidor.
 - Los errores que devuelve Supabase vienen siempre en inglés y no son para
   enseñarlos tal cual: se reconocen por su texto original en `authErrorText()`
   y se cambian por una clave del diccionario.

@@ -350,9 +350,16 @@ await DB.init().from('avisos').update({ tope_avisado_at:null }).eq('user_id','<t
 ### Los correos
 
 Con `RESEND_API_KEY` puesta, llega al tope con una cuenta de prueba y mira que
-el correo llegue **en el idioma en el que tengas la app**, y que el enlace de
-baja del pie funcione sin iniciar sesión. Después, el interruptor de *Avisos por
-correo* de la pantalla de Cuenta tiene que salir apagado.
+el correo llegue **en el idioma en el que tengas la app** —los cuatro, y no solo
+el castellano: cambia el idioma en *Cuenta* antes de chocar con el tope— y que
+el enlace de baja del pie funcione sin iniciar sesión, también en ese idioma.
+Después, el interruptor de *Avisos por correo* de la pantalla de Cuenta tiene
+que salir apagado.
+
+> Si el correo llega en español con la app en francés o en alemán, lo que falta
+> es la migración del `check` de `avisos.lang` en `supabase/schema.sql`: la
+> escritura del idioma la rechaza la base y nadie se entera, porque
+> `Store.setLang()` no espera respuesta. Vuelve a ejecutar el esquema entero.
 
 El aviso del tope se manda **como mucho una vez cada 30 días** por persona, y lo
 decide la función, no el navegador (`DIAS_ENTRE_AVISOS` en

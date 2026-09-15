@@ -48,11 +48,15 @@ Deno.serve(async (req) => {
   // El idioma con el que la app está funcionando ahora mismo. Es una copia para
   // los correos: la preferencia de interfaz es del aparato y no se sincroniza
   // (ver Store.setLang), así que sin esto el servidor no sabría en qué idioma
-  // escribir. Solo se aceptan los dos que existen.
+  // escribir. Solo se aceptan los que existen: la lista tiene que ser la misma
+  // que la de js/i18n.js, la del check de avisos.lang en schema.sql y la de
+  // _shared/correo.ts. Un idioma que falte aquí no rompe nada y no se ve: el
+  // correo sale en español.
+  const IDIOMAS = ['es', 'en', 'fr', 'de'];
   let lang: string | null = null;
   try {
     const cuerpo = await req.json();
-    if (cuerpo?.lang === 'es' || cuerpo?.lang === 'en') lang = cuerpo.lang;
+    if (typeof cuerpo?.lang === 'string' && IDIOMAS.includes(cuerpo.lang)) lang = cuerpo.lang;
   } catch (_e) { /* sin cuerpo: se queda el que hubiera */ }
   if (lang) await admin.from('avisos').update({ lang }).eq('user_id', uid);
 
