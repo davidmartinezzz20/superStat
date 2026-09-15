@@ -14,6 +14,13 @@
   El apartado "Cómo borrar tu cuenta" tiene su propio id (#borrar) porque esa
   ancla es la que se pega en Play Console → Seguridad de los datos → URL de
   eliminación de la cuenta. Si se renombra, hay que cambiarla también allí.
+
+  Hay una por idioma —privacidad-en.html, privacidad-fr.html y
+  privacidad-de.html—, y son cuatro archivos completos en vez de un texto que se
+  traduzca solo: la página no carga ni un script a propósito, así que no hay
+  dónde meter i18n.js. Si cambia lo que dice esta, hay que cambiar las cuatro, y
+  con ellas la fecha de "última actualización" de cada una. Esta, la castellana,
+  es la que está pegada en Play Console: su nombre no se toca.
 -->
 <html lang="es">
 <head>
@@ -21,6 +28,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Política de privacidad · SuperStat</title>
 <meta name="description" content="Qué datos guarda SuperStat, dónde se guardan y cómo borrarlos.">
+<link rel="alternate" hreflang="es" href="privacidad.html">
+<link rel="alternate" hreflang="en" href="privacidad-en.html">
+<link rel="alternate" hreflang="fr" href="privacidad-fr.html">
+<link rel="alternate" hreflang="de" href="privacidad-de.html">
+<link rel="alternate" hreflang="x-default" href="privacidad.html">
 <style>
   :root{
     --bg:#08090B; --panel:#141619; --line:rgba(255,255,255,0.08);
@@ -41,7 +53,16 @@
   .brand-word{font-size:20px; font-weight:700; letter-spacing:-0.02em;}
   .brand-word i{font-style:normal; color:var(--brand-2);}
   h1{font-size:30px; line-height:1.2; letter-spacing:-0.03em; margin:0 0 6px;}
-  .updated{color:var(--muted); font-size:14px; margin:0 0 30px;}
+  .updated{color:var(--muted); font-size:14px; margin:0 0 18px;}
+  /* La fila de idiomas. Es la única forma de llegar a las otras versiones: esta
+     página no la enlaza nadie desde la app, se abre desde la ficha de la tienda
+     o desde un correo, y quien cae en la que no entiende no tiene dónde ir. */
+  .langs{display:flex; flex-wrap:wrap; gap:8px; margin:0 0 30px;}
+  .langs a{
+    text-decoration:none; color:var(--muted); font-size:14px;
+    border:1px solid var(--line); border-radius:999px; padding:4px 12px;
+  }
+  .langs a[aria-current]{color:var(--text); border-color:var(--brand-2);}
   h2{font-size:19px; letter-spacing:-0.02em; margin:34px 0 10px; scroll-margin-top:20px;}
   p, li{color:#DCDEE3;}
   p{margin:0 0 12px;}
@@ -80,6 +101,13 @@
 
   <h1>Política de privacidad</h1>
   <p class="updated">Última actualización: 13 de septiembre de 2026</p>
+
+  <nav class="langs" aria-label="Idioma de la página">
+    <a href="privacidad.html" hreflang="es" aria-current="page">Español</a>
+    <a href="privacidad-en.html" hreflang="en">English</a>
+    <a href="privacidad-fr.html" hreflang="fr">Français</a>
+    <a href="privacidad-de.html" hreflang="de">Deutsch</a>
+  </nav>
 
   <p>SuperStat es una aplicación para llevar las estadísticas de un equipo de
   balonmano: plantilla, partidos, tiros y eventos. Esta página explica qué datos

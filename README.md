@@ -12,9 +12,10 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
   igual; lo pendiente se sube solo al volver la red, y la app te dice cuánto
   queda. Se puede **instalar en la pantalla de inicio** como una app más.
 - Gestión de uno o varios equipos, cada uno con su plantilla (nombre,
-  dorsal, posición). El plan gratuito lleva un equipo; **SuperStat Pro** quita
-  ese límite y se contrata en la web (ver
-  **[`docs/suscripcion.md`](docs/suscripcion.md)**).
+  dorsal, posición). El plan gratuito lleva un equipo y cinco partidos
+  guardados; **SuperStat Pro** quita los dos límites y se contrata en la web
+  (ver **[`docs/suscripcion.md`](docs/suscripcion.md)**). Lo que ya está
+  guardado no se toca nunca: los topes están solo en crear.
 - Alta de partidos nuevos contra un rival, con las dos porterías dibujadas
   una al lado de la otra (propia y rival), divididas en una cuadrícula de
   9 zonas.
@@ -61,10 +62,10 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
 - La **cuenta entera se borra desde la app**, en *Cuenta → Borrar la cuenta*:
   desaparece todo, aquí y en la nube, sin pedirle nada a nadie.
 - **Exportar** un partido en CSV o compartirlo como imagen resumen.
-- **En español y en inglés.** El idioma se elige en *Cuenta*, se detecta solo
-  del navegador la primera vez y es de este aparato: no se sincroniza con la
-  cuenta. Lo que se guarda en la base no cambia de idioma, así que un partido
-  anotado en español se lee igual en inglés.
+- **En español, inglés, francés y alemán.** El idioma se elige en *Cuenta*, se
+  detecta solo del navegador la primera vez y es de este aparato: no se
+  sincroniza con la cuenta. Lo que se guarda en la base no cambia de idioma, así
+  que un partido anotado en español se lee igual en alemán.
 
 ## Android y iOS
 
@@ -100,6 +101,13 @@ tablas, activar el login de Google y las URLs de redirección— están en
    `js/config.js`.
 3. Configurar el proveedor de Google siguiendo la guía: el ID de cliente va
    también en Supabase, y los orígenes desde los que se abre la app, en Google.
+
+La URL y la clave anon de `js/config.js` **se publican a propósito**: viajan
+dentro del JavaScript que descarga cualquiera que abra la web, así que no son un
+secreto. Lo único que separa los datos de un usuario de los de otro son las
+políticas RLS de `supabase/schema.sql`, y comprobar que aíslan de verdad es uno
+de los dos pasos que hay que hacer a mano antes de publicar. Está todo en
+**[`SECURITY.md`](SECURITY.md)**.
 
 ## Cómo ejecutarlo
 
@@ -139,11 +147,14 @@ css/styles.css         estilos
 js/config.js           URL y clave anon de Supabase, y los ID de Google
 js/db.js               sesión, login y sincronización con Supabase
 js/store.js            espejo local, cola de cambios y fusión
-js/i18n.js             los textos, en español y en inglés
+js/i18n.js             los textos, en los cuatro idiomas
 js/native.js           puente con la app de Android/iOS
 js/app.js              pantallas y lógica de la app
 vendor/                supabase-js y capacitor-core, copiados sin tocar
 sw.js                  caché del shell, para abrir sin cobertura
+js/sw-register.js      lo registra (aparte, para no tener scripts en línea)
+vercel.json            cabeceras de seguridad de la web (CSP, HSTS y compañía)
+SECURITY.md            cómo avisar de un fallo, y qué protege qué
 manifest.webmanifest   instalación en la pantalla de inicio
 capacitor.config.json  configuración de las apps nativas
 icons/  assets/        iconos de la web y materia prima de los de las apps
@@ -152,6 +163,7 @@ tools/build-www.js     junta lo que se empaqueta dentro de la app
 supabase/schema.sql    tablas, migraciones y políticas de seguridad
 supabase/functions/    borrado de cuenta, cobro con Stripe y avisos por correo
 privacidad.html        política de privacidad (la URL que pide Google Play)
+privacidad-en.html     la misma, en inglés, francés y alemán (-fr, -de)
 play/                  icono, cabecera y capturas de la ficha de Play
 instagram/             perfil y publicaciones de las dos cuentas
 tools/make-play-assets.js  genera el icono y la cabecera de la ficha

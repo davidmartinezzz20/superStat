@@ -11,7 +11,7 @@
 // Se despliega aparte del esquema (ver docs/suscripcion.md):
 //
 //   supabase functions deploy stripe-webhook
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.116.0';
 import Stripe from 'https://esm.sh/stripe@22.6.2?target=deno';
 import { enviarAviso } from '../_shared/correo.ts';
 
@@ -46,6 +46,18 @@ function finDePeriodo(sub: any): string | null {
   return iso(sub?.current_period_end ?? sub?.items?.data?.[0]?.current_period_end);
 }
 
+// Un id de usuario de Supabase es un uuid y nada más. Lo que llega en los
+// metadatos y en client_reference_id lo escribió la función `pago`, pero se
+// comprueba igual antes de usarlo: si algún día entrara por ahí cualquier otra
+// cosa —una suscripción creada a mano desde el panel de Stripe, una prueba
+// olvidada—, sin esto se iría tal cual a un `upsert`, la clave ajena lo
+// rechazaría, la función devolvería 500 y Stripe reintentaría el mismo evento
+// durante días. Con la comprobación se cae al cliente de Stripe, que es la vía
+// que sí sabe resolverlo.
+const esUuid = (s: unknown): s is string =>
+  typeof s === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+
 // De quién es este evento. Por orden de fiabilidad:
 //   1. Los metadatos que puso la función `pago`. Van en todos los eventos de la
 //      suscripción, incluido el primero, que es justo el que puede llegar
@@ -54,10 +66,10 @@ function finDePeriodo(sub: any): string | null {
 //   3. El cliente de Stripe, buscando la fila que ya se escribió.
 async function deQuienEs(obj: any): Promise<string | null> {
   const meta = obj?.metadata?.supabase_user_id;
-  if (typeof meta === 'string' && meta) return meta;
+  if (esUuid(meta)) return meta;
 
   const ref = obj?.client_reference_id;
-  if (typeof ref === 'string' && ref) return ref;
+  if (esUuid(ref)) return ref;
 
   const cliente = typeof obj?.customer === 'string' ? obj.customer : obj?.customer?.id;
   if (!cliente) return null;
@@ -66,7 +78,7 @@ async function deQuienEs(obj: any): Promise<string | null> {
     .select('user_id')
     .eq('stripe_customer_id', cliente)
     .maybeSingle();
-  return data?.user_id ?? null;
+  return esUuid(data?.user_id) ? data!.user_id : null;
 }
 
 // Los webhooks se reintentan y llegan desordenados. Sin esta comprobación, un

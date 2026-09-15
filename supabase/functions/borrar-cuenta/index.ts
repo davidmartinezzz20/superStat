@@ -20,8 +20,9 @@
 // Se despliega aparte del esquema (ver docs/supabase.md):
 //
 //   supabase functions deploy borrar-cuenta
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.116.0';
 import Stripe from 'https://esm.sh/stripe@22.6.2?target=deno';
+import { json, preflight } from '../_shared/cors.ts';
 
 // El orden importa: los hijos antes que los padres. Las claves ajenas de
 // schema.sql tienen "on delete cascade", pero borrar en orden no depende de eso
@@ -33,17 +34,8 @@ import Stripe from 'https://esm.sh/stripe@22.6.2?target=deno';
 const TABLAS = ['events', 'shots', 'matches', 'players', 'teams',
                 'subscriptions', 'avisos'];
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
-
-const json = (cuerpo: unknown, status = 200) =>
-  new Response(JSON.stringify(cuerpo), {
-    status,
-    headers: { ...CORS, 'Content-Type': 'application/json' }
-  });
+// CORS y la respuesta JSON, en _shared/cors.ts: quién puede llamar desde un
+// navegador es la misma lista para las tres funciones que llama la app.
 
 // Cancela la suscripción y borra el cliente de Stripe, que es donde queda el
 // correo de la persona y su historial de pagos. Es la otra mitad de lo que
@@ -84,12 +76,12 @@ async function cancelarEnStripe(admin: any, uid: string): Promise<void> {
 
 Deno.serve(async (req) => {
   // El navegador pregunta antes de llamar desde otro origen.
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return json({ error: 'method-not-allowed' }, 405);
+  if (req.method === 'OPTIONS') return preflight(req);
+  if (req.method !== 'POST') return json(req, { error: 'method-not-allowed' }, 405);
 
   const auth = req.headers.get('Authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!token) return json({ error: 'sin-sesion' }, 401);
+  if (!token) return json(req, { error: 'sin-sesion' }, 401);
 
   // SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY las pone Supabase en el entorno de
   // la función: no hay que declararlas ni subirlas a ninguna parte.
@@ -100,7 +92,7 @@ Deno.serve(async (req) => {
   );
 
   const { data: quien, error: errorSesion } = await admin.auth.getUser(token);
-  if (errorSesion || !quien?.user) return json({ error: 'sesion-no-valida' }, 401);
+  if (errorSesion || !quien?.user) return json(req, { error: 'sesion-no-valida' }, 401);
   const uid = quien.user.id;
 
   // Antes de borrar nada: cancelar lo que esté cobrándose en Stripe. Si no,
@@ -118,7 +110,7 @@ Deno.serve(async (req) => {
       .from(tabla)
       .delete({ count: 'exact' })
       .eq('user_id', uid);
-    if (error) return json({ error: 'no-se-pudo-borrar', tabla, detalle: error.message }, 500);
+    if (error) return json(req, { error: 'no-se-pudo-borrar', tabla, detalle: error.message }, 500);
     borradas[tabla] = count ?? 0;
   }
 
@@ -126,7 +118,7 @@ Deno.serve(async (req) => {
   // falla, los datos ya no están y se puede reintentar sin estropear nada, que
   // es mejor reparto que quedarse con los datos y sin cuenta.
   const { error: errorUsuario } = await admin.auth.admin.deleteUser(uid);
-  if (errorUsuario) return json({ error: 'no-se-pudo-borrar-el-usuario', detalle: errorUsuario.message }, 500);
+  if (errorUsuario) return json(req, { error: 'no-se-pudo-borrar-el-usuario', detalle: errorUsuario.message }, 500);
 
-  return json({ ok: true, borradas });
+  return json(req, { ok: true, borradas });
 });

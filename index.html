@@ -6,6 +6,39 @@
      del iPhone, así que la página tiene que llegar hasta el borde. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#08090B">
+
+<!-- Content-Security-Policy: de dónde puede salir cada cosa que carga esta
+     página. Es lo que convierte un fallo de escapado en nada: aunque alguien
+     colara un <script> en el nombre de un jugador, el navegador no lo
+     ejecutaría, y aunque lo ejecutara no podría mandar los datos a ninguna
+     parte, porque connect-src solo deja hablar con Supabase.
+
+     Va en el HTML y no solo en las cabeceras del servidor a propósito: dentro
+     de la app de Android e iPhone no hay servidor —los archivos se sirven del
+     propio aparato— y una cabecera de Vercel allí no llega. vercel.json repite
+     la misma política en cabecera para la web, que es donde además sí se puede
+     poner frame-ancestors (en <meta> se ignora).
+
+     Las tres excepciones son de Google, y solo del botón de entrar: su script,
+     el iframe que dibuja y la hoja de estilos que se trae. Lo demás es 'self'.
+     Si algún día hace falta abrir una más, que sea por un motivo escrito. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  base-uri 'none';
+  object-src 'none';
+  form-action 'none';
+  script-src 'self' https://accounts.google.com;
+  style-src 'self' 'unsafe-inline' https://accounts.google.com;
+  img-src 'self' data: https://accounts.google.com https://*.googleusercontent.com;
+  font-src 'self';
+  connect-src 'self' https://*.supabase.co https://accounts.google.com;
+  frame-src https://accounts.google.com;
+  worker-src 'self';
+  manifest-src 'self'">
+
+<!-- Que no se filtre a dónde va la gente: al salir a otro sitio no se manda ni
+     la dirección de esta página. -->
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <title>SuperStat — Estadísticas de balonmano</title>
 <!-- El icono es el mismo cuadro del logo, en línea como data URI: sin carpeta
      de imágenes ni una petición más, en la línea de "sin build" del proyecto.
@@ -57,22 +90,10 @@
 <script src="js/app.js"></script>
 
 <!-- El service worker guarda el HTML, el CSS, los scripts y supabase-js, que es
-     lo único que antes obligaba a tener cobertura para abrir la app. Necesita
-     https o localhost, igual que el login con Google, así que desde file:// no
-     se registra y la app sigue funcionando sin él.
-
-     Dentro de la app de Android o iOS no se registra ninguno: ahí los archivos
-     ya están en el aparato, no hay nada que cachear, y un service worker
-     sirviendo una versión vieja desde dentro de un binario solo da problemas. -->
-<script>
-  if('serviceWorker' in navigator &&
-     !(window.Native && Native.isNative())){
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(e => {
-        console.warn('no se pudo registrar el service worker', e);
-      });
-    });
-  }
-</script>
+     lo único que antes obligaba a tener cobertura para abrir la app. Quien lo
+     registra es este archivo, y está aparte y no en línea por la CSP de arriba:
+     con un <script> suelto haría falta 'unsafe-inline', que es justo lo que esa
+     política sirve para cerrar. -->
+<script src="js/sw-register.js"></script>
 </body>
 </html>

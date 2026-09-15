@@ -2,6 +2,8 @@
 //
 //   node tools/make-screenshots.js                 → play/capturas/    (español)
 //   IDIOMA=en node tools/make-screenshots.js       → play/capturas-en/ (inglés)
+//   IDIOMA=fr node tools/make-screenshots.js       → play/capturas-fr/ (francés)
+//   IDIOMA=de node tools/make-screenshots.js       → play/capturas-de/ (alemán)
 //   CHROMIUM_PATH=/ruta/al/chromium node tools/make-screenshots.js
 //
 // Deja ocho PNG de 1080×1920 en play/capturas/, que es el tamaño que recomienda
@@ -27,19 +29,31 @@ const path = require('path');
 
 const RAIZ = path.join(__dirname, '..');
 
-// La app es bilingüe, así que las capturas también: las castellanas son las que
-// sube Play y las inglesas, las de la cuenta de Instagram en inglés
-// (docs/instagram.md). Es el mismo partido inventado con la misma semilla; lo
-// único que cambia es el idioma con el que se abre la página.
+// La app habla cuatro idiomas, así que las capturas también. Es el mismo
+// partido inventado con la misma semilla; lo único que cambia es el idioma con
+// el que se abre la página. Las castellanas son las que sube Play por defecto
+// y las inglesas, además, las de la cuenta de Instagram en inglés
+// (docs/instagram.md); las cuatro sirven para la ficha por idioma de Play.
+//
+// La tabla está aquí y no repartida en ternarios para que añadir un idioma sea
+// una línea: el destino y el `locale` del navegador van juntos porque son la
+// misma decisión.
 //
 // La variable se llama IDIOMA y no LANG a propósito: LANG ya significa otra
 // cosa en cualquier terminal de Unix y pisarla sería pedir un disgusto.
+const IDIOMAS = {
+  es: { dir:'capturas',    locale:'es-ES' },
+  en: { dir:'capturas-en', locale:'en-GB' },
+  fr: { dir:'capturas-fr', locale:'fr-FR' },
+  de: { dir:'capturas-de', locale:'de-DE' }
+};
 const IDIOMA = process.env.IDIOMA || 'es';
-if(IDIOMA !== 'es' && IDIOMA !== 'en'){
-  console.error('IDIOMA tiene que ser es o en, no "' + IDIOMA + '"');
+if(!IDIOMAS[IDIOMA]){
+  console.error('IDIOMA tiene que ser uno de ' + Object.keys(IDIOMAS).join(', ') +
+                ', no "' + IDIOMA + '"');
   process.exit(1);
 }
-const DEST = path.join(RAIZ, 'play', IDIOMA === 'es' ? 'capturas' : 'capturas-en');
+const DEST = path.join(RAIZ, 'play', IDIOMAS[IDIOMA].dir);
 const STUB  = fs.readFileSync(path.join(RAIZ, 'test', 'supabase-stub.js'), 'utf8');
 const GSTUB = fs.readFileSync(path.join(RAIZ, 'test', 'google-stub.js'), 'utf8');
 const { rutasDePrueba } = require(path.join(RAIZ, 'test', 'rutas.js'));
@@ -179,7 +193,7 @@ async function nuevaPagina(browser, base){
     viewport:{ width:ANCHO, height:ALTO },
     deviceScaleFactor: ESCALA,
     serviceWorkers:'block',
-    locale: IDIOMA === 'es' ? 'es-ES' : 'en-GB'
+    locale: IDIOMAS[IDIOMA].locale
   });
   await ctx.addInitScript({ content: STUB + '\n' + GSTUB + '\n' + RELOJ_RAPIDO });
   const page = await ctx.newPage();

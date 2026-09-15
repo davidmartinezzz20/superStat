@@ -1,0 +1,334 @@
+<!doctype html>
+<!--
+  Datenschutzerklärung von SuperStat, auf Deutsch.
+
+  Deutsche Fassung von privacidad.html. Alles, was dort steht, gilt auch hier:
+  Es ist absichtlich eine eigene Seite, weil Google Play eine öffentliche URL
+  verlangt, die sich ohne Installation und ohne Anmeldung öffnen lässt — sie
+  kann also nicht in der Single-Page-App wohnen. Deshalb hängt sie weder an
+  css/styles.css noch an irgendeinem Skript: Sie wird allein aus dem Wurzel-
+  verzeichnis der Website ausgeliefert.
+
+  Sie steht auch nicht in tools/build-www.js. In der App wird sie nicht
+  gebraucht —was Play verlangt, ist der Link im Store-Eintrag, kein weiterer
+  Bildschirm— und im Binary würde sie den Nutzer ohne klaren Rückweg aus der App
+  herausführen.
+
+  Der Abschnitt „Wie du dein Konto löschst“ behält dieselbe id (#borrar) wie die
+  spanische Seite, auf Spanisch und unübersetzt: Dieser Anker wird in Play
+  Console → Datensicherheit → URL zur Kontolöschung eingetragen, und ein
+  einziger Ankername für alle vier Sprachen ist das, was diese URLs
+  austauschbar hält.
+
+  Ändert sich, was die spanische Seite sagt, müssen alle vier geändert werden,
+  und mit ihnen das Datum der „letzten Aktualisierung“ jeder einzelnen.
+-->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datenschutzerklärung · SuperStat</title>
+<meta name="description" content="Welche Daten SuperStat speichert, wo sie liegen und wie man sie löscht.">
+<link rel="alternate" hreflang="es" href="privacidad.html">
+<link rel="alternate" hreflang="en" href="privacidad-en.html">
+<link rel="alternate" hreflang="fr" href="privacidad-fr.html">
+<link rel="alternate" hreflang="de" href="privacidad-de.html">
+<link rel="alternate" hreflang="x-default" href="privacidad.html">
+<style>
+  :root{
+    --bg:#08090B; --panel:#141619; --line:rgba(255,255,255,0.08);
+    --text:#F5F5F7; --muted:#8A8F98; --brand:#D9182B; --brand-2:#FF5A68;
+    --font:-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
+           'Segoe UI', Roboto, system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--font);
+    -webkit-font-smoothing:antialiased; line-height:1.6;
+    display:flex; justify-content:center;
+  }
+  main{width:100%; max-width:720px; padding:28px 20px 80px;}
+  .brand{display:flex; align-items:center; gap:10px; margin-bottom:34px;}
+  .brand svg{width:34px; height:34px; display:block;}
+  .brand-word{font-size:20px; font-weight:700; letter-spacing:-0.02em;}
+  .brand-word i{font-style:normal; color:var(--brand-2);}
+  h1{font-size:30px; line-height:1.2; letter-spacing:-0.03em; margin:0 0 6px;}
+  .updated{color:var(--muted); font-size:14px; margin:0 0 18px;}
+  .langs{display:flex; flex-wrap:wrap; gap:8px; margin:0 0 30px;}
+  .langs a{
+    text-decoration:none; color:var(--muted); font-size:14px;
+    border:1px solid var(--line); border-radius:999px; padding:4px 12px;
+  }
+  .langs a[aria-current]{color:var(--text); border-color:var(--brand-2);}
+  h2{font-size:19px; letter-spacing:-0.02em; margin:34px 0 10px; scroll-margin-top:20px;}
+  p, li{color:#DCDEE3;}
+  p{margin:0 0 12px;}
+  ul{margin:0 0 12px; padding-left:20px;}
+  li{margin-bottom:6px;}
+  strong{color:var(--text);}
+  a{color:var(--brand-2);}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:16px 18px; margin:16px 0;
+  }
+  .card p:last-child, .card ul:last-child{margin-bottom:0;}
+  .tag{
+    display:inline-block; background:var(--brand); color:#fff; font-size:12px;
+    font-weight:600; letter-spacing:0.02em; border-radius:999px;
+    padding:3px 10px; margin-bottom:12px;
+  }
+  footer{
+    margin-top:46px; padding-top:18px; border-top:1px solid var(--line);
+    color:var(--muted); font-size:14px;
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <rect x="0" y="0" width="32" height="32" rx="7" fill="#D9182B"/>
+      <rect x="6.5" y="17" width="5" height="8" rx="1.4" fill="#F5F5F7"/>
+      <rect x="13.5" y="12.5" width="5" height="12.5" rx="1.4" fill="#F5F5F7"/>
+      <rect x="20.5" y="7" width="5" height="18" rx="1.4" fill="#F5F5F7"/>
+    </svg>
+    <span class="brand-word">Super<i>Stat</i></span>
+  </div>
+
+  <h1>Datenschutzerklärung</h1>
+  <p class="updated">Letzte Aktualisierung: 13. September 2026</p>
+
+  <nav class="langs" aria-label="Sprache der Seite">
+    <a href="privacidad.html" hreflang="es">Español</a>
+    <a href="privacidad-en.html" hreflang="en">English</a>
+    <a href="privacidad-fr.html" hreflang="fr">Français</a>
+    <a href="privacidad-de.html" hreflang="de" aria-current="page">Deutsch</a>
+  </nav>
+
+  <p>SuperStat ist eine App, um die Statistiken einer Handballmannschaft zu
+  führen: Kader, Spiele, Würfe und Ereignisse. Diese Seite erklärt, welche Daten
+  sie speichert, wo sie sie speichert und wie man sie löscht. Sie gilt
+  gleichermaßen für die Website und für die Android-App.</p>
+
+  <div class="card">
+    <p><strong>Kurz gefasst:</strong> SuperStat speichert deine E-Mail-Adresse
+    und die Statistiken, die du selbst eingibst. Es gibt keine Werbung, keine
+    Analyse-Werkzeuge, kein Tracking, und es werden keine Daten verkauft oder an
+    Dritte weitergegeben. Du kannst jederzeit alles löschen.</p>
+  </div>
+
+  <h2>Wer ist verantwortlich</h2>
+  <p>SuperStat ist ein privates Projekt ohne Firma dahinter. Die App lässt sich
+  kostenlos nutzen und hat zusätzlich einen optionalen kostenpflichtigen Tarif
+  (SuperStat Pro), der auf der Website abgeschlossen wird. Verantwortlicher im
+  Sinne der DSGVO ist ihr Autor, und der Kontaktweg für alles, was deine Daten
+  betrifft, ist
+  <a href="mailto:opt1a.david.martinez@gmail.com">opt1a.david.martinez@gmail.com</a>.</p>
+
+  <h2>Welche Daten erhoben werden</h2>
+  <p><strong>Von deinem Konto</strong>, damit du identifiziert werden kannst und
+  deine Daten dir von einem Gerät zum anderen folgen:</p>
+  <ul>
+    <li>Deine <strong>E-Mail-Adresse</strong>.</li>
+    <li>Wenn du dich mit Google anmeldest: zusätzlich <strong>Name und
+      Profilbild</strong>, die Google diesem Konto zuordnet. SuperStat erhält zu
+      keinem Zeitpunkt dein Google-Passwort.</li>
+    <li>Wenn du dich mit E-Mail-Adresse und Passwort anmeldest: Das Passwort wird
+      <strong>verschlüsselt</strong> gespeichert, und der Autor der App kann es
+      nicht sehen.</li>
+  </ul>
+
+  <p><strong>Was du in der App einträgst</strong>, und das ist der Grund, warum
+  es sie gibt:</p>
+  <ul>
+    <li>Teams und den <strong>Kader</strong> jedes Teams: Name, Rückennummer und
+      Position jedes Spielers.</li>
+    <li>Spiele: Gegner, Datum und Ergebnis.</li>
+    <li>Was während des Spiels erfasst wird: Würfe (Torzone, Wurfpunkt, Minute
+      und Halbzeit), Paraden, Ballverluste, Ballgewinne, Zeitstrafen, Karten und
+      wer auf dem Feld stand.</li>
+  </ul>
+
+  <p><strong>Wenn du SuperStat Pro abschließt</strong>, und nur in diesem
+  Fall:</p>
+  <ul>
+    <li>Der <strong>Status deines Abos</strong>: ob es aktiv ist oder in der
+      Testphase und bis zu welchem Datum. Das ist das Einzige, was zur Zahlung in
+      der Datenbank von SuperStat gespeichert wird.</li>
+    <li>Die <strong>Zahlungsdaten</strong> erhebt und speichert
+      <strong>Stripe</strong>, das auch abrechnet. SuperStat <strong>sieht,
+      erhält und speichert deine Kartennummer zu keinem Zeitpunkt</strong>.</li>
+  </ul>
+
+  <p><strong>Was NICHT erhoben wird:</strong> Standort, Adressbuch, Fotos,
+  Mikrofon, Kamera, Werbe-IDs und Browserverlauf. Die App enthält kein Werbe-
+  oder Analyse-SDK irgendwelcher Art und betreibt weder Profiling noch
+  automatisierte Entscheidungsfindung.</p>
+
+  <h2>Spielernamen: ein wichtiger Hinweis</h2>
+  <p>Die Namen, Rückennummern und Statistiken, die du einträgst, sind Daten
+  <strong>anderer Personen</strong>, oft Minderjähriger. SuperStat ist das
+  Werkzeug; wer entscheidet, was dort hineingeschrieben wird, bist du. Das
+  heißt, dass du —als Trainer, Betreuer oder Verein— die Rechtsgrundlage für die
+  Verarbeitung dieser Daten haben musst: die Einwilligung der Spieler oder ihrer
+  Erziehungsberechtigten, oder diejenige, über die der Verein für die Führung
+  seiner Mannschaften ohnehin verfügt.</p>
+  <p>Wenn du lieber keine echten Namen eingibst: Die App funktioniert genauso gut
+  mit Initialen, Spitznamen oder nur Rückennummern.</p>
+
+  <h2>Wofür sie verwendet werden</h2>
+  <p>Ausschließlich, um den Dienst zu erbringen: dich zu identifizieren, das zu
+  speichern, was du erfasst, es zwischen deinen Geräten zu synchronisieren und
+  die Statistiken zu berechnen, die die App dir zeigt. Für nichts anderes.</p>
+  <p>Rechtsgrundlage ist die <strong>Erfüllung des Vertrags</strong> über den
+  Dienst, den du mit dem Anlegen eines Kontos anforderst (Art. 6 Abs. 1 lit. b
+  DSGVO). Werbe-E-Mails werden nicht verschickt.</p>
+
+  <h2>Wo sie gespeichert werden</h2>
+  <ul>
+    <li><strong>Auf deinem Gerät.</strong> Die App hält eine lokale Kopie deiner
+      Daten vor (im Speicher des Browsers oder der App), damit sie ohne Netz
+      funktioniert — und genau das ist der Fall in einer Sporthalle. Diese Kopie
+      wird benutzt, solange es kein Netz gibt, und was offen ist, wird von allein
+      hochgeladen, sobald es zurück ist.</li>
+    <li><strong>In der Cloud.</strong> Das Original liegt in einer
+      Postgres-Datenbank, die <strong>Supabase Inc.</strong> hostet und die als
+      Auftragsverarbeiter tätig ist. Die Verbindung ist immer verschlüsselt
+      (HTTPS) und der Zugriff ist zeilenweise beschränkt: Die
+      Sicherheitsrichtlinien der Datenbank sorgen dafür, dass jedes Konto nur
+      seine eigenen Zeilen lesen und schreiben kann.</li>
+    <li><strong>Übermittlungen in Drittländer.</strong> Liegt die Region des
+      Supabase-Projekts außerhalb des Europäischen Wirtschaftsraums, stützt sich
+      diese Übermittlung auf die von der Europäischen Kommission genehmigten
+      Standardvertragsklauseln, die Teil des Vertrags von Supabase mit seinen
+      Kunden sind.</li>
+  </ul>
+
+  <h2>An wen sie weitergegeben werden</h2>
+  <p>An niemanden außer den Dienstleistern, die nötig sind, damit die App
+  funktioniert:</p>
+  <ul>
+    <li><strong>Supabase Inc.</strong> — Hosting der Datenbank und des
+      Kontosystems.
+      <a href="https://supabase.com/privacy" target="_blank" rel="noopener">Deren Erklärung</a>.</li>
+    <li><strong>Google LLC</strong> — nur, wenn du dich für die Anmeldung mit
+      Google entscheidest, und nur, um zu prüfen, dass dieses Konto dir gehört.
+      <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Deren Erklärung</a>.</li>
+    <li><strong>Stripe, Inc.</strong> — nur, wenn du SuperStat Pro abschließt.
+      Stripe erhält deine E-Mail-Adresse und die Zahlungsdaten, rechnet ab und
+      speichert die Karte.
+      <a href="https://stripe.com/privacy" target="_blank" rel="noopener">Deren Erklärung</a>.</li>
+    <li><strong>Resend (Plus Five Five, Inc.)</strong> — nur, um dir die unten
+      beschriebenen Benachrichtigungen zu schicken. Resend erhält deine Adresse
+      und den Text der Benachrichtigung.
+      <a href="https://resend.com/legal/privacy-policy" target="_blank" rel="noopener">Deren Erklärung</a>.</li>
+  </ul>
+  <p>Es werden keine Daten verkauft, keine zu Werbezwecken überlassen und keine
+  an Dritte für deren eigene Zwecke weitergegeben. Daten würden nur herausgegeben,
+  wenn eine gesetzliche Pflicht dies verlangt.</p>
+
+  <h2>Benachrichtigungen per E-Mail</h2>
+  <p>SuperStat schreibt dir sehr selten, und nur aus zwei Gründen: wenn du die
+  Team-Grenze des Gratis-Tarifs erreichst, und wenn deine Testphase von
+  SuperStat Pro kurz vor dem Ende steht (damit die erste Abbuchung dich nicht
+  überrascht). Die erste wird <strong>höchstens alle 30 Tage</strong>
+  verschickt.</p>
+  <p>Es gibt keine Newsletter, keine Werbung Dritter und kein Öffnungs- oder
+  Klick-Tracking: Die E-Mails enthalten weder Bilder noch Zählpixel, es lässt
+  sich also nicht feststellen, ob du sie geöffnet hast.</p>
+  <p><strong>Du kannst sie jederzeit abschalten</strong>, auf zwei Wegen: mit dem
+  Schalter <em>E-Mail-Benachrichtigungen</em> im Bildschirm <em>Konto</em>, oder
+  mit dem Abmeldelink am Fuß jeder E-Mail, der ohne Anmeldung funktioniert. Die
+  für den Betrieb des Kontos unverzichtbaren E-Mails (Adresse bestätigen oder
+  Passwort zurücksetzen) sind davon nicht betroffen, denn ohne sie kommt man
+  nicht hinein.</p>
+
+  <h2>Wie lange sie aufbewahrt werden</h2>
+  <p>Solange dein Konto besteht. Wenn du ein Team oder ein Spiel in der App
+  löschst, ist es sofort nicht mehr zu sehen und wird als gelöscht markiert,
+  damit es beim Synchronisieren eines anderen Geräts nicht wieder auftaucht;
+  dieser Eintrag wird spätestens nach 90 Tagen endgültig entfernt. Wenn du das
+  ganze Konto löschst, wird alles Zugehörige gelöscht.</p>
+
+  <h2 id="borrar">Wie du dein Konto und deine Daten löschst</h2>
+  <div class="card">
+    <span class="tag">Kontolöschung</span>
+    <p><strong>Stück für Stück, aus der App heraus:</strong> Jedes Spiel und
+    jedes Team lässt sich auf seinem eigenen Bildschirm löschen, und mit dem Team
+    gehen sein Kader und alles, was in seinen Spielen erfasst wurde.</p>
+    <p><strong>Das ganze Konto, aus der App heraus:</strong> unter <em>Konto →
+    Konto löschen</em>. Es wird zweimal nachgefragt, weil es keinen Weg zurück
+    gibt: Am Ende sind das Konto und alle seine Daten —Teams, Spieler, Spiele,
+    Würfe und Ereignisse— gelöscht, auf dem Gerät wie in der Cloud, und die
+    Sitzung wird beendet. Das geschieht sofort, und du musst niemanden um etwas
+    bitten.</p>
+    <p><strong>Wenn du SuperStat Pro hattest</strong>, <strong>kündigt die
+    Löschung zuerst das Abo</strong> und löscht auch deinen Kundendatensatz bei
+    Stripe, damit dort weder eine offene Abbuchung noch Daten von dir
+    zurückbleiben. Stripe bewahrt für sich das Verzeichnis der bereits
+    ausgestellten Rechnungen so lange auf, wie es das Handels- und Steuerrecht
+    verlangt; das ist eine gesetzliche Pflicht und keine Entscheidung von
+    SuperStat.</p>
+    <p><strong>Oder per E-Mail, wenn dir das lieber ist:</strong> Schreib an
+    <a href="mailto:opt1a.david.martinez@gmail.com?subject=Mein%20SuperStat-Konto%20l%C3%B6schen">opt1a.david.martinez@gmail.com</a>
+    von derselben Adresse, mit der du dich in der App anmeldest, mit dem Betreff
+    <em>„Mein SuperStat-Konto löschen“</em>. Es wird dasselbe gelöscht, längstens
+    innerhalb von <strong>30 Tagen</strong>, und du bekommst eine Bestätigung. Es
+    wird keine Kopie aufbewahrt außer der, die das Gesetz vorschreibt.</p>
+    <p>Wenn du nur die lokale Kopie vom Gerät entfernen willst, genügt es, die
+    App zu deinstallieren (oder im Browser die Website-Daten zu löschen). Das
+    löscht nicht, was schon in der Cloud liegt.</p>
+  </div>
+
+  <h2>Deine Rechte</h2>
+  <p>Du kannst jederzeit deine Rechte auf Auskunft, Berichtigung, Löschung,
+  Einschränkung, Widerspruch und Datenübertragbarkeit ausüben, indem du an die
+  Kontaktadresse schreibst. Insbesondere:</p>
+  <ul>
+    <li><strong>Auskunft und Berichtigung:</strong> Alles, was die App über dich
+      speichert, lässt sich in der App selbst einsehen und bearbeiten: Name,
+      Rückennummer und Position jedes Spielers, die Daten jedes Spiels und jeder
+      einzelne Eintrag.</li>
+    <li><strong>Datenübertragbarkeit:</strong> Jedes Spiel lässt sich auf seinem
+      Bildschirm als CSV exportieren, ohne dass man jemanden darum bitten
+      muss.</li>
+    <li><strong>Löschung:</strong> wie im vorigen Abschnitt beschrieben.</li>
+  </ul>
+  <p>Wenn du der Meinung bist, dass deine Daten nicht richtig verarbeitet werden,
+  kannst du dich bei der spanischen Datenschutzbehörde beschweren
+  (<a href="https://www.aepd.es" target="_blank" rel="noopener">aepd.es</a>) —
+  sie ist die federführende Aufsichtsbehörde, weil der Verantwortliche in Spanien
+  sitzt —, oder bei der Aufsichtsbehörde deines Wohnsitzlandes; in Deutschland
+  ist das die Datenschutzbehörde deines Bundeslandes bzw. der
+  Bundesbeauftragte für den Datenschutz und die Informationsfreiheit
+  (<a href="https://www.bfdi.bund.de" target="_blank" rel="noopener">bfdi.bund.de</a>).</p>
+
+  <h2>Sicherheit</h2>
+  <p>Der gesamte Verkehr ist mit HTTPS verschlüsselt. Die Trennung zwischen den
+  Konten hängt nicht an der App, sondern an den Sicherheitsrichtlinien auf
+  Zeilenebene der Datenbank selbst: Selbst wenn jemand die Anwendung
+  manipulierte, gäbe die Datenbank weiterhin nur die Zeilen des Kontos zurück,
+  mit dem man sich angemeldet hat. Dennoch ist kein System unfehlbar, und diese
+  App wird ohne Gewährleistung bereitgestellt.</p>
+
+  <h2>Minderjährige</h2>
+  <p>Die App ist für Trainer, Betreuer und Staff gedacht und richtet sich nicht
+  an Minderjährige, die kein Konto auf eigene Faust anlegen sollten. Daten
+  Minderjähriger, die in den Kadern auftauchen können, liegen in der
+  Verantwortung dessen, der sie einträgt, wie oben erläutert.</p>
+
+  <h2>Änderungen dieser Erklärung</h2>
+  <p>Ändert sich etwas Wesentliches, wird diese Seite aktualisiert und mit ihr
+  das Datum oben. Über wichtige Änderungen wird zusätzlich in der App
+  informiert.</p>
+
+  <footer>
+    SuperStat · Kontakt:
+    <a href="mailto:opt1a.david.martinez@gmail.com">opt1a.david.martinez@gmail.com</a>
+  </footer>
+
+</main>
+</body>
+</html>

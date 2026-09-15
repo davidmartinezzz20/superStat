@@ -1,0 +1,49 @@
+name: Pruebas
+
+# Las pruebas que no necesitan navegador, en cada push y en cada pull request.
+#
+# Son cuatro y leen archivos: no hay `npm install`, ni Playwright, ni servidor
+# levantado. Tardan segundos y no descargan nada, que es lo que encaja con un
+# proyecto cuya seña de identidad es no tener build ni dependencias.
+#
+# La primera es la que más importa aquí: `seguridad.js` vigila cosas que fallan
+# en silencio —que la Content-Security-Policy no se afloje, que no se cuele un
+# secreto de servidor en lo que se descarga, que nadie vuelva a dar permiso de
+# lectura sobre las columnas que no salen al navegador—. Nadie nota que eso ha
+# dejado de estar puesto hasta que pasa algo, y por eso conviene que lo mire una
+# máquina en cada push y no una persona cuando se acuerde.
+#
+# LAS DE NAVEGADOR NO ESTÁN AQUÍ, y no es un olvido: `sync`, `live`, `nativo` y
+# `planes` abren un Chromium de verdad contra la app servida. Meterlas obligaría
+# a descargar cientos de megas de navegadores en cada push para probar lo mismo
+# que se prueba en la máquina de quien desarrolla. Se ejecutan a mano, con la
+# app servida, antes de publicar:
+#
+#   npm start &
+#   npm test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  sin-navegador:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Seguridad
+        run: node test/seguridad.js
+
+      - name: Las tres listas de archivos dicen lo mismo
+        run: node test/archivos.js
+
+      - name: Los dos diccionarios están completos
+        run: node test/i18n.js
+
+      - name: La pista dibujada y la pista que se toca son la misma
+        run: node test/pista.js

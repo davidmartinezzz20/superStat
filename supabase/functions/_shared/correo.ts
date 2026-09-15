@@ -12,8 +12,8 @@
 // existe un plan de pago.
 //
 // LOS TEXTOS NO SALEN DE js/i18n.js, y no es un despiste: aquel archivo es del
-// navegador y aquí no llega. Es duplicación asumida —dos idiomas, dos avisos—
-// y por eso están todos juntos en un solo sitio, para que se vean de un
+// navegador y aquí no llega. Es duplicación asumida —cuatro idiomas, dos
+// avisos— y por eso están todos juntos en un solo sitio, para que se vean de un
 // vistazo cuando haya que tocarlos.
 //
 // EL IDIOMA sale de avisos.lang, que la app va poniendo al día. El de la
@@ -21,6 +21,12 @@
 // el servidor no hay otra forma de saberlo. Si nunca se ha escrito, español.
 
 const RESEND = 'https://api.resend.com/emails';
+
+// Los idiomas que la app sabe hablar. La misma lista está en js/i18n.js, en el
+// check de avisos.lang de schema.sql y en el filtro de aviso-tope: si se añade
+// uno y se olvida cualquiera de las cuatro, el correo sale en español y nada
+// falla.
+export const IDIOMAS = ['es', 'en', 'fr', 'de'];
 
 export type TipoAviso = 'tope' | 'prueba';
 
@@ -51,26 +57,52 @@ function urlDeBaja(token: string): string {
 interface Texto { asunto: string; titulo: string; cuerpo: string; boton: string; baja: string; }
 
 const TEXTOS: Record<TipoAviso, Record<string, Texto>> = {
-  // Alguien ha intentado crear un segundo equipo y no le ha dejado.
+  // Alguien ha chocado con un tope del plan gratis: el de equipos o el de
+  // partidos guardados. El correo es el mismo para los dos a propósito —lo que
+  // hay que contar es que existe Pro, no cuál de las dos puertas se ha cerrado—
+  // y así es un texto por idioma y no dos, que con cuatro idiomas ya se nota.
   tope: {
     es: {
-      asunto: 'Tu plan de SuperStat llega a un equipo',
+      asunto: 'Tu plan de SuperStat llega hasta aquí',
       titulo: 'Has llegado al límite del plan Gratis',
-      cuerpo: 'El plan Gratis lleva un equipo, y acabas de intentar crear otro. ' +
-              'Con SuperStat Pro puedes llevar todos los que quieras, cada uno con su ' +
-              'plantilla, sus partidos y sus estadísticas. Los 7 primeros días son gratis ' +
-              'y puedes cancelar cuando quieras.',
+      cuerpo: 'El plan Gratis lleva un equipo y cinco partidos guardados, y acabas de ' +
+              'llegar al tope. Con SuperStat Pro no hay límite ni de equipos ni de ' +
+              'partidos, cada uno con su plantilla, su mapa de tiros y sus estadísticas. ' +
+              'Los 7 primeros días son gratis y puedes cancelar cuando quieras.',
       boton: 'Ver SuperStat Pro',
       baja: 'Si no quieres recibir estos avisos, date de baja aquí.'
     },
     en: {
-      asunto: 'Your SuperStat plan covers one team',
+      asunto: 'Your SuperStat plan stops here',
       titulo: 'You have reached the Free plan limit',
-      cuerpo: 'The Free plan covers one team, and you have just tried to create another. ' +
-              'With SuperStat Pro you can run as many as you like, each with its own roster, ' +
-              'matches and stats. The first 7 days are free and you can cancel any time.',
+      cuerpo: 'The Free plan covers one team and five saved matches, and you have just ' +
+              'reached the limit. With SuperStat Pro there is no cap on teams or matches, ' +
+              'each with its own roster, shot map and stats. The first 7 days are free and ' +
+              'you can cancel any time.',
       boton: 'See SuperStat Pro',
       baja: 'If you would rather not get these emails, unsubscribe here.'
+    },
+    fr: {
+      asunto: 'Ta formule SuperStat s’arrête ici',
+      titulo: 'Tu as atteint la limite de la formule Gratuite',
+      cuerpo: 'La formule Gratuite comprend une équipe et cinq matchs enregistrés, et tu ' +
+              'viens d’atteindre la limite. Avec SuperStat Pro, il n’y a de limite ni sur ' +
+              'les équipes ni sur les matchs, chacun avec son effectif, sa carte de tirs et ' +
+              'ses statistiques. Les 7 premiers jours sont gratuits et tu peux annuler quand ' +
+              'tu veux.',
+      boton: 'Voir SuperStat Pro',
+      baja: 'Si tu ne veux plus recevoir ces messages, désabonne-toi ici.'
+    },
+    de: {
+      asunto: 'Dein SuperStat-Tarif reicht bis hierher',
+      titulo: 'Du hast die Grenze des Gratis-Tarifs erreicht',
+      cuerpo: 'Der Gratis-Tarif umfasst ein Team und fünf gespeicherte Spiele, und die ' +
+              'Grenze hast du gerade erreicht. Mit SuperStat Pro gibt es weder bei Teams ' +
+              'noch bei Spielen ein Limit, jedes mit eigenem Kader, eigener Wurfkarte und ' +
+              'eigenen Statistiken. Die ersten 7 Tage sind gratis, und du kannst jederzeit ' +
+              'kündigen.',
+      boton: 'SuperStat Pro ansehen',
+      baja: 'Wenn du diese Hinweise nicht mehr bekommen willst, melde dich hier ab.'
     }
   },
   // Stripe avisa tres días antes de que se acabe la prueba.
@@ -92,6 +124,26 @@ const TEXTOS: Record<TipoAviso, Record<string, Texto>> = {
               'not carry on, you can cancel from your account and nothing will be charged.',
       boton: 'Manage my plan',
       baja: 'If you would rather not get these emails, unsubscribe here.'
+    },
+    fr: {
+      asunto: 'Ton essai de SuperStat Pro se termine bientôt',
+      titulo: 'Il reste quelques jours d’essai',
+      cuerpo: 'Ton essai de SuperStat Pro est sur le point de se terminer. Si tu ne fais ' +
+              'rien, l’abonnement continue et la première échéance est prélevée. Si tu ' +
+              'préfères ne pas continuer, tu peux l’annuler depuis ton compte et rien ne ' +
+              'te sera facturé.',
+      boton: 'Gérer ma formule',
+      baja: 'Si tu ne veux plus recevoir ces messages, désabonne-toi ici.'
+    },
+    de: {
+      asunto: 'Deine Testphase von SuperStat Pro endet bald',
+      titulo: 'Es sind noch ein paar Testtage übrig',
+      cuerpo: 'Deine Testphase von SuperStat Pro endet demnächst. Wenn du nichts tust, ' +
+              'läuft das Abo weiter und die erste Rate wird abgebucht. Wenn du lieber ' +
+              'nicht weitermachen möchtest, kannst du es in deinem Konto kündigen, und es ' +
+              'wird dir nichts berechnet.',
+      boton: 'Meinen Tarif verwalten',
+      baja: 'Wenn du diese Hinweise nicht mehr bekommen willst, melde dich hier ab.'
     }
   }
 };
@@ -149,7 +201,9 @@ export async function destinatario(
 
   return {
     email,
-    lang: fila.lang === 'en' ? 'en' : 'es',
+    // Un idioma que no conozcamos (una fila vieja, o uno que se quitó) cae al
+    // español, que es el respaldo de todo el archivo.
+    lang: IDIOMAS.includes(fila.lang) ? fila.lang : 'es',
     emailOk: true,
     bajaToken: fila.baja_token
   };
