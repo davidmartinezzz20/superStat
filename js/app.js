@@ -78,6 +78,35 @@
     return !(window.Native && Native.isNative());
   }
 
+  // La política de privacidad es una página por idioma, suelta y sin scripts,
+  // servida desde la raíz del sitio. Aquí solo se decide **cuál** de las cuatro
+  // toca, para que el enlace lleve a la del idioma que se esté viendo y no
+  // siempre a la castellana.
+  //
+  // Dentro de la app de Android o iPhone devuelve null y el enlace no se pinta:
+  // esas páginas no entran en el binario a propósito (ver tools/build-www.js),
+  // así que allí no hay nada que abrir. Lo que Google Play pide es el enlace en
+  // la ficha de la tienda, no una pantalla más dentro de la app.
+  const PRIVACY_PAGE = {
+    es: 'privacidad.html',
+    en: 'privacidad-en.html',
+    fr: 'privacidad-fr.html',
+    de: 'privacidad-de.html'
+  };
+
+  function privacyUrl(){
+    if(window.Native && Native.isNative()) return null;
+    return PRIVACY_PAGE[I18N.lang()] || PRIVACY_PAGE.es;
+  }
+
+  // El enlace, ya montado, o nada. Se pinta igual en la entrada y en Cuenta, y
+  // cambiar de idioma repinta, así que pasa solo a la página que corresponde.
+  function privacyLinkHtml(){
+    const url = privacyUrl();
+    if(!url) return '';
+    return `<a class="privacy-link" href="${url}" target="_blank" rel="noopener">${esc(t('common.privacy'))}</a>`;
+  }
+
   // Los botones del registro rápido, en el orden en que salen en pantalla.
   // Quitar uno de aquí lo quita del panel y nada más: lo que ya estuviera
   // anotado con ese tipo se sigue guardando, leyendo y contando.
@@ -610,6 +639,7 @@
         <main>
           <div class="error-msg">${t('auth.noConfig')}</div>
           <div class="hint-text">${esc(t('auth.noConfigHint'))}</div>
+          ${languageHtml('auth-langs')}
         </main>
       `;
     }
@@ -641,7 +671,11 @@
           <button class="link-btn" id="auth-toggle">${esc(isLogin ? t('auth.toRegister') : t('auth.toLogin'))}</button>
         </div>
       </main>
-      <footer class="note">${esc(t('auth.footer'))}</footer>
+      <footer class="note">
+        ${languageHtml('auth-langs')}
+        <div>${esc(t('auth.footer'))}</div>
+        ${privacyLinkHtml()}
+      </footer>
     `;
   }
 
@@ -976,6 +1010,7 @@
           <small>${esc(t('account.languageSub'))}</small>
         </div>
         ${languageHtml()}
+        ${privacyLinkHtml()}
         <div class="section-label">${esc(t('account.session'))}</div>
         <button class="secondary" id="logout-btn">${esc(t('account.logout'))}</button>
 
@@ -1024,12 +1059,18 @@
 
   // El idioma es del aparato y no de la cuenta (lo guarda Store en su propia
   // clave, sin userId), así que vive aquí junto a lo demás que es de este
-  // dispositivo y no se sincroniza. Se pintan las dos opciones como chips, del
-  // mismo modo que los filtros del mapa, para no meter un <select> más.
-  function languageHtml(){
+  // dispositivo y no se sincroniza. Se pintan los cuatro idiomas como chips,
+  // del mismo modo que los filtros del mapa, para no meter un <select> más.
+  //
+  // Se pinta en dos sitios: en Cuenta y en la entrada. Lo segundo no es un
+  // adorno: la clave del idioma no lleva userId justamente para que se pueda
+  // elegir antes de entrar, y sin chips allí quien tenga el navegador en un
+  // idioma no puede ver la app en otro. El parámetro es solo la clase de
+  // colocación, porque en la entrada van centrados.
+  function languageHtml(extra){
     const actual = I18N.lang();
     return `
-      <div class="chip-row">
+      <div class="chip-row${extra ? ' ' + extra : ''}">
         ${I18N.LANGS.map(code => `
           <button class="filter-chip${code === actual ? ' on' : ''}" data-lang="${code}">
             ${esc(I18N.langName(code))}

@@ -46,6 +46,7 @@ window.I18N = (function(){
     'common.delete':         'Eliminar',
     'common.wait':           'Un momento…',
     'common.cancelNoRecord': 'Cancelar, no registrar',
+    'common.privacy':        'Política de privacidad',
 
     'app.title':    'SuperStat — Estadísticas de balonmano',
     'app.tagline':  'Estadísticas de partidos de balonmano, equipo a equipo, tiro a tiro.',
@@ -507,6 +508,7 @@ window.I18N = (function(){
     'common.delete':         'Delete',
     'common.wait':           'One moment…',
     'common.cancelNoRecord': 'Cancel, do not record',
+    'common.privacy':        'Privacy policy',
 
     'app.title':    'SuperStat — Handball statistics',
     'app.tagline':  'Handball match statistics, team by team, shot by shot.',
@@ -960,6 +962,7 @@ window.I18N = (function(){
     'common.delete':         'Supprimer',
     'common.wait':           'Un instant…',
     'common.cancelNoRecord': 'Annuler, ne pas enregistrer',
+    'common.privacy':        'Politique de confidentialité',
 
     'app.title':    'SuperStat — Statistiques de handball',
     'app.tagline':  'Statistiques de matchs de handball, équipe par équipe, tir par tir.',
@@ -1418,6 +1421,7 @@ window.I18N = (function(){
     'common.delete':         'Löschen',
     'common.wait':           'Einen Moment…',
     'common.cancelNoRecord': 'Abbrechen, nicht erfassen',
+    'common.privacy':        'Datenschutzerklärung',
 
     'app.title':    'SuperStat — Handball-Statistiken',
     'app.tagline':  'Handball-Spielstatistiken, Team für Team, Wurf für Wurf.',

@@ -272,6 +272,18 @@ const llamadas = page => page.evaluate(() => window.__NATIVO__.llamadas);
   check('la pantalla de Cuenta enseña el plan pero no lo vende',
         (await page.textContent('#app')).includes('Gratis') &&
         await page.$('#manage-plan') === null && await page.$('#go-pro') === null);
+
+  // Y el enlace a la política de privacidad tampoco está, que es otra cosa que
+  // aquí dentro no lleva a ninguna parte: las privacidad*.html no entran en el
+  // binario a propósito (tools/build-www.js), así que el enlace daría un 404
+  // dentro del WebView. En la web sí se pinta, y en el idioma que toque.
+  check('no hay enlace a la privacidad dentro de la app, que no viaja en el binario',
+        await page.$('.privacy-link') === null);
+  await page.click('#logout-btn');
+  await page.waitForSelector('#auth-submit', { timeout:10000 });
+  check('tampoco en la pantalla de entrada', await page.$('.privacy-link') === null);
+  check('pero el selector de idioma sí está, también aquí',
+        (await page.$$('[data-lang]')).length === 4);
   await ctx.close();
 
   console.log(`\n${pasadas} comprobaciones pasadas, ${fallos} fallidas`);
