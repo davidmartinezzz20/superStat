@@ -3,7 +3,7 @@
 ## Informar de un fallo
 
 Si encuentras un fallo de seguridad en SuperStat, **no abras una incidencia
-pública**: escribe a **opt1a.david.martinez@gmail.com** y cuenta qué has visto y
+pública**: escribe a **superstat.hello@gmail.com** y cuenta qué has visto y
 cómo reproducirlo. Se contesta en un plazo de 72 horas.
 
 Mientras no esté arreglado, agradezco que no se publique. Lo que se arregle se

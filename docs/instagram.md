@@ -83,7 +83,7 @@ Lleva la palabra del deporte a propósito, por lo mismo que el nombre en Play:
 
 **Cuenta profesional**, no personal: es lo que da las estadísticas de alcance y
 el botón de contacto. Categoría *Aplicación móvil* (o *Deportes*) y correo de
-contacto el mismo de la ficha de Play, `opt1a.david.martinez@gmail.com`.
+contacto el mismo de la ficha de Play, `superstat.hello@gmail.com`.
 
 ---
 

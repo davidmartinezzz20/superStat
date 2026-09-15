@@ -47,7 +47,7 @@ prudencia: está explicado allí.
 ### Dos correos distintos
 
 Cada cuenta de Instagram necesita **su propio correo o su propio teléfono** para
-entrar. Las dos no pueden abrirse con `opt1a.david.martinez@gmail.com`: la
+entrar. Las dos no pueden abrirse con `superstat.hello@gmail.com`: la
 segunda rebota en el registro, y enterarse a mitad es el momento más incómodo
 para tener que ir a crear un correo.
 
