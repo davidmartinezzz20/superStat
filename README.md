@@ -163,5 +163,6 @@ docs/movil.md          compilar y publicar en Google Play y la App Store
 docs/play.md           textos y formularios de la ficha de Google Play
 docs/publicar-android.md  el recorrido completo hasta publicar en Play
 docs/instagram.md      biografías y pies de las cuentas de Instagram
+docs/publicar-instagram.md  el recorrido para abrir esas dos cuentas
 test/                  pruebas con Playwright
 ```
