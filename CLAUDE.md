@@ -438,6 +438,12 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   no la cambies**: está para que no tumben la app en una actualización. Quien
   avisa de que existe Pro es el correo, que va fuera de la app y sí está
   permitido (`docs/suscripcion.md`).
+- **El precio está escrito en seis sitios y todos se mantienen a mano**: el Price
+  de Stripe, `PRO_PRICE` en `js/config.js` (`'3,49 €'`, solo el número) y la
+  sección de planes de las cuatro portadas de `superstat.online` (repositorio
+  `webSuperStat`, que compara las cuatro entre sí en su prueba). Que los
+  impuestos van aparte es texto, no número: vive en `paywall.taxes`, en los
+  cuatro diccionarios, y no dentro de `PRO_PRICE` —ahí se quedaría sin traducir.
 - El plan gratis tiene dos topes, y los dos son una constante de `app.js`:
   `FREE_TEAMS` (1) y `FREE_MATCHES` (5, partidos guardados en toda la cuenta,
   no por equipo). Los dos están **solo en crear**: el de equipos en

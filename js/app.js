@@ -923,8 +923,10 @@
   // por esta página, que es la única forma sensata de no tener que cuidarlos.
   function renderPaywall(){
     // El precio sale de js/config.js y no del diccionario: es un número, es el
-    // mismo en los dos idiomas y tiene que poder cambiarse sin tocar textos.
-    // Tiene que coincidir con el Price de Stripe (docs/suscripcion.md).
+    // mismo en los cuatro idiomas y tiene que poder cambiarse sin tocar textos.
+    // Tiene que coincidir con el Price de Stripe (docs/suscripcion.md). Lo que
+    // sí es texto —que los impuestos van aparte— va en el diccionario, y por eso
+    // no se mete dentro del propio precio.
     const precio = (window.SUPERSTAT_CONFIG || {}).PRO_PRICE || '';
     return `
       ${topbar({ left: backBtn('to-dashboard', t('nav.teams')) })}
@@ -936,7 +938,10 @@
             <li>${esc(t('paywall.f2'))}</li>
             <li>${esc(t('paywall.f3'))}</li>
           </ul>
-          ${precio ? `<div class="plan-price">${esc(t('paywall.priceMonth', { p: precio }))}</div>` : ''}
+          ${precio ? `
+            <div class="plan-price">${esc(t('paywall.priceMonth', { p: precio }))}</div>
+            <div class="card-sub">${esc(t('paywall.taxes'))}</div>
+          ` : ''}
           <div class="card-sub">${esc(t('paywall.trial'))}</div>
         </div>
         ${state.paywallError ? `<div class="error-msg">${esc(state.paywallError)}</div>` : ''}
