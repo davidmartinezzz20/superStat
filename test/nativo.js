@@ -279,9 +279,18 @@ const llamadas = page => page.evaluate(() => window.__NATIVO__.llamadas);
   // dentro del WebView. En la web sí se pinta, y en el idioma que toque.
   check('no hay enlace a la privacidad dentro de la app, que no viaja en el binario',
         await page.$('.privacy-link') === null);
+
+  // Y tampoco los de Instagram y X, que aquí no es por un 404 sino por lo
+  // mismo que el resto de esta sección: las biografías de esas dos cuentas
+  // cuentan que existe Pro y llevan al pago de la web, así que un enlace desde
+  // aquí dentro es un camino a comprar fuera de la tienda. En el navegador sí
+  // se pintan, y ahí no hay ninguna regla que lo impida.
+  check('no hay enlaces a las redes dentro de la app',
+        await page.$('.social-link') === null);
   await page.click('#logout-btn');
   await page.waitForSelector('#auth-submit', { timeout:10000 });
   check('tampoco en la pantalla de entrada', await page.$('.privacy-link') === null);
+  check('ni las redes en la pantalla de entrada', await page.$('.social-link') === null);
   check('pero el selector de idioma sí está, también aquí',
         (await page.$$('[data-lang]')).length === 4);
   await ctx.close();

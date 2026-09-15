@@ -834,6 +834,27 @@
     text-decoration:underline;
   }
   .privacy-link:hover{color:var(--text);}
+  /* Los enlaces a las redes, que son la otra cosa del pie compartida entre la
+     entrada y Cuenta. En Cuenta van pegados al margen izquierdo, bajo su
+     rótulo; en la entrada, centrados bajo el de privacidad, igual que los
+     chips de idioma. Dentro de la app de Android o iPhone no se pintan
+     (socialLinksHtml en js/app.js dice por qué). */
+  .social-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:16px;
+    margin-top:10px;
+  }
+  .social-row.auth-social{justify-content:center;}
+  .social-link{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    color:var(--muted);
+    font-size:11.5px;
+  }
+  .social-link svg{width:14px;height:14px;flex:none;}
+  .social-link:hover{color:var(--text);}
   .toast{
     position:fixed;
     bottom:calc(var(--nav-h) + 26px + env(safe-area-inset-bottom));

@@ -8,6 +8,10 @@ publicaciones de cada una con su pie y sus etiquetas. Las imágenes las genera
 Es el hermano de [`play.md`](play.md): aquél tiene los textos de la ficha de la
 tienda, éste los de las redes. Ninguno de los dos entra en el producto.
 
+De X aquí solo está el nombre de la cuenta, en §1, porque es el que enlazan la
+app y las portadas y tiene que estar escrito en algún sitio. Los textos que se
+publican en X no están todavía en este archivo.
+
 Aquí está **qué** se pega. **En qué orden** se hace todo —abrir las cuentas,
 pasarlas a profesional, la biografía y las tres publicaciones— está en
 [`publicar-instagram.md`](publicar-instagram.md).
@@ -50,13 +54,27 @@ Lo único que sigue siendo de un solo idioma es esta guía y los pies de las
 publicaciones, que están más abajo en castellano y en inglés. Si algún día se
 abren cuentas en francés o alemán, es aquí donde hay que escribir sus textos.
 
-**Los nombres de usuario.** El bueno es el corto, pero suele estar cogido; van
-por orden de preferencia y se prueban en la app al registrarse:
+**Los nombres de usuario, que ya están cogidos por nosotros.** Estos tres son
+los de las cuentas abiertas, no una lista de candidatos: cambiar uno obliga a
+cambiarlo también donde se enlaza, que son los sitios de la tabla de abajo.
 
-| Cuenta | Preferencia | Alternativas |
-|---|---|---|
-| Castellano | `superstat.app` | `superstat.balonmano`, `superstatapp` |
-| Inglés | `superstat.handball` | `superstat.hb`, `getsuperstat` |
+| Cuenta | Nombre de usuario |
+|---|---|
+| Instagram, castellano | `superstat.es` |
+| Instagram, inglés | `superstat.en` |
+| X | `superstatapp` |
+
+**En X hay una sola cuenta** para todos los idiomas, y en Instagram dos. Del
+francés y el alemán se encarga la inglesa: mientras no haya cuenta en esos
+idiomas, todo lo que apunta al francés o al alemán apunta a `superstat.en`.
+
+Dónde están escritas esas URL, que se mantienen a mano:
+
+| Dónde | Qué |
+|---|---|
+| `SOCIAL` en `js/app.js` | los enlaces de la app, en Cuenta y en la entrada |
+| El pie de las cuatro portadas (repositorio `webSuperStat`) | la cuenta del idioma de cada página |
+| El `sameAs` del `application/ld+json` de esas cuatro | las tres cuentas, iguales en las cuatro |
 
 El **nombre de perfil** (el que se puede cambiar cuando quieras, y que es lo que
 busca la gente) sí es fijo: `SuperStat · Balonmano` y `SuperStat · Handball`.

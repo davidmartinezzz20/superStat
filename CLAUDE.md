@@ -438,6 +438,19 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   no la cambies**: está para que no tumben la app en una actualización. Quien
   avisa de que existe Pro es el correo, que va fuera de la app y sí está
   permitido (`docs/suscripcion.md`).
+- **Los enlaces a Instagram y a X tampoco se pintan dentro de la app**, y es por
+  lo mismo de arriba y no por lo de la privacidad: aquéllos darían un 404, éstos
+  abrirían bien. Lo que pasa es que las biografías de esas cuentas cuentan que
+  existe Pro y llevan al pago de la web, así que desde dentro del binario son un
+  camino a comprar fuera de la tienda. Lo decide `socialLinksHtml()`
+  (`js/app.js`), que devuelve cadena vacía en nativo, y la sección 7 de
+  `test/nativo.js` lo comprueba con los otros. Las URL están en `SOCIAL`
+  (`js/app.js`): hay **dos cuentas de Instagram** —`superstat.es` y
+  `superstat.en`— y **una sola de X**, y el francés y el alemán van a la
+  inglesa. Las mismas URL están escritas otra vez en las cuatro portadas de
+  `superstat.online` (repositorio `webSuperStat`), en el pie y en el `sameAs` de
+  sus datos estructurados, que es lo que de verdad las posiciona;
+  `docs/instagram.md` §1 tiene la tabla de los tres sitios.
 - **El precio está escrito en seis sitios y todos se mantienen a mano**: el Price
   de Stripe, `PRO_PRICE` en `js/config.js` (`'3,49 €'`, solo el número) y la
   sección de planes de las cuatro portadas de `superstat.online` (repositorio

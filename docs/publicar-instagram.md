@@ -88,15 +88,14 @@ el bloque 3.
 
 ## 2. Abrir las dos cuentas
 
-Los **nombres de usuario** van por orden de preferencia y el **nombre de perfil**
-es fijo: están los dos en `instagram.md` §1 y no se repiten aquí.
+Los **nombres de usuario** y el **nombre de perfil** están en `instagram.md` §1
+y no se repiten aquí. Los de usuario ya no son una lista de candidatos: son las
+cuentas que hay, `superstat.es` y `superstat.en`, y están escritos además en la
+app y en las cuatro portadas. Si por lo que sea hubiera que cambiar uno, hay que
+cambiarlo también allí; la tabla de `instagram.md` §1 dice dónde.
 
-El nombre de usuario se prueba en el propio registro: si está cogido, Instagram
-lo dice ahí mismo. Baja por la lista de alternativas hasta que uno esté libre y
-apunta cuál ha quedado, porque a partir del bloque 4 aparece en sitios.
-
-El nombre de perfil no tiene ese problema: no es único, se puede cambiar cuando
-quieras y es lo que busca la gente. Ése se pone tal cual está escrito.
+El nombre de perfil no es único, se puede cambiar cuando quieras y es lo que
+busca la gente. Ése se pone tal cual está escrito.
 
 Cuando tengas las dos, en la app del móvil se añaden las dos a la vez con
 *Añadir cuenta* y se cambia de una a otra tocando la foto de perfil. No hay que
@@ -220,7 +219,7 @@ verdad y hay que cambiarla en las dos cuentas y en la ficha de Play
 
 | Lo que pasa | Casi siempre es |
 |---|---|
-| El nombre de usuario está cogido | Normal: baja por las alternativas de `instagram.md` §1 (bloque 2) |
+| El nombre de usuario está cogido | Ya no debería: `superstat.es` y `superstat.en` son las cuentas abiertas. Si aun así pasa, el nombre está escrito en la app y en las portadas y hay que cambiarlo en los tres sitios de la tabla de `instagram.md` §1 |
 | El segundo registro rebota | Estás usando el correo de la primera cuenta. Cada una necesita el suyo (bloque 1) |
 | La biografía sale en un solo renglón | Se pegó desde la app del móvil. Vuelve a pegarla desde `instagram.com` (bloque 4) |
 | El texto alternativo aparece cortado | Se pasa de 100 caracteres. Los de `instagram.md` §3 ya están dentro |
