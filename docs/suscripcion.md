@@ -142,9 +142,28 @@ Los dos avisos (el del tope y el de "tu prueba acaba pronto") salen por
 
 ## 4. Los secretos de las funciones
 
-Desde la raíz del repositorio:
+Son seis valores y hay dos maneras de ponerlos. Basta con una.
+
+Y son **claves vivas** (`sk_...`, `re_...`, `whsec_...`): se escriben en tu
+ordenador o en el panel, nunca en el repositorio ni en una máquina prestada.
+
+### Desde el panel, sin clonar nada
+
+Supabase → **Edge Functions → Secrets** → *Add new secret*, uno por cada fila de
+la tabla de abajo. El valor se pega tal cual: las comillas de `RESEND_FROM` que
+se ven en el bloque de la CLI solo están para que el espacio del nombre no parta
+el argumento en la consola, y aquí sobran.
+
+### Con la CLI, desde la raíz del repositorio
+
+Hace falta tener el repositorio en tu ordenador y la sesión iniciada:
 
 ```bash
+git clone https://github.com/davidmartinezzz20/superStat
+cd superStat
+npx supabase login
+npx supabase link --project-ref cqjpexlgjqyzdjkcdwpw   # la referencia, en supabase/config.toml
+
 npx supabase secrets set \
   STRIPE_SECRET_KEY=sk_test_... \
   STRIPE_PRICE_ID=price_... \
@@ -153,6 +172,10 @@ npx supabase secrets set \
   RESEND_FROM='SuperStat <hola@tudominio>' \
   SUPERSTAT_WEB=https://super-stat.vercel.app
 ```
+
+`secrets set` acepta también `--project-ref <referencia>`, y con eso no necesita
+ni el repositorio ni el `link`: se puede lanzar desde cualquier carpeta. Clonar
+hace falta igualmente para el paso 5, que es el que sube el código.
 
 (`STRIPE_WEBHOOK_SECRET` sale del paso siguiente; puedes volver a ejecutar esto
 luego solo con esa.)
@@ -171,6 +194,10 @@ luego solo con esa.)
 ---
 
 ## 5. Desplegar las funciones
+
+Aquí el repositorio **no es opcional**: lo que se sube es el código de
+`supabase/functions/<nombre>/index.ts`. Desde su raíz, con el `login` y el
+`link` del paso anterior ya hechos:
 
 ```bash
 npx supabase functions deploy pago
@@ -192,6 +219,11 @@ mismo en todas**:
   enlace de baja. Lo que sustituye a la sesión es el token del correo.
 
 Ninguna afloja nada: la comprobación que importa está dentro.
+
+El camino del panel que vale para `borrar-cuenta` (*Deploy a new function → Via
+Editor*, en [`supabase.md`](supabase.md)) aquí se queda corto: `aviso-tope` y
+`stripe-webhook` importan `../_shared/correo.ts`, así que habría que recrear a
+mano ese archivo y el árbol de carpetas. Con la CLI van los cinco de una vez.
 
 ---
 
