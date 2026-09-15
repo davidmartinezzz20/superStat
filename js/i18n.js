@@ -47,6 +47,10 @@ window.I18N = (function(){
     'common.wait':           'Un momento…',
     'common.cancelNoRecord': 'Cancelar, no registrar',
     'common.privacy':        'Política de privacidad',
+    // {red} es «Instagram» o «X»: son marcas y no se traducen, así que el
+    // nombre viene de app.js y aquí solo va la frase que lo envuelve.
+    'common.follow':         'Síguenos',
+    'common.followOn':       'SuperStat en {red}',
 
     'app.title':    'SuperStat — Estadísticas de balonmano',
     'app.tagline':  'Estadísticas de partidos de balonmano, equipo a equipo, tiro a tiro.',
@@ -510,6 +514,8 @@ window.I18N = (function(){
     'common.wait':           'One moment…',
     'common.cancelNoRecord': 'Cancel, do not record',
     'common.privacy':        'Privacy policy',
+    'common.follow':         'Follow us',
+    'common.followOn':       'SuperStat on {red}',
 
     'app.title':    'SuperStat — Handball statistics',
     'app.tagline':  'Handball match statistics, team by team, shot by shot.',
@@ -965,6 +971,8 @@ window.I18N = (function(){
     'common.wait':           'Un instant…',
     'common.cancelNoRecord': 'Annuler, ne pas enregistrer',
     'common.privacy':        'Politique de confidentialité',
+    'common.follow':         'Suivez-nous',
+    'common.followOn':       'SuperStat sur {red}',
 
     'app.title':    'SuperStat — Statistiques de handball',
     'app.tagline':  'Statistiques de matchs de handball, équipe par équipe, tir par tir.',
@@ -1425,6 +1433,8 @@ window.I18N = (function(){
     'common.wait':           'Einen Moment…',
     'common.cancelNoRecord': 'Abbrechen, nicht erfassen',
     'common.privacy':        'Datenschutzerklärung',
+    'common.follow':         'Folge uns',
+    'common.followOn':       'SuperStat auf {red}',
 
     'app.title':    'SuperStat — Handball-Statistiken',
     'app.tagline':  'Handball-Spielstatistiken, Team für Team, Wurf für Wurf.',

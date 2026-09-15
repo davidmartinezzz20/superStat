@@ -107,6 +107,56 @@
     return `<a class="privacy-link" href="${url}" target="_blank" rel="noopener">${esc(t('common.privacy'))}</a>`;
   }
 
+  // Las cuentas de la marca. Una URL suelta es la misma para los cuatro
+  // idiomas; un objeto es una red con cuenta por idioma, y el que no aparezca
+  // cae en la inglesa. Eso no es un descuido: hoy solo hay dos cuentas de
+  // Instagram —la castellana y la inglesa— y una sola de X, así que el francés
+  // y el alemán se atienden en inglés. Abrir una cuenta en francés es añadir su
+  // línea aquí y nada más.
+  //
+  // Los nombres de las redes no pasan por el diccionario: son marcas y se
+  // escriben igual en los cuatro idiomas, como 'Portero' o 'turnover' no se
+  // traducen al viajar a la base. Lo que sí se traduce es la frase que los
+  // envuelve en el aria-label ('common.followOn').
+  //
+  // Las mismas URL están escritas en las cuatro portadas de superstat.online
+  // (repositorio webSuperStat), en el pie y en el sameAs de sus datos
+  // estructurados. Si cambia una cuenta, hay que cambiarlas allí también;
+  // docs/instagram.md §1 tiene la lista de los tres sitios.
+  const SOCIAL = [
+    { red:'Instagram', icono:'instagram', url:{
+      es:'https://www.instagram.com/superstat.es/',
+      en:'https://www.instagram.com/superstat.en/'
+    } },
+    { red:'X', icono:'x', url:'https://x.com/superstatapp' }
+  ];
+
+  function socialUrl(url, lang){
+    return typeof url === 'string' ? url : (url[lang] || url.en);
+  }
+
+  // Dentro de la app de Android o iPhone no se pintan, y no es por lo mismo que
+  // el enlace de privacidad —aquel daría un 404 y éste abriría bien—: es por la
+  // guía 3.1.1 de Apple. Las biografías de esas cuentas cuentan que existe Pro
+  // y llevan al pago de la web, así que un enlace desde aquí dentro es, mirado
+  // de cerca, un camino a comprar fuera de la tienda. En la web se pintan, que
+  // es donde SuperStat sí puede vender. test/nativo.js lo vigila.
+  function socialLinksHtml(extra){
+    if(window.Native && Native.isNative()) return '';
+    const lang = I18N.lang();
+    return `
+      <div class="social-row${extra ? ' ' + extra : ''}">
+        ${SOCIAL.map(({ red, icono, url }) => `
+          <a class="social-link" href="${socialUrl(url, lang)}"
+             target="_blank" rel="noopener"
+             aria-label="${esc(t('common.followOn', { red }))}">
+            ${icon(icono)}${esc(red)}
+          </a>
+        `).join('')}
+      </div>
+    `;
+  }
+
   // Los botones del registro rápido, en el orden en que salen en pantalla.
   // Quitar uno de aquí lo quita del panel y nada más: lo que ya estuviera
   // anotado con ese tipo se sigue guardando, leyendo y contando.
@@ -373,7 +423,14 @@
     share: '<path d="M12 15.5V4m0 0L8.5 7.5M12 4l3.5 3.5"/><path d="M5.5 13v5.5a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5V13"/>',
     trash: '<path d="M5 7h14M10 7V5.5A1.5 1.5 0 0 1 11.5 4h1A1.5 1.5 0 0 1 14 5.5V7m-7 0 .8 11.1A1.5 1.5 0 0 0 9.3 20h5.4a1.5 1.5 0 0 0 1.5-1.4L17 7"/>',
     pencil:'<path d="M16.5 4.5 19.5 7.5M4.5 19.5l.9-3.6L16 5.3a1.2 1.2 0 0 1 1.7 0l1 1a1.2 1.2 0 0 1 0 1.7L8.1 18.6z"/>',
-    lock:  '<rect x="4.8" y="10.5" width="14.4" height="9.2" rx="2"/><path d="M8.4 10.5V8a3.6 3.6 0 0 1 7.2 0v2.5"/>'
+    lock:  '<rect x="4.8" y="10.5" width="14.4" height="9.2" rx="2"/><path d="M8.4 10.5V8a3.6 3.6 0 0 1 7.2 0v2.5"/>',
+    // Los dos de las redes. El de Instagram es de trazo como el resto; el
+    // punto de arriba es lo único relleno, porque un círculo de un milímetro
+    // dibujado con línea de 1,9 sale como un borrón.
+    instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.1" cy="6.9" r="1" fill="currentColor" stroke="none"/>',
+    // El de X no es un trazo sino una letra, así que va relleno entero y se
+    // salta el fill="none" del envoltorio, como hace play.
+    x:     '<path fill="currentColor" stroke="none" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>'
   };
 
   function icon(name){
@@ -675,6 +732,7 @@
         ${languageHtml('auth-langs')}
         <div>${esc(t('auth.footer'))}</div>
         ${privacyLinkHtml()}
+        ${socialLinksHtml('auth-social')}
       </footer>
     `;
   }
@@ -990,6 +1048,9 @@
   function renderAccount(){
     const label = userLabel();
     const teams = state.teams.length;
+    // Vacío dentro de la app de Android o iPhone, y entonces la sección entera
+    // —rótulo incluido— no se pinta.
+    const redes = socialLinksHtml();
     return `
       ${topbar({ left: backBtn('to-dashboard', t('nav.teams')) })}
       <main>
@@ -1016,6 +1077,10 @@
         </div>
         ${languageHtml()}
         ${privacyLinkHtml()}
+        ${redes && `
+          <div class="section-label">${esc(t('common.follow'))}</div>
+          ${redes}
+        `}
         <div class="section-label">${esc(t('account.session'))}</div>
         <button class="secondary" id="logout-btn">${esc(t('account.logout'))}</button>
 
