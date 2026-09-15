@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "start": "npx --yes serve . -l 5173",
-    "test": "node test/archivos.js && node test/i18n.js && node test/pista.js && node test/sync.js && node test/live.js && node test/nativo.js && node test/planes.js",
+    "test": "node test/seguridad.js && node test/archivos.js && node test/i18n.js && node test/pista.js && node test/sync.js && node test/live.js && node test/nativo.js && node test/planes.js",
     "build:www": "node tools/build-www.js",
     "sync": "npm run build:www && cap sync",
     "android": "npm run build:www && cap sync android && cap open android",

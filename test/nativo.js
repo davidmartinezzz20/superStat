@@ -236,11 +236,28 @@ const llamadas = page => page.evaluate(() => window.__NATIVO__.llamadas);
   check('al llegar al tope no hay botón de comprar',
         await page.$('#go-pro') === null && await page.$('#go-checkout') === null);
 
-  const visible = (await page.textContent('#app')).toLowerCase();
   const prohibidas = ['stripe', '€', 'http', '.com', '.online', 'suscri', 'precio', 'pago'];
-  const encontradas = prohibidas.filter(p => visible.includes(p));
-  check('ni precio, ni dirección, ni una palabra sobre dónde se paga',
-        encontradas.length === 0, 'aparece: ' + encontradas.join(', '));
+  const sinVenta = async (donde) => {
+    const visible = (await page.textContent('#app')).toLowerCase();
+    const encontradas = prohibidas.filter(p => visible.includes(p));
+    check(donde + ': ni precio, ni dirección, ni una palabra sobre dónde se paga',
+          encontradas.length === 0, 'aparece: ' + encontradas.join(', '));
+  };
+  await sinVenta('el tope de equipos');
+
+  // El otro tope del plan Gratis, el de partidos guardados, tiene exactamente
+  // la misma regla: es el mismo cartel y se le olvida a uno igual de fácil.
+  await page.evaluate(() => {
+    const id = Store.teams()[0].id;
+    for(let i = 0; i < 5; i++) Store.saveMatch(id, { rival:'Rival ' + i, date:'2026-01-0' + (i + 1) });
+  });
+  await page.click('[data-team]');
+  await page.waitForSelector('#match-limit-card', { timeout:10000 });
+  check('al llegar al tope de partidos tampoco hay botón de comprar',
+        await page.$('#go-pro') === null && await page.$('#go-checkout') === null);
+  await sinVenta('el tope de partidos');
+  await page.click('#to-dashboard');
+  await page.waitForSelector('#team-limit-card', { timeout:10000 });
 
   // Y si alguien llega a la pantalla de Pro por una ruta olvidada, tampoco.
   const aDondeVa = await page.evaluate(() => {

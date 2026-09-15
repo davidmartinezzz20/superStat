@@ -5,17 +5,27 @@ SuperStat tiene dos planes:
 | | Gratis | Pro |
 |---|---|---|
 | Equipos | 1 | sin límite |
+| Partidos guardados | 5 | sin límite |
 | Todo lo demás | igual | igual |
 
-El tope está **solo en crear**. Quien termine la prueba con tres equipos se
-queda con los tres y los sigue usando: solo no puede añadir un cuarto. Quitarle
-datos a alguien por dejar de pagar sería otra cosa muy distinta de lo que se
-vende aquí.
+Los dos topes están **solo en crear**. Quien termine la prueba con tres equipos
+y veinte partidos se queda con los tres y con los veinte, y los sigue abriendo,
+corrigiendo y exportando: solo no puede añadir uno más. Quitarle datos a alguien
+por dejar de pagar sería otra cosa muy distinta de lo que se vende aquí.
 
-El número está en una constante de `js/app.js`:
+El de partidos se mira **antes** de jugar, al entrar en "nuevo partido", y nunca
+al guardar: un partido empezado se guarda siempre. Avisar después de setenta
+minutos anotando de que eso ya no cabe sería tirar el trabajo de una tarde
+entera.
+
+Los partidos se cuentan en **toda la cuenta** y no por equipo, igual que los
+equipos: es un tope de plan, no de equipo.
+
+Los dos números están en sendas constantes de `js/app.js`:
 
 ```js
 const FREE_TEAMS = 1;
+const FREE_MATCHES = 5;
 ```
 
 ---
@@ -188,8 +198,35 @@ luego solo con esa.)
 | `RESEND_API_KEY` | mandar los avisos | no se manda ninguno, y nada más falla |
 | `RESEND_FROM` | el remitente | se usa uno por defecto que seguramente no es tuyo |
 | `SUPERSTAT_WEB` | a dónde se vuelve tras pagar | se usa la dirección de Vercel |
+| `SUPERSTAT_ORIGENES` | orígenes extra que pueden llamar a las funciones | los previews de Vercel no pueden abrir el pago ni borrar la cuenta |
 
 `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` las pone Supabase sola.
+
+### Sobre `SUPERSTAT_ORIGENES`
+
+Las tres funciones que llama la app (`pago`, `borrar-cuenta` y `aviso-tope`)
+solo contestan con cabeceras de CORS a una lista de orígenes conocidos
+(`supabase/functions/_shared/cors.ts`): la web de `SUPERSTAT_WEB`, los dos de la
+app de móvil (`capacitor://localhost` y `https://localhost`) y el `localhost`
+con el que se sirve el repo. Todo lo demás se queda fuera.
+
+Los **previews de Vercel** cambian de dirección en cada rama, así que no pueden
+estar en esa lista de antemano. Si vas a probar el pago desde uno, añádelo:
+
+```bash
+npx supabase secrets set SUPERSTAT_ORIGENES=https://super-stat-git-mi-rama-tuusuario.vercel.app
+```
+
+Se pueden poner varios separados por comas. **El error que se ve cuando falta es
+engañoso**: llega a la app como "Failed to send a request to the Edge Function",
+exactamente el mismo que si la función no estuviera desplegada. Para
+distinguirlos, mira el registro de la función en Supabase: si es esto, hay una
+línea que dice `origen no permitido: <la dirección>`.
+
+Esto no es lo que protege las funciones —de quién es la cuenta lo dice siempre
+el token de la sesión, nunca quien llama—, es una capa más: sirve para que una
+página cualquiera que consiga un token no pueda además usarlo desde el navegador
+de su víctima.
 
 ---
 

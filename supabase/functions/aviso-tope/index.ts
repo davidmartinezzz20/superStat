@@ -1,9 +1,11 @@
-// "Alguien ha chocado con el tope del plan gratis": decide si se le escribe.
+// "Alguien ha chocado con un tope del plan gratis": decide si se le escribe.
 //
-// La llama la app cuando enseña el cartel del límite. Y la llama **siempre**,
-// sin mirar nada: quien decide si el correo sale o no es esta función, no el
-// navegador. Un límite que se comprueba en el cliente no es un límite, porque
-// el cliente se puede recargar cincuenta veces seguidas.
+// La llama la app cuando enseña el cartel del límite, sea el de equipos o el de
+// partidos guardados: el correo es el mismo para los dos, porque lo que hay que
+// contar es que existe Pro y no cuál de las dos puertas se ha cerrado. Y la
+// llama **siempre**, sin mirar nada: quien decide si el correo sale o no es esta
+// función, no el navegador. Un límite que se comprueba en el cliente no es un
+// límite, porque el cliente se puede recargar cincuenta veces seguidas.
 //
 // Tres cosas hay que cumplir para que salga:
 //   1. Que la persona no se haya dado de baja de los avisos.
@@ -16,30 +18,22 @@
 // comprar fuera (ver puedeComprar() en js/app.js).
 //
 //   supabase functions deploy aviso-tope
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.116.0';
 import { enviarAviso } from '../_shared/correo.ts';
+import { json, preflight } from '../_shared/cors.ts';
 
 const DIAS_ENTRE_AVISOS = 30;
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS'
-};
-
-const json = (cuerpo: unknown, status = 200) =>
-  new Response(JSON.stringify(cuerpo), {
-    status,
-    headers: { ...CORS, 'Content-Type': 'application/json' }
-  });
+// CORS y la respuesta JSON, en _shared/cors.ts: quién puede llamar desde un
+// navegador es la misma lista para las tres funciones que llama la app.
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
-  if (req.method !== 'POST') return json({ error: 'method-not-allowed' }, 405);
+  if (req.method === 'OPTIONS') return preflight(req);
+  if (req.method !== 'POST') return json(req, { error: 'method-not-allowed' }, 405);
 
   const auth = req.headers.get('Authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!token) return json({ error: 'sin-sesion' }, 401);
+  if (!token) return json(req, { error: 'sin-sesion' }, 401);
 
   const admin = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -48,7 +42,7 @@ Deno.serve(async (req) => {
   );
 
   const { data: quien, error: errorSesion } = await admin.auth.getUser(token);
-  if (errorSesion || !quien?.user) return json({ error: 'sesion-no-valida' }, 401);
+  if (errorSesion || !quien?.user) return json(req, { error: 'sesion-no-valida' }, 401);
   const uid = quien.user.id;
 
   // El idioma con el que la app está funcionando ahora mismo. Es una copia para
@@ -70,7 +64,7 @@ Deno.serve(async (req) => {
 
   const corte = Date.now() - DIAS_ENTRE_AVISOS * 24 * 60 * 60 * 1000;
   if (fila?.tope_avisado_at && new Date(fila.tope_avisado_at).getTime() > corte) {
-    return json({ ok: true, enviado: false, motivo: 'hace-poco' });
+    return json(req, { ok: true, enviado: false, motivo: 'hace-poco' });
   }
 
   // enviarAviso ya mira si la persona quiere que se le escriba, y no lanza: si
@@ -82,5 +76,5 @@ Deno.serve(async (req) => {
       .eq('user_id', uid);
   }
 
-  return json({ ok: true, enviado });
+  return json(req, { ok: true, enviado });
 });

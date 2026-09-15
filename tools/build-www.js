@@ -32,6 +32,7 @@ const COPIAR = [
   'js/native.js',
   'js/i18n.js',
   'js/app.js',
+  'js/sw-register.js',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/icon-maskable.png',

@@ -406,6 +406,27 @@ create policy "leer lo mío" on public.subscriptions for select to authenticated
 create policy "leer lo mío" on public.avisos for select to authenticated
   using (user_id = (select auth.uid()));
 
+-- Y de esas dos filas, **no todas las columnas**. RLS dice de quién es la fila;
+-- esto dice qué se puede leer de ella, que es una pregunta distinta y también
+-- hay que contestarla.
+--
+--   avisos.baja_token es el que lleva el enlace de "darse de baja" del pie de
+--   los correos, y sustituye a la sesión: quien lo tiene, da de baja esa cuenta
+--   sin entrar. No pinta nada en un navegador. La app lee email_ok y lang, y
+--   user_id hace falta porque el interruptor actualiza filtrando por él.
+--   tope_avisado_at es de la mecánica del servidor y tampoco se enseña.
+--
+--   subscriptions.stripe_customer_id es el identificador de esa persona dentro
+--   de Stripe. La app solo necesita saber hasta cuándo tiene Pro y en qué estado
+--   está; el resto se queda en el servidor, que es quien habla con Stripe.
+--
+-- Sin esto, un `select *` desde la consola del navegador —o desde un script que
+-- se colara en la página— se los llevaría los dos.
+revoke select on public.avisos        from anon, authenticated;
+revoke select on public.subscriptions from anon, authenticated;
+grant  select (user_id, email_ok, lang)      on public.avisos        to authenticated;
+grant  select (user_id, pro_until, status)   on public.subscriptions to authenticated;
+
 -- El interruptor de avisos de la pantalla de Cuenta. La política deja tocar la
 -- fila propia, y el permiso por columnas decide **qué** de ella: el sello de
 -- frecuencia y el token de baja los escribe solo el servidor, o darse de alta
@@ -441,6 +462,34 @@ where n.nspname = 'public'
   and c.relname in ('teams','players','matches','shots','events',
                     'subscriptions','avisos')
 order by c.relname;
+
+-- ------------------------------------------------- comprobación de columnas
+--
+-- Lo de arriba dice que RLS está puesta; esto dice que lo que se puede leer de
+-- las dos tablas del plan es solo lo que tiene que salir al navegador. Si este
+-- aviso nombra `baja_token` o `stripe_customer_id`, alguien ha vuelto a dar
+-- permiso de lectura sobre la tabla entera (basta con un `grant select on ...`)
+-- y esos dos valores están viajando al navegador de cada usuario.
+
+do $$
+declare
+  fugas text;
+begin
+  select string_agg(table_name || '.' || column_name, ', ')
+    into fugas
+  from information_schema.column_privileges
+  where table_schema = 'public'
+    and privilege_type = 'SELECT'
+    and grantee in ('anon', 'authenticated')
+    and ((table_name = 'avisos'        and column_name in ('baja_token', 'tope_avisado_at'))
+      or (table_name = 'subscriptions' and column_name in ('stripe_customer_id', 'event_at')));
+  if fugas is null then
+    raise notice 'COLUMNAS: bien. Nada que no deba salir al navegador.';
+  else
+    raise notice 'COLUMNAS: MAL. El navegador puede leer: %', fugas;
+  end if;
+end;
+$$;
 
 -- ------------------------------------------------------ comprobación purga
 --

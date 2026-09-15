@@ -1,4 +1,4 @@
-// El plan Gratis, el plan Pro y el tope de equipos.
+// El plan Gratis, el plan Pro y sus dos topes: equipos y partidos guardados.
 //
 // Lo que se comprueba aquí es lo que decide si alguien puede seguir usando la
 // app y si alguien puede pagar, y casi todo son casos que no se ven mirando la
@@ -232,6 +232,77 @@ const avisos = page => page.evaluate(() =>
   await altaEquipo(page, 'BM Granollers');
   await page.waitForSelector('#team-limit-card', { timeout:5000 });
   check('y tiene su propio tope de un equipo', await equipos(page) === 1);
+
+  // ------------------------------------------------ 10. el tope de partidos
+  //
+  // El otro tope del plan Gratis. Se comprueba **antes** de jugar y no al
+  // guardar: un partido empezado se guarda siempre, porque avisar después de
+  // setenta minutos anotando de que eso no cabe sería tirar el trabajo de una
+  // tarde entera. Y lo que ya está guardado se sigue abriendo, como los equipos.
+  console.log('\n10. El plan Gratis llega a cinco partidos guardados');
+
+  // Los partidos se guardan por el store y no jugándolos por la pantalla: lo
+  // que se prueba aquí es el candado, y cinco partidos a mano serían cinco
+  // minutos de prueba para comprobar exactamente lo mismo.
+  const guardarPartidos = (page, n) => page.evaluate((n) => {
+    const id = Store.teams()[0].id;
+    for(let i = 0; i < n; i++){
+      Store.saveMatch(id, { rival: 'Rival ' + i, date: '2026-01-0' + (i + 1) });
+    }
+  }, n);
+  const partidos = page => page.evaluate(() => Store.matchCount());
+
+  await page.click('[data-team]');
+  await page.waitForSelector('#add-player-btn', { timeout:5000 });
+  check('con cero partidos se puede empezar uno', await page.$('#new-match-btn') !== null);
+
+  await guardarPartidos(page, 4);
+  await page.click('#to-dashboard');
+  await page.waitForSelector('[data-team]');
+  await page.click('[data-team]');
+  await page.waitForSelector('#add-player-btn', { timeout:5000 });
+  check('con cuatro guardados todavía se puede', await page.$('#new-match-btn') !== null,
+        'partidos: ' + await partidos(page));
+
+  await guardarPartidos(page, 1);
+  await page.click('#to-dashboard');
+  await page.waitForSelector('[data-team]');
+  await page.click('[data-team]');
+  await page.waitForSelector('#match-limit-card', { timeout:5000 });
+  check('con cinco guardados el botón desaparece', await page.$('#new-match-btn') === null);
+  check('el cartel dice a cuántos partidos llega el plan',
+        (await page.textContent('#match-limit-card')).includes('5'));
+
+  // Y por la otra puerta, el botón redondo de la barra de abajo.
+  await page.click('#tab-add');
+  await page.waitForSelector('#go-checkout', { timeout:5000 });
+  check('el + de la barra lleva a la pantalla de Pro en vez de al partido',
+        await page.$('#rival-name') === null);
+
+  // Y el tope sobrevive a recargar: sale del espejo local, no de la pantalla.
+  await page.goto(BASE);
+  await page.waitForSelector('#tab-home', { timeout:10000 });
+  check('los cinco partidos siguen guardados', await partidos(page) === 5);
+
+  // Lo guardado no se toca: se sigue abriendo y leyendo.
+  await page.click('[data-team]');
+  await page.waitForSelector('#view-matches-btn', { timeout:5000 });
+  await page.click('#view-matches-btn');
+  await page.waitForSelector('[data-match]', { timeout:5000 });
+  check('los partidos que ya hay se siguen listando',
+        (await page.$$('[data-match]')).length === 5);
+
+  // ------------------------------------------------- 11. Pro los desbloquea
+  console.log('\n11. Con Pro no hay tope de partidos');
+  await ponerPro(page, 30, 'active');
+  await page.click('#tab-home');
+  await page.waitForSelector('[data-team]', { timeout:5000 });
+  await page.click('[data-team]');
+  await page.waitForSelector('#new-match-btn', { timeout:5000 });
+  check('vuelve el botón de partido nuevo', await page.$('#match-limit-card') === null);
+  await page.click('#new-match-btn');
+  await page.waitForSelector('#rival-name', { timeout:5000 });
+  check('y se llega a la pantalla de empezar partido', await page.$('#rival-name') !== null);
 
   await ctx.close();
 

@@ -51,24 +51,28 @@ function urlDeBaja(token: string): string {
 interface Texto { asunto: string; titulo: string; cuerpo: string; boton: string; baja: string; }
 
 const TEXTOS: Record<TipoAviso, Record<string, Texto>> = {
-  // Alguien ha intentado crear un segundo equipo y no le ha dejado.
+  // Alguien ha chocado con un tope del plan gratis: el de equipos o el de
+  // partidos guardados. El correo es el mismo para los dos a propósito —lo que
+  // hay que contar es que existe Pro, no cuál de las dos puertas se ha cerrado—
+  // y así no hay dos textos que mantener en cuatro idiomas entre los dos.
   tope: {
     es: {
-      asunto: 'Tu plan de SuperStat llega a un equipo',
+      asunto: 'Tu plan de SuperStat llega hasta aquí',
       titulo: 'Has llegado al límite del plan Gratis',
-      cuerpo: 'El plan Gratis lleva un equipo, y acabas de intentar crear otro. ' +
-              'Con SuperStat Pro puedes llevar todos los que quieras, cada uno con su ' +
-              'plantilla, sus partidos y sus estadísticas. Los 7 primeros días son gratis ' +
-              'y puedes cancelar cuando quieras.',
+      cuerpo: 'El plan Gratis lleva un equipo y cinco partidos guardados, y acabas de ' +
+              'llegar al tope. Con SuperStat Pro no hay límite ni de equipos ni de ' +
+              'partidos, cada uno con su plantilla, su mapa de tiros y sus estadísticas. ' +
+              'Los 7 primeros días son gratis y puedes cancelar cuando quieras.',
       boton: 'Ver SuperStat Pro',
       baja: 'Si no quieres recibir estos avisos, date de baja aquí.'
     },
     en: {
-      asunto: 'Your SuperStat plan covers one team',
+      asunto: 'Your SuperStat plan stops here',
       titulo: 'You have reached the Free plan limit',
-      cuerpo: 'The Free plan covers one team, and you have just tried to create another. ' +
-              'With SuperStat Pro you can run as many as you like, each with its own roster, ' +
-              'matches and stats. The first 7 days are free and you can cancel any time.',
+      cuerpo: 'The Free plan covers one team and five saved matches, and you have just ' +
+              'reached the limit. With SuperStat Pro there is no cap on teams or matches, ' +
+              'each with its own roster, shot map and stats. The first 7 days are free and ' +
+              'you can cancel any time.',
       boton: 'See SuperStat Pro',
       baja: 'If you would rather not get these emails, unsubscribe here.'
     }

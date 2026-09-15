@@ -85,6 +85,15 @@ no para usar la app.
     servicio. Ahí está toda la seguridad del plan de pago.
   - `aviso-tope/` y `baja-avisos/` — el correo de "has llegado al límite" y el
     enlace de baja de su pie. Comparten `_shared/correo.ts`.
+  - `_shared/cors.ts` — quién puede llamar desde un navegador a las tres que
+    llama la app. Es una lista de orígenes (la web, los dos de Capacitor,
+    localhost y lo que se añada en `SUPERSTAT_ORIGENES`) y no un `*`. Un origen
+    que falte da el mismo error que una función sin desplegar, así que los
+    previews de Vercel hay que añadirlos ahí (`docs/suscripcion.md`).
+  - **Todo lo que importan lleva la versión fijada** (`@2.116.0`, no `@2`). Estas
+    funciones corren con la clave de servicio: un import sin versión se resuelve
+    a lo último que haya el día del despliegue, y eso es la puerta de entrada de
+    un paquete comprometido a la base entera. `test/seguridad.js` lo vigila.
 - `supabase/config.toml` — lo justo para que la CLI sepa a qué proyecto
   desplegar esas funciones, y para que sus `verify_jwt = false` viajen en el
   repositorio en vez de en un ajuste del panel. No es el mismo motivo en todas y
@@ -93,6 +102,14 @@ no para usar la app.
   rechaza y la llamada falla con el mismo error que si no estuviera desplegada.
   Quien comprueba el token es la propia función, así que no se pierde nada.
 - `sw.js` — service worker: guarda el shell para poder abrir sin cobertura.
+- `js/sw-register.js` — lo registra. Está aparte y no en línea dentro de
+  `index.html` por la CSP: con un `<script>` suelto haría falta `'unsafe-inline'`.
+- `vercel.json` — las cabeceras de seguridad de la web. No hay build ni funciones
+  de Vercel: solo sirve para que lo que ya se sirve tal cual lleve la CSP, HSTS,
+  `frame-ancestors` y compañía.
+- `SECURITY.md` — a dónde escribir si alguien encuentra un fallo, y las dos cosas
+  que parecen un fallo y no lo son (la clave anon es pública; el tope del plan se
+  comprueba en el cliente).
 - `manifest.webmanifest` e `icons/` — instalación en la pantalla de inicio.
 - `capacitor.config.json` y `assets/` — configuración de las apps nativas y la
   materia prima de sus iconos.
@@ -358,7 +375,27 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   "Ir a <referencia>.supabase.co". Cuidado con el nonce: a Google se le da el
   resumen SHA-256 y a Supabase el original; mandar el mismo a los dos falla.
 - `esc()` debe usarse siempre que se inserte texto de usuario (nombre de
-  jugador, rival, etc.) en una plantilla HTML, para evitar inyección.
+  jugador, rival, etc.) en una plantilla HTML, para evitar inyección. Y el CSV
+  tiene lo suyo aparte (`csvCell()`): Excel ejecuta como fórmula cualquier celda
+  que empiece por `=`, `+`, `@` o un tabulador, así que a esas se les pone
+  delante una comilla simple. Un nombre de jugador lo escribe una persona y el
+  CSV lo abre otra.
+- **La Content-Security-Policy está escrita en dos sitios y tienen que decir lo
+  mismo**: el `<meta>` de `index.html` y la cabecera de `vercel.json`. No es
+  duplicación por descuido: dentro de la app de Android e iPhone no hay servidor
+  que ponga cabeceras —los archivos salen del propio aparato—, así que allí la
+  única que existe es la del HTML; y en la cabecera se puede poner además
+  `frame-ancestors`, que en `<meta>` el navegador ignora. Endurecer una y
+  olvidarse de la otra no rompe nada y no se nota: por eso `test/seguridad.js`
+  compara las dos directiva a directiva. Si hace falta abrir un origen más, que
+  sea con un motivo escrito al lado.
+- `test/seguridad.js` comprueba las decisiones de seguridad que fallan en
+  silencio: la CSP, que no se cuele un secreto de servidor en lo que se descarga,
+  que las Edge Functions fijen versiones, que RLS siga activa en las siete tablas
+  y que `baja_token` y `stripe_customer_id` no salgan al navegador. **Si falla,
+  algo que estaba protegido ha dejado de estarlo: no la cambies para que pase.**
+  Corre sin navegador, así que va la primera de `npm test` y es de las cuatro que
+  se ejecutan en GitHub Actions (`.github/workflows/pruebas.yml`).
 - **Dentro de la app de Android o iPhone no se vende nada.** Apple (guía 3.1.1)
   y Google prohíben que una app lleve a comprar fuera de su sistema de pago, y
   no hace falta un enlace: cuenta también un texto que diga dónde se compra.
@@ -369,12 +406,22 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   no la cambies**: está para que no tumben la app en una actualización. Quien
   avisa de que existe Pro es el correo, que va fuera de la app y sí está
   permitido (`docs/suscripcion.md`).
-- El tope del plan gratis es `FREE_TEAMS` en `app.js`, y está **solo en crear**
-  (`handleCreateTeam`). Los equipos que ya existen se siguen abriendo, editando
-  y usando para anotar aunque sobren: quien acaba una prueba con tres se queda
-  con los tres. Tampoco se comprueba en la base, y es a propósito: si Postgres
-  rechazara el alta, `push()` lanzaría y la cola se quedaría atascada con los
-  partidos sin subir dentro.
+- El plan gratis tiene dos topes, y los dos son una constante de `app.js`:
+  `FREE_TEAMS` (1) y `FREE_MATCHES` (5, partidos guardados en toda la cuenta,
+  no por equipo). Los dos están **solo en crear**: el de equipos en
+  `handleCreateTeam()` y el de partidos en la entrada a `newMatchSetup`, con el
+  candado de verdad en `render()` para que no lo salte una ruta olvidada. Lo que
+  ya existe se sigue abriendo, editando, exportando y usando para anotar aunque
+  sobre: quien acaba una prueba con tres equipos y veinte partidos se queda con
+  los tres y con los veinte. El de partidos se mira **antes** de jugar y nunca al
+  guardar: un partido empezado se guarda siempre, porque avisar después de
+  setenta minutos anotando sería tirar el trabajo de una tarde. Tampoco se
+  comprueba ninguno en la base, y es a propósito: si Postgres rechazara el alta,
+  `push()` lanzaría y la cola se quedaría atascada con los partidos sin subir
+  dentro. Los dos carteles se pintan con `lockedCardHtml()` y llevan la clase
+  `locked-card`, que es por donde `attachHandlers()` sabe que hay que pedir el
+  correo del aviso; un tope nuevo que se pinte de otra forma se quedaría sin
+  aviso y sin que nada fallara.
 
 - La marca del logo también está duplicada en `tools/make-icons.js`, que genera
   los PNG del manifest, y en `tools/make-play-assets.js`, que genera los de la
@@ -388,7 +435,12 @@ Hay tres listas de los mismos archivos que se mantienen a mano —las etiquetas 
 `index.html`, el `SHELL` de `sw.js` y el `COPIAR` de `tools/build-www.js`— y
 olvidarse de una falla en silencio: sin el `SHELL`, la app no abre sin cobertura;
 sin `COPIAR`, el archivo no entra en el binario. `test/archivos.js` las compara,
-así que basta con ejecutarlo (`npm test` ya lo hace primero).
+así que basta con ejecutarlo (`npm test` ya lo hace de las primeras).
+
+Y si el archivo nuevo es un script, tiene que cargarse con una etiqueta `src` y
+no escribirse en línea dentro de `index.html`: la CSP no permite `'unsafe-inline'`
+en `script-src`, y `test/seguridad.js` lo comprueba. Eso es lo que hace
+`js/sw-register.js`, que antes era un `<script>` suelto al final del HTML.
 
 ## Ideas pendientes (mencionadas pero no implementadas)
 

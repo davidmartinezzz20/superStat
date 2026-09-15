@@ -16,3 +16,45 @@ www/
 # deja volver a subir la misma app. Está explicado en docs/movil.md.
 android/
 ios/
+
+# ---------------------------------------------------------------- secretos
+#
+# Nada de esto ha estado nunca en el repositorio y la idea es que siga así. Está
+# escrito aquí para que un `git add .` con prisa no lo suba sin que nadie mire:
+# un secreto que llega a GitHub hay que darlo por quemado aunque se borre acto
+# seguido, porque el commit queda en el historial y en los clones de quien sea.
+#
+# Las claves del proyecto viven en dos sitios y ninguno es este:
+#   - Las de servidor (service_role, Stripe, Resend), en las variables de la
+#     Edge Function: `supabase secrets set` (docs/suscripcion.md).
+#   - Las públicas (URL y anon de Supabase, cliente de Google), en js/config.js,
+#     que sí va en el repositorio **a propósito**: viajan dentro del JavaScript
+#     que descarga cualquiera que abra la web y no son un secreto. Lo que separa
+#     los datos de un usuario de los de otro son las políticas RLS.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# El almacén con el que se firma el AAB de Android. Si se pierde, Google Play no
+# deja volver a subir la misma app; si se filtra, cualquiera puede firmar una
+# actualización que los aparatos aceptarán como tuya. Copia de seguridad fuera
+# del repositorio y en sitio seguro (docs/movil.md).
+*.keystore
+*.jks
+*.p12
+*.p8
+*.mobileprovision
+keystore.properties
+
+# Los que generan las consolas de Google y Apple al dar de alta la app. No son
+# secretos de verdad, pero atan el binario a un proyecto concreto y no pintan
+# nada aquí: los proyectos nativos tampoco se guardan.
+google-services.json
+GoogleService-Info.plist
+
+# Caché local de las herramientas de despliegue.
+.vercel/
+.supabase/

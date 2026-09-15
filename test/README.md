@@ -17,14 +17,21 @@ npm test                             # las cinco suites, en orden
 Sueltas:
 
 ```bash
+node test/seguridad.js               # la CSP, los secretos y RLS, sin navegador
 node test/archivos.js                # las tres listas de archivos, sin navegador
+node test/i18n.js                    # los dos diccionarios, sin navegador
 node test/pista.js                   # las zonas de lanzamiento, sin navegador
 node test/sync.js                    # cuentas, sincronización, migración y borrar la cuenta
 node test/live.js                    # el partido, las estadísticas y la PWA
 node test/nativo.js                  # el puente con Android e iOS
+node test/planes.js                  # el plan Gratis, el Pro y sus dos topes
 ```
 
-Las dos primeras no necesitan ni navegador ni servidor: son leer archivos.
+Las cuatro primeras no necesitan ni navegador ni servidor: son leer archivos. Por
+eso son también las que corren solas en GitHub Actions
+(`.github/workflows/pruebas.yml`) en cada push. Las de navegador se ejecutan a
+mano con `npm test` antes de publicar: meterlas en CI obligaría a descargar
+cientos de megas de navegadores en cada push para probar lo mismo.
 
 El precio de no declarar Playwright era que `npm test` en una máquina limpia
 fallaba con un «Cannot find module», que no dice qué hacer. De eso se encarga
@@ -62,6 +69,23 @@ del `SHELL` no rompe nada hasta que alguien abre la app sin cobertura, y uno
 fuera de `COPIAR` no rompe nada hasta que se compila el binario—, que es justo
 lo que una prueba detecta y una persona no. Cuando se escribió, al `SHELL` le
 faltaban dos iconos.
+
+`seguridad.js` vigila las decisiones de seguridad que fallan en silencio: que la
+Content-Security-Policy siga siendo estricta y que la del `<meta>` de
+`index.html` y la de la cabecera de `vercel.json` no se separen, que no haya
+ningún `<script>` en línea, que las cabeceras de `vercel.json` estén, que no se
+cuele un secreto de servidor en nada de lo que se descarga (y que la clave de
+`js/config.js` sea de verdad la `anon`, leyendo el rol dentro del propio JWT),
+que las Edge Functions fijen la versión de lo que importan, que RLS siga activa
+en las siete tablas y que `baja_token` y `stripe_customer_id` no salgan al
+navegador. **Si falla, algo que estaba protegido ha dejado de estarlo: no la
+cambies para que pase**, igual que la sección 7 de `nativo.js`.
+
+`planes.js` cubre el plan Gratis y el Pro: los dos topes —un equipo y cinco
+partidos guardados—, que estén **solo en crear** y que lo que ya existe se siga
+abriendo y usando, que el derecho sobreviva a quedarse sin cobertura, que una
+fecha pasada no desbloquee aunque siga en la caché y que al salir de la cuenta
+el Pro no se le quede al siguiente que entre en el mismo móvil.
 
 `pista.js` fija las fronteras de `zoneFromPoint()`, que es pura y decide cómo se
 agrupan todos los lanzamientos ya registrados, y comprueba que el `aspect-ratio`

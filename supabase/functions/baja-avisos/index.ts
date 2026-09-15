@@ -14,7 +14,7 @@
 // List-Unsubscribe-Post que se manda en _shared/correo.ts).
 //
 //   supabase functions deploy baja-avisos
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.116.0';
 
 const TEXTOS: Record<string, { titulo: string; cuerpo: string }> = {
   es: {
@@ -63,7 +63,17 @@ function pagina(t: { titulo: string; cuerpo: string }, status: number): Response
 </body></html>`;
   return new Response(html, {
     status,
-    headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'no-store',
+      // La página no carga nada de fuera, así que puede cerrarse del todo. Y
+      // lleva el token de baja en la dirección: con no-referrer, ese token no
+      // viaja a ninguna parte si algún día hubiera un enlace aquí dentro.
+      'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      'Referrer-Policy': 'no-referrer',
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY'
+    }
   });
 }
 

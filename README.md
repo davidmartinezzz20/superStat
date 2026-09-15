@@ -12,9 +12,10 @@ balonmano: plantilla, partidos y mapa de tiros por zona de portería.
   igual; lo pendiente se sube solo al volver la red, y la app te dice cuánto
   queda. Se puede **instalar en la pantalla de inicio** como una app más.
 - Gestión de uno o varios equipos, cada uno con su plantilla (nombre,
-  dorsal, posición). El plan gratuito lleva un equipo; **SuperStat Pro** quita
-  ese límite y se contrata en la web (ver
-  **[`docs/suscripcion.md`](docs/suscripcion.md)**).
+  dorsal, posición). El plan gratuito lleva un equipo y cinco partidos
+  guardados; **SuperStat Pro** quita los dos límites y se contrata en la web
+  (ver **[`docs/suscripcion.md`](docs/suscripcion.md)**). Lo que ya está
+  guardado no se toca nunca: los topes están solo en crear.
 - Alta de partidos nuevos contra un rival, con las dos porterías dibujadas
   una al lado de la otra (propia y rival), divididas en una cuadrícula de
   9 zonas.
@@ -101,6 +102,13 @@ tablas, activar el login de Google y las URLs de redirección— están en
 3. Configurar el proveedor de Google siguiendo la guía: el ID de cliente va
    también en Supabase, y los orígenes desde los que se abre la app, en Google.
 
+La URL y la clave anon de `js/config.js` **se publican a propósito**: viajan
+dentro del JavaScript que descarga cualquiera que abra la web, así que no son un
+secreto. Lo único que separa los datos de un usuario de los de otro son las
+políticas RLS de `supabase/schema.sql`, y comprobar que aíslan de verdad es uno
+de los dos pasos que hay que hacer a mano antes de publicar. Está todo en
+**[`SECURITY.md`](SECURITY.md)**.
+
 ## Cómo ejecutarlo
 
 Sigue sin haber build. Se sirve estático:
@@ -144,6 +152,9 @@ js/native.js           puente con la app de Android/iOS
 js/app.js              pantallas y lógica de la app
 vendor/                supabase-js y capacitor-core, copiados sin tocar
 sw.js                  caché del shell, para abrir sin cobertura
+js/sw-register.js      lo registra (aparte, para no tener scripts en línea)
+vercel.json            cabeceras de seguridad de la web (CSP, HSTS y compañía)
+SECURITY.md            cómo avisar de un fallo, y qué protege qué
 manifest.webmanifest   instalación en la pantalla de inicio
 capacitor.config.json  configuración de las apps nativas
 icons/  assets/        iconos de la web y materia prima de los de las apps

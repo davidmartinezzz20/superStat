@@ -17,7 +17,7 @@
 //
 // Al cambiar cualquier archivo del shell hay que subir VERSION, o los
 // navegadores que ya tengan la caché vieja seguirán sirviéndola.
-const VERSION = 'superstat-v10';
+const VERSION = 'superstat-v11';
 
 const SHELL = [
   './',
@@ -31,6 +31,7 @@ const SHELL = [
   './js/native.js',
   './js/i18n.js',
   './js/app.js',
+  './js/sw-register.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

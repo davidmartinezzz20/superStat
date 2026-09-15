@@ -46,15 +46,22 @@
 
   function positionName(id){ return t('position.' + id); }
 
-  // Cuántos equipos entran en el plan gratis. Cambiar el plan es cambiar este
-  // número: el tope se comprueba en un solo sitio (handleCreateTeam).
+  // Hasta dónde llega el plan gratis: un equipo y cinco partidos guardados.
+  // Cambiar el plan es cambiar estos dos números, y nada más.
   //
-  // El tope está **solo en crear**. Los equipos que ya existen se siguen
-  // abriendo, editando y usando para anotar partidos aunque sobren: quien
-  // termina una prueba con tres equipos se queda con los tres. Quitarle datos a
-  // alguien por dejar de pagar sería otra cosa muy distinta de lo que se vende
-  // aquí, y además rompería la app en la cara de quien ya la usa.
+  // Los dos topes están **solo en crear**: el de equipos en handleCreateTeam() y
+  // el de partidos en la entrada a la pantalla de "nuevo partido". Lo que ya
+  // existe se sigue abriendo, editando, exportando y usando para anotar aunque
+  // sobre: quien termina una prueba con tres equipos y veinte partidos se queda
+  // con los tres y con los veinte. Quitarle datos a alguien por dejar de pagar
+  // sería otra cosa muy distinta de lo que se vende aquí, y además rompería la
+  // app en la cara de quien ya la usa.
+  //
+  // Por eso el tope de partidos se mira **antes** de jugar y no al guardar: un
+  // partido empezado se guarda siempre. Avisar después de setenta minutos
+  // anotando de que eso no cabe sería tirar el trabajo de una tarde entera.
   const FREE_TEAMS = 1;
+  const FREE_MATCHES = 5;
 
   // Si en esta pantalla se puede vender o no.
   //
@@ -534,6 +541,11 @@
     // lo que no se puede permitir es que una ruta olvidada la cuele en una
     // versión de la tienda (ver puedeComprar).
     if(state.screen === 'paywall' && !puedeComprar()) state.screen = 'dashboard';
+    // Lo mismo con el tope de partidos, y por lo mismo: los botones que llevan a
+    // "nuevo partido" ya lo miran, pero el candado de verdad está aquí, en un
+    // solo sitio, para que no lo pueda saltar una ruta olvidada. Un partido ya
+    // empezado no se toca: lo que se corta es empezar otro.
+    if(state.screen === 'newMatchSetup' && matchLimitReached()) state.screen = 'team';
     // Las pantallas de datos se releen del store en cada pintada: así lo que
     // llega de otro dispositivo aparece sin tener que recordar refrescarlo.
     if(state.user){
@@ -787,16 +799,19 @@
     `;
   }
 
-  // Lo que se enseña al llegar al tope, y aquí es donde se nota la regla de las
-  // tiendas: en la web hay un botón que lleva a Pro, y en la app de móvil el
+  // Lo que se enseña al llegar a un tope, y aquí es donde se nota la regla de
+  // las tiendas: en la web hay un botón que lleva a Pro, y en la app de móvil el
   // mismo cartel se queda sin botón, sin precio y sin decir dónde se compra.
-  function teamLimitHtml(){
-    const clave = puedeComprar() ? 'limit.subWeb' : 'limit.subApp';
+  //
+  // Los dos topes comparten esta tarjeta y la clase `locked-card`, que es por
+  // donde attachHandlers() sabe que hay que pedir el correo del aviso. Un tope
+  // nuevo que se pinte de otra forma se quedaría sin ese aviso y sin que nada
+  // fallara, así que lo suyo es seguir pasando por aquí.
+  function lockedCardHtml(id, titulo, subWeb, subApp){
     return `
-      <div class="section-label">${esc(t('dashboard.newTeam'))}</div>
-      <div class="card locked-card" id="team-limit-card">
-        <div class="card-title">${icon('lock')} ${esc(t('limit.title', { n: FREE_TEAMS }))}</div>
-        <div class="card-sub">${esc(t(clave))}</div>
+      <div class="card locked-card" id="${id}">
+        <div class="card-title">${icon('lock')} ${esc(titulo)}</div>
+        <div class="card-sub">${esc(puedeComprar() ? subWeb : subApp)}</div>
         ${puedeComprar()
           ? `<button class="primary slim" id="go-pro">${esc(t('limit.seePro'))}</button>`
           : ''}
@@ -804,8 +819,26 @@
     `;
   }
 
-  // Llegar al tope desde cualquier otro sitio que no sea el panel.
-  function hitTeamLimit(){
+  function teamLimitHtml(){
+    return `
+      <div class="section-label">${esc(t('dashboard.newTeam'))}</div>
+      ${lockedCardHtml('team-limit-card', t('limit.title', { n: FREE_TEAMS }),
+                       t('limit.subWeb'), t('limit.subApp'))}
+    `;
+  }
+
+  function matchLimitHtml(){
+    return `
+      <div class="section-label">${esc(t('team.matches'))}</div>
+      ${lockedCardHtml('match-limit-card', t('limit.matchTitle', { n: FREE_MATCHES }),
+                       t('limit.matchSubWeb'), t('limit.matchSubApp'))}
+    `;
+  }
+
+  // Llegar a un tope desde cualquier otro sitio que no sea la pantalla donde se
+  // pinta su tarjeta. En la web se va a la pantalla de Pro; en la app de móvil,
+  // donde no se puede vender, solo se dice que hasta ahí llega el plan.
+  function hitLimit(titulo){
     if(puedeComprar()){
       state.paywallError = '';
       state.screen = 'paywall';
@@ -813,8 +846,11 @@
       return;
     }
     render();
-    toast(t('limit.title', { n: FREE_TEAMS }));
+    toast(titulo);
   }
+
+  function hitTeamLimit(){ hitLimit(t('limit.title', { n: FREE_TEAMS })); }
+  function hitMatchLimit(){ hitLimit(t('limit.matchTitle', { n: FREE_MATCHES })); }
 
   // Un partido sin guardar es lo único que no está a salvo en ningún sitio: se
   // enseña arriba del todo hasta que se guarda o se descarta.
@@ -965,10 +1001,15 @@
     const boton = !puedeComprar() ? ''
       : pro ? `<button class="secondary slim" id="manage-plan">${esc(t('plan.manage'))}</button>`
             : `<button class="primary slim" id="go-pro">${esc(t('limit.seePro'))}</button>`;
+    // En Gratis se dice además por dónde va el tope de partidos. Enseñar cuánto
+    // llevas gastado del plan que tienes es estado, no venta, así que esto sí
+    // puede salir también en la app de móvil.
+    const uso = pro ? '' : t('plan.freeUse', { n: Store.matchCount(), tope: FREE_MATCHES });
     return `
       <div class="card">
         <div class="card-title">${pro ? icon('lock') : ''} ${esc(titulo)}</div>
         ${sub ? `<div class="card-sub">${esc(sub)}</div>` : ''}
+        ${uso ? `<div class="card-sub">${esc(uso)}</div>` : ''}
         ${boton}
       </div>
       <label class="switch-row" for="avisos-ok">
@@ -1078,6 +1119,14 @@
     return !Store.isPro() && state.teams.length >= FREE_TEAMS;
   }
 
+  // El de partidos es de la cuenta entera y no del equipo abierto, igual que el
+  // de equipos: se cuenta con Store.matchCount(), que mira el espejo local y no
+  // la lista de la pantalla, porque esa es solo la del equipo que se esté
+  // mirando. Como todo lo demás, funciona igual sin cobertura.
+  function matchLimitReached(){
+    return !Store.isPro() && Store.matchCount() >= FREE_MATCHES;
+  }
+
   async function handleCreateTeam(){
     const name = document.getElementById('new-team-name').value.trim();
     if(!name) return;
@@ -1158,8 +1207,10 @@
           </div>
         ` : `<button class="secondary" id="add-player-btn">${esc(t('team.addPlayer'))}</button>`}
 
-        <div class="section-label">${esc(t('team.matches'))}</div>
-        <button class="primary" id="new-match-btn">${esc(t('team.newMatch'))}</button>
+        ${matchLimitReached() ? matchLimitHtml() : `
+          <div class="section-label">${esc(t('team.matches'))}</div>
+          <button class="primary" id="new-match-btn">${esc(t('team.newMatch'))}</button>
+        `}
         <div style="height:10px;"></div>
         <button class="secondary" id="view-matches-btn">${esc(t('team.viewMatches'))}</button>
         <div style="height:10px;"></div>
@@ -2030,8 +2081,29 @@
     toast(t('share.downloaded'));
   }
 
+  // Una celda del CSV, con dos cuidados distintos.
+  //
+  // El primero es el de siempre: si lleva comillas, punto y coma o un salto de
+  // línea, va entre comillas y las de dentro se duplican.
+  //
+  // El segundo es de seguridad y no se ve venir. Excel, Numbers y LibreOffice
+  // tratan como **fórmula** cualquier celda que empiece por = + - @ o por un
+  // tabulador, y la ejecutan al abrir el archivo. Un jugador llamado
+  // `=HYPERLINK(...)` convierte una exportación en algo que se ejecuta en el
+  // ordenador de quien la abra, y el nombre lo escribe el usuario: en un equipo
+  // compartido, no necesariamente el mismo que exporta. Se le pone delante una
+  // comilla simple, que es lo que esas hojas de cálculo entienden como "esto es
+  // texto"; el contenido se lee igual y deja de ejecutarse.
+  //
+  // Los códigos que viajan sin traducir (goal/save/out/post, EI, LI…) no empiezan
+  // por ninguno de esos caracteres, así que juntar dos exportaciones sigue
+  // funcionando. Los números negativos sí empiezan por '-', y por eso se dejan
+  // fuera: un -3 es un número, no una fórmula.
+  const FORMULA = /^[=+@\t\r]|^-(?!\d)/;
+
   function csvCell(v){
-    const s = v === null || v === undefined ? '' : String(v);
+    let s = v === null || v === undefined ? '' : String(v);
+    if(FORMULA.test(s)) s = "'" + s;
     return /[",;\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
   }
 
@@ -2894,7 +2966,7 @@
     //
     // Una vez por sesión, y quien decide de verdad si se manda es el servidor,
     // que mira el interruptor del usuario y que no se le haya escrito hace poco.
-    if(document.getElementById('team-limit-card') && !avisoTopePedido && state.user){
+    if(app.querySelector('.locked-card') && !avisoTopePedido && state.user){
       avisoTopePedido = true;
       if(DB.isConfigured()) DB.avisarTope(I18N.lang()).catch(() => {});
     }
@@ -2922,6 +2994,7 @@
     });
     bind('tab-add','click', () => {
       if(!state.currentTeamId){ state.screen='dashboard'; render(); toast(t('nav.pickTeam')); return; }
+      if(matchLimitReached()){ hitMatchLimit(); return; }
       state.formError='';
       state.screen='newMatchSetup';
       render();
@@ -2944,7 +3017,12 @@
     app.querySelectorAll('[data-del-player]').forEach(el => {
       el.addEventListener('click', () => handleDeletePlayer(el.getAttribute('data-del-player')));
     });
-    bind('new-match-btn','click', () => { state.formError=''; state.screen='newMatchSetup'; render(); });
+    bind('new-match-btn','click', () => {
+      if(matchLimitReached()){ hitMatchLimit(); return; }
+      state.formError='';
+      state.screen='newMatchSetup';
+      render();
+    });
     bind('view-matches-btn','click', async () => {
       reloadMatches();
       state.screen = 'matchList';

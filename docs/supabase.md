@@ -189,6 +189,13 @@ función, **desactiva *Verify JWT*** (ver más abajo por qué).
 No hay que declarar ningún secreto: `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY`
 las pone Supabase en el entorno de la función.
 
+> **Si vas a probar desde un preview de Vercel**, hay una variable más que sí
+> hace falta. Esta función solo contesta con cabeceras de CORS a una lista de
+> orígenes conocidos, y los previews cambian de dirección en cada rama: sin
+> añadir el tuyo a `SUPERSTAT_ORIGENES`, el botón de borrar la cuenta falla con
+> el mismo error que si la función no estuviera desplegada. Está explicado en
+> `docs/suscripcion.md`, en la tabla de secretos.
+
 > Si además vas a cobrar el plan Pro, esta función necesita `STRIPE_SECRET_KEY`
 > para cancelar la suscripción de quien borre su cuenta. Está en
 > [`suscripcion.md`](suscripcion.md), y sin ella el borrado sigue funcionando:

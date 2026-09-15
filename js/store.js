@@ -217,6 +217,16 @@ window.Store = (function(){
       });
   }
 
+  // Cuántos partidos guardados hay en toda la cuenta, sin montar ninguno.
+  //
+  // Va aquí y no en app.js porque el espejo local se toca en un solo archivo, y
+  // cuenta **todos los equipos** y no el que esté abierto: el tope es de la
+  // cuenta, igual que el de equipos. Se cuenta a pelo y no con matches(), que
+  // reconstruye tiros y eventos de cada partido y aquí no hacen falta.
+  function matchCount(){
+    return Object.values(cache.matches).filter(alive).length;
+  }
+
   // ------------------------------------------------------------- escrituras
 
   function createTeam(name){
@@ -652,7 +662,7 @@ window.Store = (function(){
 
   return {
     uuid, start, stop, wipeLocal, onChange, sync, status, pendingCount,
-    teams, matches, createTeam, addPlayer, updatePlayer, deletePlayer, deleteTeam,
+    teams, matches, matchCount, createTeam, addPlayer, updatePlayer, deletePlayer, deleteTeam,
     saveMatch, updateMatch, deleteMatch, deleteShot, deleteEvent,
     saveDraft, loadDraft, clearDraft,
     lang, setLang,
