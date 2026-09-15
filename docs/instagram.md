@@ -8,6 +8,10 @@ publicaciones de cada una con su pie y sus etiquetas. Las imágenes las genera
 Es el hermano de [`play.md`](play.md): aquél tiene los textos de la ficha de la
 tienda, éste los de las redes. Ninguno de los dos entra en el producto.
 
+Aquí está **qué** se pega. **En qué orden** se hace todo —abrir las cuentas,
+pasarlas a profesional, la biografía y las tres publicaciones— está en
+[`publicar-instagram.md`](publicar-instagram.md).
+
 Lo que sale del repositorio:
 
 | Qué | Dónde |
@@ -115,6 +119,11 @@ funciona donde se usa**.
 Cada una es un carrusel: la primera imagen es la portada con el titular y las
 siguientes son capturas. Se suben en el orden del nombre del archivo.
 
+El **texto alternativo** de cada imagen va en los dos idiomas, el de cada
+cuenta en el suyo. Instagram da **100 caracteres** por imagen y corta lo que
+pase, así que los de aquí están todos dentro de ese tope: al retocarlos, hay que
+seguir contando.
+
 El titular va **dibujado dentro de la imagen** y sale de
 `tools/make-instagram-assets.js`; si se cambia ahí, hay que cambiarlo aquí
 también.
@@ -166,13 +175,19 @@ What would be the first thing you'd log?
 #coachingtools #matchstats #grassrootssport
 ```
 
-**Texto alternativo**
+**Texto alternativo, en castellano**
 
 - Portada: «Fondo negro con el logo de SuperStat y el texto "Un toque, gol. Dos
   toques, parada."»
-- Captura: «Pantalla de la app durante un partido: marcador 15-12, reloj en
-  25:58 y las dos porterías divididas en nueve zonas con los goles y paradas
-  anotados en cada una.»
+- Captura: «Partido en curso: marcador 15-12, reloj en 25:58 y las dos porterías
+  divididas en nueve zonas.»
+
+**Texto alternativo, en inglés**
+
+- Portada: «Black background with the SuperStat logo and the text "One tap,
+  goal. Two taps, save."»
+- Captura: «Match in progress: score 15-12, clock at 25:58 and both goals split
+  into nine zones.»
 
 ---
 
@@ -224,13 +239,21 @@ Save this one for your next match.
 #matchstats #coachingtools #grassrootssport
 ```
 
-**Texto alternativo**
+**Texto alternativo, en castellano**
 
 - Portada: «Fondo negro con el texto "¿Desde dónde marcáis de verdad?"»
 - Captura 1: «La app pregunta "¿Desde dónde ha lanzado?" sobre un dibujo a
   escala de media pista de balonmano.»
 - Captura 2: «Mapa de calor de los lanzamientos sobre la media pista, con el
-  acierto por puesto debajo: extremo izquierdo 12/14, 86%.»
+  acierto por puesto debajo.»
+
+**Texto alternativo, en inglés**
+
+- Portada: «Black background with the text "Where do you really score from?"»
+- Captura 1: «The app asks "Where was the shot taken from?" over a half-court
+  drawn to scale.»
+- Captura 2: «Heat map of the shots over the half-court, with the accuracy by
+  position below.»
 
 ---
 
@@ -283,14 +306,23 @@ No ads, no tracking, and every account only sees its own data.
 #coachingtools #grassrootssport
 ```
 
-**Texto alternativo**
+**Texto alternativo, en castellano**
 
 - Portada: «Fondo negro con el texto "El pabellón no tiene cobertura. La app no
   la necesita."»
-- Captura 1: «Ficha de un partido terminado: 29-25 contra CE Granollers, con la
-  evolución del marcador y la mejor racha.»
+- Captura 1: «Ficha de un partido terminado: 29-25, con la evolución del
+  marcador y la mejor racha.»
 - Captura 2: «Acumulado de la temporada: 2 victorias, 0 empates, 1 derrota, con
-  goles a favor y en contra por partido.»
+  los goles a favor y en contra.»
+
+**Texto alternativo, en inglés**
+
+- Portada: «Black background with the text "The sports hall has no signal. The
+  app does not need one."»
+- Captura 1: «Report of a finished match: 29-25, with the score evolution and
+  the best run.»
+- Captura 2: «Season totals: 2 wins, 0 draws, 1 loss, with the goals for and
+  against.»
 
 ---
 

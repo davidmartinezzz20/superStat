@@ -119,6 +119,9 @@ no para usar la app.
 - `tools/make-instagram-assets.js` — las genera. El dibujo de la marca se lo
   pide prestado a `make-play-assets.js` en vez de copiarlo por cuarta vez.
 - `docs/instagram.md` — biografías, pies y etiquetas de las dos cuentas.
+- `docs/publicar-instagram.md` — abrir esas dos cuentas, en orden de ejecución.
+  Es a `instagram.md` lo que `publicar-android.md` es a `play.md`: no repite
+  ningún texto, dice en qué momento ir a buscarlo y qué depende de qué.
 - `docs/supabase.md` — puesta a punto de Supabase y de Google, y el despliegue
   de la Edge Function de borrado de cuenta.
 - `docs/suscripcion.md` — el plan Pro: Stripe, el webhook, los avisos por correo

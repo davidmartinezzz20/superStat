@@ -419,6 +419,9 @@ primera pantalla. Sin credenciales, el rechazo es automático.
       **entra con Google**. Es la comprobación del paso 5.3 y solo se puede
       hacer aquí.
 - [ ] Comprueba que la ficha enseña las capturas en el orden que querías.
+- [ ] Cambia las dos biografías de Instagram: fuera la línea entera de
+      «Próximamente en Google Play» y el enlace, el de la tienda
+      ([`publicar-instagram.md`](publicar-instagram.md) §7).
 - [ ] Guarda en sitio seguro, si no lo has hecho ya, el almacén de claves y sus
       contraseñas.
 
