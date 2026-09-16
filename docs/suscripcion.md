@@ -146,6 +146,10 @@ cambian los seis sitios: Stripe, `PRO_PRICE` y las cuatro portadas de la web. La
 prueba de aquella web compara las cuatro entre sí, pero no puede saber lo que
 cobra Stripe.
 
+Dentro de cada portada el número aparece dos veces —la tarjeta del plan y el
+`offers` de sus datos estructurados—, y eso no añade un sitio más que recordar:
+la misma prueba compara las dos de cada página entre sí.
+
 ---
 
 ## 3. Resend, para los correos
