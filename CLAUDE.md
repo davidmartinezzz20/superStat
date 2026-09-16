@@ -50,6 +50,8 @@ no para usar la app.
 ## Estructura
 
 - `index.html` — esqueleto de la página y carga de fuentes/estilos/scripts.
+  Lleva además los datos estructurados (`application/ld+json`) que le dicen al
+  buscador que esto es una app y no una página cualquiera.
 - `css/styles.css` — todos los estilos (tema oscuro sobre negro con la
   tipografía del sistema, cabecera y barra inferior flotantes, tarjetas,
   la portería dibujada con postes y red, el modal de selección de
@@ -421,6 +423,17 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
   olvidarse de la otra no rompe nada y no se nota: por eso `test/seguridad.js`
   compara las dos directiva a directiva. Si hace falta abrir un origen más, que
   sea con un motivo escrito al lado.
+- **Los datos estructurados de `index.html` describen la misma app que las
+  portadas de `superstat.online`**, y por eso llevan su mismo `@id`
+  (`https://superstat.online/#app`): son dos páginas hablando de una app, no dos
+  apps. Ahí es donde va el marcado `SoftwareApplication`; el nodo de la marca
+  (`Organization`) y el precio viven en aquel repositorio. **Aquí no puede haber
+  precio, ni oferta, ni enlace a donde se paga**, porque este archivo viaja
+  dentro del binario (lo de más abajo, la guía 3.1.1). Va en línea sin tocar la
+  CSP: `type="application/ld+json"` es un bloque de datos y el navegador no lo
+  ejecuta, así que `script-src` no interviene. El apartado *1 bis* de
+  `test/seguridad.js` comprueba las dos cosas —que es JSON válido y que no vende
+  nada—, y sigue prohibiendo cualquier otro script escrito dentro del HTML.
 - `test/seguridad.js` comprueba las decisiones de seguridad que fallan en
   silencio: la CSP, que no se cuele un secreto de servidor en lo que se descarga,
   que las Edge Functions fijen versiones, que RLS siga activa en las siete tablas
@@ -454,9 +467,13 @@ tiros sin punto tienen `origin: null` y se muestran como "Sin especificar".
 - **El precio está escrito en seis sitios y todos se mantienen a mano**: el Price
   de Stripe, `PRO_PRICE` en `js/config.js` (`'3,49 €'`, solo el número) y la
   sección de planes de las cuatro portadas de `superstat.online` (repositorio
-  `webSuperStat`, que compara las cuatro entre sí en su prueba). Que los
-  impuestos van aparte es texto, no número: vive en `paywall.taxes`, en los
-  cuatro diccionarios, y no dentro de `PRO_PRICE` —ahí se quedaría sin traducir.
+  `webSuperStat`, que compara las cuatro entre sí en su prueba). Cada portada lo
+  escribe además una segunda vez, en el `offers` de sus datos estructurados, y
+  ése no cuenta como séptimo sitio: la prueba de aquel repositorio lo compara
+  con el precio visible de su propia página, así que no puede desparejarse sin
+  que falle. Que los impuestos van aparte es texto, no número: vive en
+  `paywall.taxes`, en los cuatro diccionarios, y no dentro de `PRO_PRICE` —ahí
+  se quedaría sin traducir.
 - El plan gratis tiene dos topes, y los dos son una constante de `app.js`:
   `FREE_TEAMS` (1) y `FREE_MATCHES` (5, partidos guardados en toda la cuenta,
   no por equipo). Los dos están **solo en crear**: el de equipos en

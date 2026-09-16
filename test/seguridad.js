@@ -59,16 +59,24 @@ check("script-src es 'self' más Google y Vercel Analytics",
 check("script-src no lleva 'unsafe-inline' ni 'unsafe-eval'",
       !/unsafe-(inline|eval)/.test(script), script);
 
-// Y si la CSP prohíbe los scripts en línea, solo se permite el de Vercel Analytics
-// que inicializa window.va. Se mira sin los comentarios (sinComentarios() está
-// más abajo): el propio comentario que explica la CSP usa la palabra <script> como
-// ejemplo, y eso tiene que poder seguir escrito.
+// Y si la CSP prohíbe los scripts en línea, lo que hay dentro del HTML tiene
+// que ser exactamente dos cosas: el de Vercel Analytics que inicializa
+// window.va, y el bloque de datos estructurados. Se mira sin los comentarios
+// (sinComentarios() está más abajo): el propio comentario que explica la CSP
+// usa la palabra <script> como ejemplo, y eso tiene que poder seguir escrito.
+//
+// El de datos estructurados no es una excepción a la CSP sino algo que la CSP
+// no mira: type="application/ld+json" es un bloque de datos, el navegador no lo
+// ejecuta nunca y script-src no interviene. Por eso se permite sin abrir la
+// política, y solo si es JSON de verdad: lo que se sigue prohibiendo, que es de
+// lo que va todo esto, es JavaScript escrito dentro del HTML.
 const enLinea = sinComentarios(index)
   .match(/<script(?![^>]*\bsrc=)[^>]*>[\s\S]*?<\/script>/g) || [];
-// Solo se permite el script de inicialización de Vercel Analytics
 const vaScript = enLinea.filter(s => /window\.va.*window\.vaq/.test(s));
-const otrosScripts = enLinea.length - vaScript.length;
-check('index.html solo tiene el script en línea de Vercel Analytics', otrosScripts === 0,
+const datos = enLinea.filter(s => /type="application\/ld\+json"/.test(s));
+const otrosScripts = enLinea.length - vaScript.length - datos.length;
+check('index.html no tiene más scripts en línea que el de Vercel Analytics y los datos',
+      otrosScripts === 0,
       enLinea.length + ' encontrados (' + otrosScripts + ' no permitidos)');
 
 // A dónde puede hablar la página. Es la mitad que importa cuando el escapado
@@ -81,6 +89,35 @@ for(const d of ['base-uri', 'object-src', 'form-action']){
   check(d + " está en 'none'", (dMeta[d] || []).join(' ') === "'none'",
         (dMeta[d] || []).join(' '));
 }
+
+console.log('\n1 bis. Los datos estructurados no venden nada');
+// index.html se copia tal cual dentro del binario de Android e iPhone
+// (tools/build-www.js), así que lo que se escriba aquí viaja dentro de la app.
+// Apple (guía 3.1.1) y Google prohíben que una app lleve a comprar fuera de su
+// sistema de pago, y no hace falta un botón: cuenta un texto o una dirección.
+// El precio va en las portadas de superstat.online, que son web; aquí no.
+//
+// Esta comprobación vive aquí y no en test/nativo.js §7 por dos razones: la de
+// nativo lee el texto visible de #app y esto está en el <head>, y necesita
+// Playwright, mientras que ésta corre en cada push (.github/workflows).
+check('index.html lleva un bloque de datos estructurados y solo uno',
+      datos.length === 1, datos.length + ' encontrados');
+
+const json = (datos[0] || '').replace(/^<script[^>]*>/, '').replace(/<\/script>$/, '');
+let ld = null;
+try { ld = JSON.parse(json); } catch(e){ ld = e; }
+check('los datos estructurados parsean como JSON',
+      ld !== null && !(ld instanceof Error),
+      ld instanceof Error ? ld.message : 'no hay bloque application/ld+json');
+check('describen la app (SoftwareApplication) con el @id de superstat.online',
+      Boolean(ld) && !(ld instanceof Error) &&
+      ld['@type'] === 'SoftwareApplication' &&
+      ld['@id'] === 'https://superstat.online/#app',
+      ld && !(ld instanceof Error) ? ld['@type'] + ' · ' + ld['@id'] : '');
+
+const venta = /stripe|checkout|"offers"|priceCurrency|€|suscrip|precio/i;
+check('no dicen ni precio, ni oferta, ni dónde se paga', !venta.test(json),
+      (json.match(venta) || []).join(''));
 
 console.log('\n2. Las cabeceras del servidor dicen lo mismo');
 const todas = (vercel.headers || []).find(h => h.source === '/(.*)');

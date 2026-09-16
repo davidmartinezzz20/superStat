@@ -55,6 +55,49 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SuperStat">
 
+<!-- Qué es esta página, para quien no la abre: el buscador. La descripción es
+     la misma del manifest a propósito, para no abrir otra copia del texto. -->
+<meta name="description" content="Estadísticas de partidos de balonmano: plantillas, tiros por zona de portería y mapa de lanzamientos.">
+<link rel="canonical" href="https://super-stat.vercel.app/">
+
+<!-- Datos estructurados. Describen la app, y es la MISMA entidad que describe
+     superstat.online: por eso lleva su @id y no uno propio. Dos páginas
+     hablando de una app, no dos apps. Lo que allí se cuenta con capturas y
+     planes, aquí es solo la ficha.
+
+     Va en línea y la CSP sigue igual de cerrada: type="application/ld+json" es
+     un bloque de datos, no un script. El navegador no lo ejecuta nunca —sale
+     del algoritmo antes de llegar a la comprobación— así que script-src ni lo
+     mira. test/seguridad.js lo permite por eso, y solo si es JSON válido: lo
+     que se sigue prohibiendo es JavaScript escrito dentro del HTML.
+
+     AQUÍ NO PUEDE IR LO QUE VALE, ni una oferta, ni el nombre de la pasarela,
+     ni un enlace a donde se paga. Este archivo se copia tal cual dentro del
+     binario de Android y iPhone (tools/build-www.js), y una app que diga dónde
+     se compra fuera de la tienda es la guía 3.1.1 de Apple. Todo eso vive en
+     las portadas de superstat.online, que son web y no app. Lo comprueba el
+     apartado 1 bis de test/seguridad.js.
+
+     operatingSystem dice "Web" y no Android ni iOS mientras las apps no estén
+     publicadas: el día que salgan en la tienda, esta línea es la que hay que
+     revisar. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "@id": "https://superstat.online/#app",
+  "name": "SuperStat",
+  "url": "https://super-stat.vercel.app/",
+  "description": "Estadísticas de partidos de balonmano: plantillas, tiros por zona de portería y mapa de lanzamientos.",
+  "applicationCategory": "SportsApplication",
+  "operatingSystem": "Web",
+  "browserRequirements": "Requiere un navegador con JavaScript",
+  "inLanguage": ["es", "en", "fr", "de"],
+  "isAccessibleForFree": true,
+  "publisher": { "@id": "https://superstat.online/#org" }
+}
+</script>
+
 <!-- Sin fuentes de CDN: la tipografía es la del sistema (San Francisco en los
      aparatos de Apple), que además se ve igual sin conexión. -->
 <link rel="stylesheet" href="css/styles.css">
